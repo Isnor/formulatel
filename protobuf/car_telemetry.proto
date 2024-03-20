@@ -1,0 +1,32 @@
+syntax = "proto3";
+package formulatel;
+option go_package = "internal/genproto";
+
+// CarTelemetryData represents telemetry data for a car.
+message CarTelemetryData {
+    uint32 speed = 1; // Speed of car in kilometres per hour
+    float throttle = 2; // Amount of throttle applied (0.0 to 1.0)
+    float steer = 3; // Steering (-1.0 (full lock left) to 1.0 (full lock right))
+    float brake = 4; // Amount of brake applied (0.0 to 1.0)
+    uint32 clutch = 5; // Amount of clutch applied (0 to 100)
+    int32 gear = 6; // Gear selected (1-8, N=0, R=-1)
+    uint32 engineRPM = 7; // Engine RPM
+    uint32 drs = 8; // DRS - 0 = off, 1 = on
+    uint32 revLightsPercent = 9; // Rev lights indicator (percentage)
+    uint32 revLightsBitValue = 10; // Rev lights (bit 0 = leftmost LED, bit 14 = rightmost LED)
+    repeated uint32 brakesTemperature = 11; // Brakes temperature (celsius)
+    repeated uint32 tyresSurfaceTemperature = 12; // Tyres surface temperature (celsius)
+    repeated uint32 tyresInnerTemperature = 13; // Tyres inner temperature (celsius)
+    uint32 engineTemperature = 14; // Engine temperature (celsius)
+    repeated float tyresPressure = 15; // Tyres pressure (PSI)
+    repeated uint32 surfaceType = 16; // Driving surface
+}
+
+// PacketCarTelemetryData represents telemetry data for all cars in the session.
+// message PacketCarTelemetryData {
+//     PacketHeader header = 1; // Header
+//     repeated CarTelemetryData carTelemetryData = 2; // Telemetry data for all cars
+//     uint32 mfdPanelIndex = 3; // Index of MFD panel open - 255 = MFD closed
+//     uint32 mfdPanelIndexSecondaryPlayer = 4; // Index of MFD panel open for secondary player
+//     int32 suggestedGear = 5; // Suggested gear for the player (1-8), 0 if no gear suggested
+// }

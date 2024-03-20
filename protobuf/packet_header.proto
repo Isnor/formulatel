@@ -1,0 +1,19 @@
+syntax = "proto3";
+package formulatel;
+
+option go_package = "internal/genproto";
+
+message PacketHeader  {
+	uint32 PacketFormat = 1;                // 2023
+	uint32 GameYear = 2;                    // Game year - last two digits e.g. 23
+	uint32 GameMajorVersion = 3;            // Game major version - "X.00"
+	uint32 GameMinorVersion = 4;            // Game minor version - "1.XX"
+	uint32 PacketVersion = 5;               // Version of this packet type, all start from 1
+	uint32 PacketId = 6;                    // Identifier for the packet type, see below
+	uint64 SessionUID = 7;                  // Unique identifier for the session
+	float SessionTime = 8;                  // Session timestamp
+	uint32 FrameIdentifier = 9;             // Identifier for the frame the data was retrieved on
+	uint32 OverallFrameIdentifier = 10;     // Overall identifier for the frame the data was retrieved on, doesn't go back after flashbacks
+	uint32 PlayerCarIndex = 11;             // Index of player's car in the array
+	uint32 SecondaryPlayerCarIndex = 12;    // Index of secondary player's car in the array (splitscreen) 255 if no second player
+}

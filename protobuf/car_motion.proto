@@ -1,0 +1,32 @@
+syntax = "proto3";
+package formulatel;
+option go_package = "internal/genproto";
+
+service CarMotionDataService {
+  rpc SendCarMotionData (CarMotionData) returns (CarMotionAck) {};
+  rpc StreamCarMotionData (stream CarMotionData) returns (CarMotionAck) {};
+}
+
+// CarMotionData represents motion-related data for a single car.
+message CarMotionData {
+  float worldPositionX = 1;        // World space X position - metres
+  float worldPositionY = 2;        // World space Y position
+  float worldPositionZ = 3;        // World space Z position
+  float worldVelocityX = 4;        // Velocity in world space X – metres/s
+  float worldVelocityY = 5;        // Velocity in world space Y
+  float worldVelocityZ = 6;        // Velocity in world space Z
+  sint32 worldForwardDirX = 7;     // World space forward X direction (normalised)
+  sint32 worldForwardDirY = 8;     // World space forward Y direction (normalised)
+  sint32 worldForwardDirZ = 9;     // World space forward Z direction (normalised)
+  sint32 worldRightDirX = 10;      // World space right X direction (normalised)
+  sint32 worldRightDirY = 11;      // World space right Y direction (normalised)
+  sint32 worldRightDirZ = 12;      // World space right Z direction (normalised)
+  float gForceLateral = 13;        // Lateral G-Force component
+  float gForceLongitudinal = 14;   // Longitudinal G-Force component
+  float gForceVertical = 15;       // Vertical G-Force component
+  float yaw = 16;                  // Yaw angle in radians
+  float pitch = 17;                // Pitch angle in radians
+  float roll = 18;                 // Roll angle in radians
+}
+
+message CarMotionAck {}

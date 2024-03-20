@@ -1,4 +1,6 @@
-internal/proto/*
-
+formulatel/internal/genproto/*
+captured_packets/
+.vscode/
+out/
 
 *.out
