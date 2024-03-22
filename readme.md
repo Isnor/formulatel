@@ -30,13 +30,15 @@ Use `make` to build the binaries for `ingest` and `rpc` to run locally in `./out
 
 Much of what's in this repo may not be pragmatic because one of the goals I have for this project is to play around with some new technologies. I doubt many sim-racers will be interested in this and those that are probably aren't playing F123, but the end goal is to produce some kind of open racing sim telemetry specification.
 
-[~] have fun!
-[*] grafana dashboards reading from k8s cluster (see helm chart `prometheus-community/kube-prometheus-stack`)
-[] chart telemetry data
-[] build a dashboard for interesting telemetry data
-[] realtime chart?
-[] opensearch?
-[] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
+```[tasklist]
+- [~] have fun!
+- [x] grafana dashboards reading from k8s cluster (see helm chart `prometheus-community/kube-prometheus-stack`)
+- [ ] chart telemetry data
+- [ ] build a dashboard for interesting telemetry data
+- [ ] realtime chart?
+- [ ] opensearch?
+- [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
+```
 
 In the future, I hope to add support for more ingestion types and improve / standardize the protobufs as an open spec so that they can be used for more than one racing game and people can build their own stuff.
 
