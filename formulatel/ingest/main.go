@@ -44,6 +44,7 @@ func main() {
 		log.Fatalf("could not connect to %s service, err: %+v", grpcAddr, err)
 		panic(err)
 	}
+	defer c.Close()
 
 	println("grpc connection open")
 
@@ -89,8 +90,7 @@ type FormulaTelIngest struct {
 	capture bool
 }
 
-// handlePacket is a poorly named function that I wrote when I was mad at myself. It reads a packet header and calls
-// Route on the remaining bytes
+// handlePacket reads a packet header and calls Route on the remaining bytes
 func (f *FormulaTelIngest) handlePacket(packet []byte) {
 	buf := bytes.NewBuffer(packet)
 	header := ReadBin[model.PacketHeader](buf)
@@ -103,6 +103,7 @@ func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer)
 	// TODO: get rid of this, it's just for capturing packets
 	capture := data.Bytes()        // read the buffer; all the bytes - header
 	packet := bytes.Clone(capture) // again all of the bytes - header
+	fmt.Sprintf("%+v\n", header)
 	switch header.PacketId {
 	case model.EventPacket:
 		event := ReadBin[model.EventData](bytes.NewBuffer(packet))

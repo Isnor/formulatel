@@ -5,15 +5,12 @@ k8s_yaml("kubernetes/crds.yml")
 
 k8s_resource("formulatel-grafana", port_forwards=3000)
 
+# TODO: since we aren't building the ingest image anymore (for now; see https://github.com/kubernetes/kubernetes/issues/47862), we don't need
+# to do this base image + two smaller ones now. 
 docker_build("formulatelbase", ".", dockerfile="base.Dockerfile")
-
-# the ingest service is responsible for ingesting telemetry from various sources, such as F123,
-# converting it to our telemetry protobufs (T->proto(T)), and sending it to the formulatel service
-docker_build("formulatel_rpc", ".", dockerfile="rpc.Dockerfile", only=["forumlatel/"])
-
+# formulatel-rpc is the gRPC server that accepts data from the ingestion service and sends it to the 
+# processing pipeline
+docker_build("formulatel_rpc", ".", dockerfile="rpc.Dockerfile")
 
 k8s_yaml("kubernetes/rpc.yml")
 k8s_resource("rpc", port_forwards="29292")
-
-# formulatel-rpc is the gRPC server that accepts data from the ingestion service and sends it to the 
-# processing pipeline

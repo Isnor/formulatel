@@ -5,6 +5,11 @@ metadata:
   namespace: formulatel
   labels:
     app: rpc
+    opentelemetry.io/name: formulatel-rpc
+    app.kubernetes.io/instance: formulatel
+    app.kubernetes.io/component: rpc
+    app.kubernetes.io/name: formulatel-rpc
+    app.kubernetes.io/part-of: formulatel
   name: rpc
 spec:
   selector:
@@ -14,11 +19,29 @@ spec:
     metadata:
       labels:
         app: rpc
+        opentelemetry.io/name: formulatel-rpc
+        app.kubernetes.io/instance: formulatel
+        app.kubernetes.io/component: rpc
+        app.kubernetes.io/name: formulatel-rpc
     spec:
       containers:
         - name: rpc
           image: formulatel_rpc:latest
           imagePullPolicy: IfNotPresent
+          env:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/component']
+          - name: OTEL_COLLECTOR_NAME
+            value: 'formulatel-opentelemetry-collector'
+          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+            value: cumulative
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: http://$(OTEL_COLLECTOR_NAME):4317
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: service.name=$(OTEL_SERVICE_NAME),service.namespace=formulatel
           ports:
             - containerPort: 29292
               name: tcp-rpc
