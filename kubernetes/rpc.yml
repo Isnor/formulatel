@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: formulatel
+  labels:
+    app: rpc
+  name: rpc
+spec:
+  selector:
+    matchLabels:
+      app: rpc
+  template:
+    metadata:
+      labels:
+        app: rpc
+    spec:
+      containers:
+        - name: rpc
+          image: formulatel_rpc:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 29292
+              name: tcp-rpc
+              protocol: TCP
+          # readinessProbe:
+          #   failureThreshold: 3
+          #   httpGet:
+          #     port: 27543
+          #     scheme: UDP
+          # livenessProbe:
+          #   failureThreshold: 3
+          #   initialDelaySeconds: 30
+          #   periodSeconds: 10
+          #   successThreshold: 1
+          #   udpSocket:
+          #     port: 27543
+          #   timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 750Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: formulatel
+  name: rpc
+spec:
+  ports:
+    - port: 27543
+      protocol: TCP
+      targetPort: 27543
+  selector:
+    app: rpc

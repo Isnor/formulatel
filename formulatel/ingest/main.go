@@ -33,6 +33,7 @@ func main() {
 	println("listening on ", conn.LocalAddr().String())
 
 	// TODO: setup otel and shove it in this context (or whatever)
+	// TODO: load this from env
 	// grpc connection
 	grpcAddr := "localhost:29292"
 	c, err := grpc.DialContext(context.TODO(), grpcAddr,
@@ -47,7 +48,7 @@ func main() {
 	println("grpc connection open")
 
 	ftClient := &FormulaTelIngest{
-		capture:                    true,
+		capture:                    false,
 		CarMotionDataServiceClient: pb.NewCarMotionDataServiceClient(c),
 	}
 
@@ -147,18 +148,4 @@ func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer)
 	}
 
 	return nil
-}
-
-// This was the proof-of-concept packet handling function at first writing.
-func doSomethingWithAPacket(packet []byte) {
-	var header model.PacketHeader
-	var event model.EventData
-	// TODO:
-	buf := bytes.NewBuffer(packet)
-	binary.Read(buf, binary.LittleEndian, &header)
-	binary.Read(buf, binary.LittleEndian, &event)
-	// os.WriteFile("foo.out", packet, fs.ModeAppend)
-	// println("read packet")
-	// header.SetEventCode()
-	fmt.Printf("%+v\n%s\n", event, event.EventStringCode)
 }
