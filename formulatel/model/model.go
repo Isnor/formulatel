@@ -1,6 +1,10 @@
 package model
 
 // this file contains the spec for the EA/codemasters F1 23 telemetry packets, converted into Go
+// From the spec document (23):
+// DISCLAIMER: “This information is being provided under license from EA for reference purposes
+// 	only and we do not make any representations or warranties about the accuracy or reliability of
+// 	the information for any specific purpose.”
 
 // PacketType represents the type of packet being sent.
 type PacketType uint8
