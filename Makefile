@@ -1,7 +1,7 @@
 
 build: proto
 	rm -rf out/ && mkdir out/
-	go build -C formulatel -o ../out/ ./...
+	CGO_ENABLED=0 go build -C formulatel -o ../out/ ./...
 
 proto:
 	protoc -I=./protobuf --go_out=./formulatel --go-grpc_out=./formulatel ./protobuf/*

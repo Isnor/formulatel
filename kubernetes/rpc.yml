@@ -35,7 +35,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.labels['app.kubernetes.io/component']
           - name: OTEL_COLLECTOR_NAME
-            value: 'formulatel-opentelemetry-collector'
+            value: 'formulatel-otelcol'
           - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
             value: cumulative
           - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -71,8 +71,8 @@ metadata:
   name: rpc
 spec:
   ports:
-    - port: 27543
+    - port: 29292
       protocol: TCP
-      targetPort: 27543
+      targetPort: 29292
   selector:
     app: rpc
