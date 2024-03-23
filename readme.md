@@ -29,7 +29,8 @@ I should make a docker-compose for this at some point
 
 - [x] have fun!
 - [x] grafana dashboards reading from k8s cluster (see helm chart `prometheus-community/kube-prometheus-stack`) **note**: I'm now trying to rip out the prom/grafana parts of the opentel demo
-- [ ] chart telemetry data
+- [x] chart telemetry data
+- [ ] generic racing telemetry<->metric conversion? It will be a hassle to turn each protobuf into a metric manually, is there a better way?
 - [ ] build a dashboard for interesting telemetry data
 - [ ] realtime chart?
 - [ ] opensearch?
