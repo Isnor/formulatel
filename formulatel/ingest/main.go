@@ -18,6 +18,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// TODO: turns out we can't forward a UDP port in k8s without some extra stuff, so ingest needs to run on the host, not in k8s
+// (unless your playstation/xbox is in the cluster)
+
 // the largest packet is just 1460 bytes
 const BufferSize = 2048
 
@@ -32,11 +35,9 @@ func main() {
 	// Read from UDP listener in endless loop
 	println("listening on ", conn.LocalAddr().String())
 
-	// TODO: setup otel and shove it in this context (or whatever)
-	// TODO: load this from env
 	// grpc connection
 	grpcAddr := "localhost:29292"
-	c, err := grpc.DialContext(context.TODO(), grpcAddr,
+	backendConnection, err := grpc.DialContext(context.Background(), grpcAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
@@ -44,13 +45,13 @@ func main() {
 		log.Fatalf("could not connect to %s service, err: %+v", grpcAddr, err)
 		panic(err)
 	}
-	defer c.Close()
+	defer backendConnection.Close()
 
 	println("grpc connection open")
 
 	ftClient := &FormulaTelIngest{
-		capture:                    false,
-		CarMotionDataServiceClient: pb.NewCarMotionDataServiceClient(c),
+		capture:                    true,
+		CarMotionDataServiceClient: pb.NewCarMotionDataServiceClient(backendConnection),
 	}
 
 	var packet []byte = make([]byte, BufferSize)
@@ -84,7 +85,6 @@ func ReadBin[T any](reader io.Reader) *T {
 	return x
 }
 
-// TODO: refactor to use some kind of "telemetry provider" interface instead of just packets/[]byte
 type FormulaTelIngest struct {
 	pb.CarMotionDataServiceClient
 	capture bool
@@ -92,24 +92,31 @@ type FormulaTelIngest struct {
 
 // handlePacket reads a packet header and calls Route on the remaining bytes
 func (f *FormulaTelIngest) handlePacket(packet []byte) {
+	clone := bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
 	buf := bytes.NewBuffer(packet)
 	header := ReadBin[model.PacketHeader](buf)
+	if f.capture {
+		packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
+		if err != nil {
+			fmt.Println("failed writing capture ", err.Error())
+		}
+		defer packetCapture.Close()
+		packetCapture.Write(clone)
+	}
 	f.Route(header, buf)
 }
 
 // Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
 // It generally calls makes an RPC call afterwards
 func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer) error {
-	// TODO: get rid of this, it's just for capturing packets
-	capture := data.Bytes()        // read the buffer; all the bytes - header
-	packet := bytes.Clone(capture) // again all of the bytes - header
-	fmt.Sprintf("%+v\n", header)
+
+	fmt.Printf("%+v\n", header)
 	switch header.PacketId {
 	case model.EventPacket:
-		event := ReadBin[model.EventData](bytes.NewBuffer(packet))
+		event := ReadBin[model.EventData](data)
 		fmt.Printf("%+v\n%+v\n", header, event)
 	case model.CarMotionPacket:
-		motion := ReadBin[model.CarMotionData](bytes.NewBuffer(packet))
+		motion := ReadBin[model.CarMotionData](data)
 		fmt.Printf("%+v\n%+v\n", header, motion)
 		if f.CarMotionDataServiceClient != nil {
 			_, err := f.CarMotionDataServiceClient.SendCarMotionData(context.TODO(), &pb.CarMotionData{
@@ -136,16 +143,6 @@ func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer)
 				fmt.Println(fmt.Errorf("oh no, an error %s", err))
 			}
 		}
-	}
-
-	if f.capture {
-		packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
-		if err != nil {
-			return err
-		}
-		defer packetCapture.Close()
-		packetCapture.Write(capture)
-
 	}
 
 	return nil

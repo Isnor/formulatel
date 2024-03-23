@@ -4,17 +4,15 @@ import (
 	"context"
 	"log"
 	"net"
+	"time"
 
 	formulatel "github.com/isnor/formulatel/server"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 )
-
-type FormulaTelConfig struct {
-	ExporterHost string `envconfig:"OTEL_EXPORTER_ADDRESS"`
-}
 
 // I largely copied this from the otel-demo just to get started producing metrics
 func initMeterProvider() *sdkmetric.MeterProvider {
@@ -35,13 +33,18 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 		basicMetrics,
 	)
 
-	exporter, err := otlpmetricgrpc.New(ctx)
+	rpcExporter, err := otlpmetricgrpc.New(ctx)
 	if err != nil {
 		log.Fatalf("new otlp metric grpc exporter failed: %v", err)
 	}
 
+	// stdoutExporter, err := stdoutmetric.New()
+	// if err != nil {
+	// 	log.Fatalf("failed creating stdout exporter %v", err)
+	// }
 	metrics := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(rpcExporter)),
+		// sdkmetric.WithReader(sdkmetric.NewPeriodicReader(stdoutExporter)),
 		sdkmetric.WithResource(resource),
 	)
 	otel.SetMeterProvider(metrics)
@@ -49,7 +52,6 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 }
 
 func main() {
-	server := formulatel.FormulaTelServer()
 	ctx := context.Background()
 
 	meterProvider := initMeterProvider()
@@ -58,6 +60,12 @@ func main() {
 			log.Printf("Error shutting down meter provider: %v", err)
 		}
 	}()
+	server := formulatel.FormulaTelServer(otel.Meter("formulatelrpc"))
+
+	err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	listener, err := net.Listen("tcp", "0.0.0.0:29292")
 	if err != nil {
