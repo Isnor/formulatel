@@ -1,8 +1,6 @@
 package formulatel
 
 import (
-	"context"
-
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/metric"
@@ -10,6 +8,7 @@ import (
 )
 
 func FormulaTelServer(meter metric.Meter) *grpc.Server {
+
 	// meter := otel.Meter("formulatel")
 	apiCounter, err := meter.Int64Counter(
 		"formulatelrpc.motion.packets",
@@ -19,10 +18,21 @@ func FormulaTelServer(meter metric.Meter) *grpc.Server {
 	if err != nil {
 		panic(err) // TODO: remove this
 	}
-	apiCounter.Add(context.Background(), 99)
+	speedHistogram, err := meter.Int64Histogram("formulatelrpc.telemetry.speed", metric.WithUnit("km/h"), metric.WithDescription("player speed"))
+	if err != nil {
+		panic(err)
+	}
 	server := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
 	pb.RegisterCarMotionDataServiceServer(server, &CarMotionService{
-		MotionPacketsCounter: apiCounter,
+		CarMotionMetrics: &CarMotionMetricsImpl{
+			MotionPacketsCounter: apiCounter,
+		},
+	})
+	pb.RegisterCarTelemetryDataServiceServer(server, &CarTelemetryService{
+		CarTelemetryMetrics: &CarTelemetryMetricsImpl{
+			Speed: speedHistogram,
+			Gauges: NewGauges(meter),
+		},
 	})
 	return server
 }

@@ -1,10 +1,10 @@
 syntax = "proto3";
 package formulatel;
+
 option go_package = "internal/genproto";
 
 service CarMotionDataService {
   rpc SendCarMotionData (CarMotionData) returns (CarMotionAck) {};
-  rpc StreamCarMotionData (stream CarMotionData) returns (CarMotionAck) {};
 }
 
 // CarMotionData represents motion-related data for a single car.

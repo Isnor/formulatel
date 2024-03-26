@@ -50,8 +50,9 @@ func main() {
 	println("grpc connection open")
 
 	ftClient := &FormulaTelIngest{
-		capture:                    true,
-		CarMotionDataServiceClient: pb.NewCarMotionDataServiceClient(backendConnection),
+		capture:                       false,
+		CarMotionDataServiceClient:    pb.NewCarMotionDataServiceClient(backendConnection),
+		CarTelemetryDataServiceClient: pb.NewCarTelemetryDataServiceClient(backendConnection),
 	}
 
 	var packet []byte = make([]byte, BufferSize)
@@ -87,12 +88,16 @@ func ReadBin[T any](reader io.Reader) *T {
 
 type FormulaTelIngest struct {
 	pb.CarMotionDataServiceClient
-	capture bool
+	pb.CarTelemetryDataServiceClient
+	capture bool // TODO: remove, just for testing. when set, writes a file for every packet received
 }
 
 // handlePacket reads a packet header and calls Route on the remaining bytes
 func (f *FormulaTelIngest) handlePacket(packet []byte) {
-	clone := bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
+	var clone []byte
+	if f.capture {
+		clone = bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
+	}
 	buf := bytes.NewBuffer(packet)
 	header := ReadBin[model.PacketHeader](buf)
 	if f.capture {
@@ -110,15 +115,16 @@ func (f *FormulaTelIngest) handlePacket(packet []byte) {
 // It generally calls makes an RPC call afterwards
 func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer) error {
 
-	fmt.Printf("%+v\n", header)
 	switch header.PacketId {
-	case model.EventPacket:
-		event := ReadBin[model.EventData](data)
-		fmt.Printf("%+v\n%+v\n", header, event)
+	// case model.EventPacket:
+	// 	event := ReadBin[model.EventData](data)
+	// 	fmt.Printf("%+v\n%+v\n", header, event)
 	case model.CarMotionPacket:
-		motion := ReadBin[model.CarMotionData](data)
+		motionArray := ReadBin[[22]model.CarMotionData](data)
+		motion := motionArray[0]
 		fmt.Printf("%+v\n%+v\n", header, motion)
 		if f.CarMotionDataServiceClient != nil {
+			// TODO: we could put a trace on the context here; could be fun, just to learn a bit more about it and visualizing the traces
 			_, err := f.CarMotionDataServiceClient.SendCarMotionData(context.TODO(), &pb.CarMotionData{
 				WorldPositionX:     motion.WorldPositionX,
 				WorldPositionY:     motion.WorldPositionY,
@@ -142,6 +148,17 @@ func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer)
 			if err != nil {
 				fmt.Println(fmt.Errorf("oh no, an error %s", err))
 			}
+		}
+	case model.CarTelemetryPacket:
+		telemetryArray := ReadBin[[22]model.CarTelemetryData](data)
+		playerTelemetry := telemetryArray[0]
+		println(playerTelemetry.Speed)
+		if f.CarTelemetryDataServiceClient != nil {
+			f.SendCarTelemetryData(context.TODO(), &pb.CarTelemetryData{
+				Speed:    uint32(playerTelemetry.Speed),
+				Throttle: playerTelemetry.Throttle,
+				Brake:    playerTelemetry.Brake,
+			})
 		}
 	}
 

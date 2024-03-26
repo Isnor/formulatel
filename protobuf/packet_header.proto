@@ -9,11 +9,29 @@ message PacketHeader  {
 	uint32 GameMajorVersion = 3;            // Game major version - "X.00"
 	uint32 GameMinorVersion = 4;            // Game minor version - "1.XX"
 	uint32 PacketVersion = 5;               // Version of this packet type, all start from 1
-	uint32 PacketId = 6;                    // Identifier for the packet type, see below
+	PacketType Type = 6;                    // Identifier for the packet type, see below
 	uint64 SessionUID = 7;                  // Unique identifier for the session
-	float SessionTime = 8;                  // Session timestamp
+	float  SessionTime = 8;                 // Session timestamp; how many seconds into the session are we?
 	uint32 FrameIdentifier = 9;             // Identifier for the frame the data was retrieved on
 	uint32 OverallFrameIdentifier = 10;     // Overall identifier for the frame the data was retrieved on, doesn't go back after flashbacks
 	uint32 PlayerCarIndex = 11;             // Index of player's car in the array
 	uint32 SecondaryPlayerCarIndex = 12;    // Index of secondary player's car in the array (splitscreen) 255 if no second player
+}
+
+enum PacketType {
+  // TODO: per the doc, we should reserve 0 for an unsupported value, but there is already a 0 defined for packet type. 
+  CarMotion = 0;
+  Session = 1;
+  LapData = 2;
+  Event = 3;
+  Participants = 4;
+  CarSetups = 5;
+  CarTelemetry = 6;
+  CarStatus = 7;
+  FinalClassification = 8;
+  LobbyInfo = 9;
+  CarDamage = 10;
+  SessionHistory = 11;
+  TyreSets = 12;
+  MotionEx = 13;
 }

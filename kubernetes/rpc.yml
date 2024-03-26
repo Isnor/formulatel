@@ -42,6 +42,8 @@ spec:
             value: http://$(OTEL_COLLECTOR_NAME):4317
           - name: OTEL_RESOURCE_ATTRIBUTES
             value: service.name=$(OTEL_SERVICE_NAME),service.namespace=formulatel
+          - name: OTEL_METRIC_EXPORT_INTERVAL
+            value: '1000'
           ports:
             - containerPort: 29292
               name: tcp-rpc

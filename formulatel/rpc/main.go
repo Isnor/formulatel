@@ -38,7 +38,7 @@ func initMeterProvider() *sdkmetric.MeterProvider {
 		log.Fatalf("new otlp metric grpc exporter failed: %v", err)
 	}
 
-	// stdoutExporter, err := stdoutmetric.New()
+	// stdoutExporter, err := stdoutmetric.New(stdoutmetric.WithPrettyPrint())
 	// if err != nil {
 	// 	log.Fatalf("failed creating stdout exporter %v", err)
 	// }
@@ -60,7 +60,7 @@ func main() {
 			log.Printf("Error shutting down meter provider: %v", err)
 		}
 	}()
-	server := formulatel.FormulaTelServer(otel.Meter("formulatelrpc"))
+	server := formulatel.FormulaTelServer(otel.Meter("github.com/isnor/formulatel/rpc"))
 
 	err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
 	if err != nil {
