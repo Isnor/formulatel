@@ -1,11 +1,11 @@
+load('ext://helm_resource', 'helm_resource', 'helm_repo')
 k8s_yaml("kubernetes/namespace.yml")
 
-# k8s_resource("formulatel-grafana", port_forwards=3000)
-# k8s_resource("formulatel-prometheus-server", port_forwards=9090)
 
-k8s_yaml("kubernetes/anothercollector.yml")
-k8s_resource("formulatel-grafana", port_forwards=3000)
-k8s_resource("formulatel-prometheus-server", port_forwards=9090)
+helm_resource("otel-col", chart="open-telemetry/opentelemetry-collector", namespace="formulatel", flags=["--values", "./kubernetes/config/collector-values.yml"])
+helm_resource("kafka", chart="oci://registry-1.docker.io/bitnamicharts/kafka", namespace="formulatel")
+
+
 # formulatel-rpc is the gRPC server that accepts data from the ingestion service and sends it to the 
 # processing pipeline
 docker_build("formulatel_rpc", ".", dockerfile="Dockerfile", only=[

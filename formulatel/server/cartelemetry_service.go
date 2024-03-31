@@ -16,6 +16,7 @@ type CarTelemetryMetricsImpl struct {
 	Gauges *CarTelemetryGauges
 }
 
+// TODO: add attributes to the metrics from the context? I'm not sure how we're going to do this
 func (m *CarTelemetryMetricsImpl) RecordTelemetry(ctx context.Context, telemetry *pb.CarTelemetryData) {
 	m.Speed.Record(ctx, int64(telemetry.Speed))
 	m.Gauges.Speed = int64(telemetry.Speed)
@@ -29,7 +30,6 @@ type CarTelemetryGauges struct {
 	Throttle float64
 }
 
-// TODO: this cannot be a good idea, certainly not thread safe
 func NewGauges(meter metric.Meter) *CarTelemetryGauges {
 	gauges := &CarTelemetryGauges{}
 	meter.Int64ObservableGauge("formulatelrpc.speed.gauge", metric.WithInt64Callback(func(ctx context.Context, o metric.Int64Observer) error {

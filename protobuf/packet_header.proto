@@ -1,8 +1,11 @@
 syntax = "proto3";
 package formulatel;
 
-option go_package = "internal/genproto";
+option go_package = "internal/genproto/titles/f123";
 
+// TODO: This is F123 specific; there could still be use for this 1:1 mapping as some kind of SDK for F1 specifically, but we're
+// also going to want a data model that can be used to identify and chart telemetry data from many sources. Some kind of UUID,
+// game identifier, player ID, session ID, etc that we can use to label the metrics / data that we output
 message PacketHeader  {
 	uint32 PacketFormat = 1;                // 2023
 	uint32 GameYear = 2;                    // Game year - last two digits e.g. 23

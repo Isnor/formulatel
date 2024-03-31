@@ -1,6 +1,6 @@
 syntax = "proto3";
 package formulatel;
-option go_package = "internal/genproto";
+option go_package = "internal/genproto/titles/f123";
 
 service CarTelemetryDataService {
   rpc SendCarTelemetryData (CarTelemetryData) returns (CarTelemetryAck) {};

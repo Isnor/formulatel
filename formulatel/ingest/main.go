@@ -64,12 +64,7 @@ func main() {
 		// I think it makes most sense to keep this part of the code as lean as possible to make sure we
 		// can handle as many packets in as close to real-time as possible
 		if numRead > 0 {
-			// copy the packet into a new array
-			myPacket := make([]byte, numRead)
-			copy(myPacket, packet)
-			go ftClient.handlePacket(myPacket)
-			// go doSomethingWithAPacket(myPacket)
-			continue
+			go ftClient.handlePacket(bytes.Clone(packet))
 		}
 
 		if err != nil {

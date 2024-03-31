@@ -1,0 +1,19 @@
+syntax = "proto3";
+package formulatel;
+
+option go_package = "internal/genproto";
+
+// GameTelemetry is a message containing information attached to each chartable metric to allow backend
+// time-series data to be aggregated consistenly between titles
+message GameTelemetry {
+  GameTitle Title = 1;
+  // how would we, from ingest or otherwise, create a session ID? could/should we use an IP address? UDP doesn't really have a "connection",
+  // so maybe for now we'll rely on the title to give us a session ID.
+  string SessionID = 2;
+}
+
+enum GameTitle {
+  GAME_TITLE_UNKNOWN = 0;
+
+  GAME_TITLE_F123 = 1;
+}

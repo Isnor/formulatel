@@ -11,6 +11,17 @@ I like playing the F1 simarcade games and I like OpenTelemetry. I thought it wou
 
 Right now, I'm learning about opentelemetry and initially thought I would write some kind of service that OT captured the metrics for, but after some reading it looks like I may just want to write a collector receiver.
 
+## Problems
+
+Some of the problems I've encountered so far include:
+
+- I'm pretty stupid
+- I got excited about a bunch of different technologies and overwhelmed myself
+- In practice, all of the data from a session would come from a single local source (e.g. my playstation), but part of the fun of this project was trying to design a demo project that in principle would accept data from many sources and be able to chart telemetry from many different games. Designing for that was more difficult than was obvious to me initially, and my original proof-of-concept obviously didn't attempt to take that into account.
+- A gauge is how we will visualize most of our car's telemetry in real-time, and because there's only a single source for each vehicle it makes great sense - but that's difficult to conceptualize in a distributed system where there will be many `ingest` and `rpc` instances running to provide that gauge information to the backend.
+- - This may be where the streaming becomes important, Kafka is probably a good solution for us
+- I don't think prometheus is actually going to end up being a good fit to see my telemetry gauges in realtime, what I probably want is to just put all of the data onto a stream and use whatever integrations I can with Grafana to chart in realtime. I don't see why the collector couldn't emit to both; it seems like a great tool
+
 ## Usage
 
 ### Kubernetes
@@ -34,6 +45,7 @@ I should make a docker-compose for this at some point
 - [ ] build a dashboard for interesting telemetry data
 - [ ] realtime chart?
 - [ ] opensearch?
+- [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF instead of from user-space in the `ingest` program.
 - [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
 
 
