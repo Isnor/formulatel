@@ -3,7 +3,7 @@ k8s_yaml("kubernetes/namespace.yml")
 
 
 helm_resource("otel-col", chart="open-telemetry/opentelemetry-collector", namespace="formulatel", flags=["--values", "./kubernetes/config/collector-values.yml"])
-helm_resource("kafka", chart="oci://registry-1.docker.io/bitnamicharts/kafka", namespace="formulatel")
+# helm_resource("kafka", chart="oci://registry-1.docker.io/bitnamicharts/kafka", namespace="formulatel")
 
 
 # formulatel-rpc is the gRPC server that accepts data from the ingestion service and sends it to the 

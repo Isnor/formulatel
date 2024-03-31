@@ -12,13 +12,11 @@ type CarTelemetryMetrics interface {
 }
 
 type CarTelemetryMetricsImpl struct {
-	Speed  metric.Int64Histogram
 	Gauges *CarTelemetryGauges
 }
 
 // TODO: add attributes to the metrics from the context? I'm not sure how we're going to do this
 func (m *CarTelemetryMetricsImpl) RecordTelemetry(ctx context.Context, telemetry *pb.CarTelemetryData) {
-	m.Speed.Record(ctx, int64(telemetry.Speed))
 	m.Gauges.Speed = int64(telemetry.Speed)
 	m.Gauges.Break = float64(telemetry.Brake)
 	m.Gauges.Throttle = float64(telemetry.Throttle)

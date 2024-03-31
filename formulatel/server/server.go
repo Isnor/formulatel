@@ -18,10 +18,6 @@ func FormulaTelServer(meter metric.Meter) *grpc.Server {
 	if err != nil {
 		panic(err) // TODO: remove this
 	}
-	speedHistogram, err := meter.Int64Histogram("formulatelrpc.telemetry.speed", metric.WithUnit("km/h"), metric.WithDescription("player speed"))
-	if err != nil {
-		panic(err)
-	}
 	server := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
 	pb.RegisterCarMotionDataServiceServer(server, &CarMotionService{
 		CarMotionMetrics: &CarMotionMetricsImpl{
@@ -30,7 +26,6 @@ func FormulaTelServer(meter metric.Meter) *grpc.Server {
 	})
 	pb.RegisterCarTelemetryDataServiceServer(server, &CarTelemetryService{
 		CarTelemetryMetrics: &CarTelemetryMetricsImpl{
-			Speed: speedHistogram,
 			Gauges: NewGauges(meter),
 		},
 	})
