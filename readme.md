@@ -19,7 +19,8 @@ Some of the problems I've encountered so far include:
 - I got excited about a bunch of different technologies and overwhelmed myself
 - In practice, all of the data from a session would come from a single local source (e.g. my playstation), but part of the fun of this project was trying to design a demo project that in principle would accept data from many sources and be able to chart telemetry from many different games. Designing for that was more difficult than was obvious to me initially, and my original proof-of-concept obviously didn't attempt to take that into account.
 - A gauge is how we will visualize most of our car's telemetry in real-time, and because there's only a single source for each vehicle it makes great sense - but that's difficult to conceptualize in a distributed system where there will be many `ingest` and `rpc` instances running to provide that gauge information to the backend.
-- - This may be where the streaming becomes important, Kafka is probably a good solution for us
+- - This may be where the streaming becomes important, Kafka is probably a good solution for use
+- We can probably handle the above two issues by labeling the metrics consistently across RPC instances, based on the data. For example, we'll need a way to derive a "session ID" and "car/user ID" for every packet to uniquely identify it and emit signals with those labels attached so that they can be aggregated when it comes time to chart.
 - I don't think prometheus is actually going to end up being a good fit to see my telemetry gauges in realtime, what I probably want is to just put all of the data onto a stream and use whatever integrations I can with Grafana to chart in realtime. I don't see why the collector couldn't emit to both; it seems like a great tool
 
 ## Usage
@@ -84,16 +85,23 @@ end
 
 space down3<[" "]>(down) space
 
+block:otel_col:3
+    otel1["otel-col"]
+    otel2["otel-col"]
+    otel3["otel-col"]
+end
+
+space down4<[" "]>(down) space
+
 block:datastore:3
     influxdb
     prometheus
-    kafka
+    opensearch
 end
 
-down5<[" "]>(down) space down4<[" "]>(down)
+up1<[" "]>(up) up2<[" "]>(up) up3<[" "]>(up)
 
 block:visualize:3
     grafana
-    opensearch
 end
 ```
