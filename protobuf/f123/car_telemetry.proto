@@ -30,6 +30,11 @@ message CarTelemetryData {
   repeated uint32 surfaceType = 16; // Driving surface
 }
 
+// 0 - Rear Left (RL)
+// 1 - Rear Right (RR)
+// 2 - Front Left (FL)
+// 3 - Front Right (FR)
+
 // PacketCarTelemetryData represents telemetry data for all cars in the session.
 // message PacketCarTelemetryData {
 //     PacketHeader header = 1; // Header

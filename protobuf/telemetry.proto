@@ -1,15 +1,66 @@
 syntax = "proto3";
 package formulatel;
 
+// this file is concerned with the models that the backend will store, and is an attempt
+// to represent vehicle data in a standard way that works for multiple titles
+
 option go_package = "internal/genproto";
+
+service VehicleTelemetryService {
+  rpc SendGameTelemetry (stream GameTelemetry) returns (TelemetryAck) {};
+}
+
+message TelemetryAck {};
 
 // GameTelemetry is a message containing information attached to each chartable metric to allow backend
 // time-series data to be aggregated consistenly between titles
 message GameTelemetry {
-  GameTitle Title = 1;
+  GameTitle title = 1;
   // how would we, from ingest or otherwise, create a session ID? could/should we use an IP address? UDP doesn't really have a "connection",
   // so maybe for now we'll rely on the title to give us a session ID.
-  string SessionID = 2;
+  string session_id = 2;
+  string user_id = 3; // identify the user/vehicle within the session
+
+  // should we do this, or have a different message for each type of telemetry?
+  // on one hand, we'd only need one RPC, but on the other we can't scale each service
+  // independently because there's only one instead of one per packet type
+  oneof Data {
+    VehicleData VehicleData = 11;
+    // PhysicsData VehiclePhysics = 12;
+    // SessionData, etc.
+  }
+}
+
+// this message is for any onboard telemetry from the vehicle, generally seen by the driver via a dashboard, screen, or MFD
+message VehicleData {
+  uint32 speed = 1;
+  uint32 rpm = 2;
+  float throttle = 3;
+  float break = 4;
+  float steering = 5;
+  int32 gear = 6;
+  uint32 engine_temperature = 7;
+
+  message Tires {
+    TireData front_left = 1;
+    TireData front_right = 2;
+    TireData back_left = 3;
+    TireData back_right = 4;
+  }
+
+  Tires tires = 12;
+}
+
+// this message describes tire information, such as temperature, pressure, and wear. 
+message TireData {
+  uint32 brake_temperature = 1;
+  uint32 inner_temperature = 2;
+  uint32 surface_temperature = 3;
+  uint32 pressure = 4;
+  float wear = 5; // [0,1.0] 0 = new tire, 1 = dead tire
+  reserved 6 to 12;
+
+  // SurfaceType surface = 13;
 }
 
 enum GameTitle {
@@ -17,3 +68,7 @@ enum GameTitle {
 
   GAME_TITLE_F123 = 1;
 }
+
+// enum SurfaceType {
+//   SURFACE_TYPE_UNKNOWN = 0;
+// }

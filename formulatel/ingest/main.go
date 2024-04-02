@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/isnor/formulatel/internal/genproto"
+	"github.com/isnor/formulatel/internal/genproto/titles/f123"
 	"github.com/isnor/formulatel/model"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -21,8 +21,12 @@ import (
 // TODO: turns out we can't forward a UDP port in k8s without some extra stuff, so ingest needs to run on the host, not in k8s
 // (unless your playstation/xbox is in the cluster)
 
-// the largest packet is just 1460 bytes
-const BufferSize = 2048
+// the largest packet is just 1460 bytes. I was trying to be cute here and only allocate
+// a single packet's worth of data, but the main function indiscriminately allocates as many bytes
+// as it needs to read each packet as quickly as possible. This probably doesn't scale very well
+// and we should use some kind of pool of routines / memory so that GC overhead doesn't become an 
+// issue.
+const MaxPacketSize = 2048
 
 func main() {
 	var listener net.ListenConfig
@@ -51,11 +55,11 @@ func main() {
 
 	ftClient := &FormulaTelIngest{
 		capture:                       false,
-		CarMotionDataServiceClient:    pb.NewCarMotionDataServiceClient(backendConnection),
-		CarTelemetryDataServiceClient: pb.NewCarTelemetryDataServiceClient(backendConnection),
+		CarMotionDataServiceClient:    f123.NewCarMotionDataServiceClient(backendConnection),
+		CarTelemetryDataServiceClient: f123.NewCarTelemetryDataServiceClient(backendConnection),
 	}
 
-	var packet []byte = make([]byte, BufferSize)
+	var packet []byte = make([]byte, MaxPacketSize)
 	for {
 		// read a packet of data up to BufferSize bytes from a UDP connection
 		numRead, _, err := conn.ReadFrom(packet)
@@ -64,7 +68,11 @@ func main() {
 		// I think it makes most sense to keep this part of the code as lean as possible to make sure we
 		// can handle as many packets in as close to real-time as possible
 		if numRead > 0 {
-			go ftClient.handlePacket(bytes.Clone(packet))
+			// allocate memory for the packet and pass it to a goroutine. I think this is more performant
+			// than bytes.Clone
+			p := make([]byte, numRead)
+			copy(p, packet)
+			go ftClient.handlePacket(p)
 		}
 
 		if err != nil {
@@ -82,8 +90,8 @@ func ReadBin[T any](reader io.Reader) *T {
 }
 
 type FormulaTelIngest struct {
-	pb.CarMotionDataServiceClient
-	pb.CarTelemetryDataServiceClient
+	f123.CarMotionDataServiceClient
+	f123.CarTelemetryDataServiceClient
 	capture bool // TODO: remove, just for testing. when set, writes a file for every packet received
 }
 
@@ -120,7 +128,7 @@ func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer)
 		fmt.Printf("%+v\n%+v\n", header, motion)
 		if f.CarMotionDataServiceClient != nil {
 			// TODO: we could put a trace on the context here; could be fun, just to learn a bit more about it and visualizing the traces
-			_, err := f.CarMotionDataServiceClient.SendCarMotionData(context.TODO(), &pb.CarMotionData{
+			_, err := f.CarMotionDataServiceClient.SendCarMotionData(context.TODO(), &f123.CarMotionData{
 				WorldPositionX:     motion.WorldPositionX,
 				WorldPositionY:     motion.WorldPositionY,
 				WorldPositionZ:     motion.WorldPositionZ,
@@ -149,7 +157,7 @@ func (f *FormulaTelIngest) Route(header *model.PacketHeader, data *bytes.Buffer)
 		playerTelemetry := telemetryArray[0]
 		println(playerTelemetry.Speed)
 		if f.CarTelemetryDataServiceClient != nil {
-			f.SendCarTelemetryData(context.TODO(), &pb.CarTelemetryData{
+			f.SendCarTelemetryData(context.TODO(), &f123.CarTelemetryData{
 				Speed:    uint32(playerTelemetry.Speed),
 				Throttle: playerTelemetry.Throttle,
 				Brake:    playerTelemetry.Brake,

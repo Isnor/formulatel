@@ -18,23 +18,9 @@ type CarTelemetryMetricsImpl struct {
 	Gauges *CarTelemetryGauges
 }
 
-// TODO: add attributes to the metrics from the context? I'm not sure how we're going to do this. I think
-// the answer might be _hammering_ values into the context rather than in some singleton struct like MetricsImpl
-// because context is all the asynchronous gauges will be able to use, but the better solution is probably
-// to just write our own exporter
-func (m *CarTelemetryMetricsImpl) RecordTelemetry(ctx context.Context, telemetry *pb.CarTelemetryData) {
-	m.Gauges.Speed.Store(int64(telemetry.Speed))
-	m.Gauges.Break.Store(float64(telemetry.Brake))
-	m.Gauges.Throttle.Store(float64(telemetry.Throttle))
-}
-
-func (m *CarTelemetryMetricsImpl) Record(ctx context.Context, telemetry *pb.CarTelemetryData) {
-	m.RecordTelemetry(ctx, telemetry)
-}
-
 type CarTelemetryGauges struct {
 	Speed    atomic.Int64
-	Break    AtomicFloat32 // float32
+	Break    AtomicFloat32
 	Throttle AtomicFloat32
 }
 
@@ -66,17 +52,25 @@ func NewGauges(meter metric.Meter) *CarTelemetryGauges {
 	return gauges
 }
 
-type CarTelemetryService struct {
-	FormulaTelMetricsRecorder[pb.CarTelemetryData]
-	pb.UnimplementedCarTelemetryDataServiceServer
+type TelemetryData[T any] struct {
+	Data     *T
+	Recorder FormulaTelMetricsRecorder[T]
+	pb.UnimplementedVehicleTelemetryServiceServer
 }
 
-func (c *CarTelemetryService) SendCarTelemetryData(ctx context.Context, data *pb.CarTelemetryData) (*pb.CarTelemetryAck, error) {
-	c.FormulaTelMetricsRecorder.Record(ctx, data)
-	return &pb.CarTelemetryAck{}, nil
+func (t *TelemetryData[T]) SendGameTelemetry(s pb.VehicleTelemetryService_SendGameTelemetryServer) error {
+	// this was supposed to be a more generic way of recording the telemetry data, but it looks like I got confused
+	// I was hoping to declare this generally and create instances of TelemetryData[pb.VehicleData], TelemetryData[pb.LapData],
+	// etc. with the appropriate recorder, but it looks like I can't do that
+	// tel, err := s.Recv()
+	// if err != nil {
+	// 	return err
+	// }
+	// t.Recorder.Record(s.Context(), tel)
+	return nil
 }
 
-func SendData[T any](ctx context.Context, recorder FormulaTelMetricsRecorder[T], data *T) (*pb.CarTelemetryAck, error) {
+func SendData[T any](ctx context.Context, recorder FormulaTelMetricsRecorder[T], data *T) (*pb.TelemetryAck, error) {
 	recorder.Record(ctx, data)
-	return &pb.CarTelemetryAck{}, nil
+	return &pb.TelemetryAck{}, nil
 }

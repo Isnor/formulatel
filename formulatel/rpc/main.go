@@ -73,6 +73,7 @@ func main() {
 	}
 
 	defer listener.Close()
+	defer server.Stop()
 
 	println("formulatel-rpc listening on 29292")
 	server.Serve(listener)
