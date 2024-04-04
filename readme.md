@@ -9,7 +9,7 @@ This repository contains zero finished code and is very much a work in progress.
 ## Overview
 I like playing the F1 simarcade games and I like OpenTelemetry. I thought it would be a fairly painless lift to read the telemetry data because the [spec](https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159?attachment-id=704910) is publicly available, convert that to metrics with OpenTelemetry and chart them with Grafana. Then I thought it might be helpful to convert the data into protocol buffers so that others could easily make their own racing telemetry applications.
 
-Right now, I'm learning about opentelemetry and initially thought I would write some kind of service that OT captured the metrics for, but after some reading it looks like I may just want to write a collector receiver.
+Right now, I'm learning about opentelemetry and initially thought I would write some kind of service that OT captured the metrics for, but after some reading it looks like I may just want to write a collector distribution.
 
 ## Problems
 
@@ -17,11 +17,9 @@ Some of the problems I've encountered so far include:
 
 - I'm pretty stupid
 - I got excited about a bunch of different technologies and overwhelmed myself
-- In practice, all of the data from a session would come from a single local source (e.g. my playstation), but part of the fun of this project was trying to design a demo project that in principle would accept data from many sources and be able to chart telemetry from many different games. Designing for that was more difficult than was obvious to me initially, and my original proof-of-concept obviously didn't attempt to take that into account.
-- A gauge is how we will visualize most of our car's telemetry in real-time, and because there's only a single source for each vehicle it makes great sense - but that's difficult to conceptualize in a distributed system where there will be many `ingest` and `rpc` instances running to provide that gauge information to the backend.
-- - This may be where the streaming becomes important, Kafka is probably a good solution for use
-- We can probably handle the above two issues by labeling the metrics consistently across RPC instances, based on the data. For example, we'll need a way to derive a "session ID" and "car/user ID" for every packet to uniquely identify it and emit signals with those labels attached so that they can be aggregated when it comes time to chart.
-- I don't think prometheus is actually going to end up being a good fit to see my telemetry gauges in realtime, what I probably want is to just put all of the data onto a stream and use whatever integrations I can with Grafana to chart in realtime. I don't see why the collector couldn't emit to both; it seems like a great tool
+- I really wanted to build this "on top" or with OpenTelemetry because I want to learn about that project and contribute to it, but after writing a bit of code, I'm not sure that the car metrics align very well with open telemetry's metrics.
+- Initially I thought that it would make sense to use the collector to take in telemetry from a bunch of different sources and export them to a persistent storage for charts after a race and some type of "more live" storage to view during the race. In practise, I think what I'm discovering is that showing metrics in realtime is expensive if I want something quicker than say a 100ms poll. One neat idea I had was to use my phone as a car dashboard "app", but it would only make sense with a very low latency stream. Grafana Live may well be a good choice.
+- I really wanted to provide a backend service that a racer could just "send telemetry to"; I wanted to separate the ingestion from the charting so that if somebody wanted to extend it or add support for another game, they would just need to write the frontend part. When I implemented this, I realized that the "backend" service I was providing was just recording metrics and that if I want to chart something in real-time I'd want to skip that extra hop and record them directly from the ingestion service.
 
 ## Usage
 
@@ -44,10 +42,10 @@ I should make a docker-compose for this at some point
 - [x] chart telemetry data
 - [ ] generic racing telemetry<->metric conversion? It will be a hassle to turn each protobuf into a metric manually, is there a better way?
 - [ ] build a dashboard for interesting telemetry data
-- [ ] realtime chart?
+- [ ] realtime charting with something like Grafana Live
 - [ ] opensearch?
-- [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF instead of from user-space in the `ingest` program.
 - [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
+- [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
 
 
 In the future, I hope to add support for more ingestion types and improve / standardize the protobufs as an open spec so that they can be used for more than one racing game and people can build their own stuff.
