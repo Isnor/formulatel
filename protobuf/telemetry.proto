@@ -24,8 +24,8 @@ message GameTelemetry {
   // should we do this, or have a different message for each type of telemetry?
   // on one hand, we'd only need one RPC, but on the other we can't scale each service
   // independently because there's only one instead of one per packet type
-  oneof Data {
-    VehicleData VehicleData = 11;
+  oneof data {
+    VehicleData vehicle_data = 11;
     // PhysicsData VehiclePhysics = 12;
     // SessionData, etc.
   }
@@ -58,7 +58,6 @@ message TireData {
   uint32 surface_temperature = 3;
   uint32 pressure = 4;
   float wear = 5; // [0,1.0] 0 = new tire, 1 = dead tire
-  reserved 6 to 12;
 
   // SurfaceType surface = 13;
 }
