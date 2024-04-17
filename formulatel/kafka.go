@@ -27,12 +27,7 @@ func (t *AsyncTelemetryProducer[_]) ProduceMessages(ctx context.Context) {
 			clear(currentBatch)
 		}
 	}()
-	for !t.Shutdown.Load() {
-		message, closed := <-t.Messages
-		if closed {
-			break
-		}
-		println("bababooy")
+	for message := range t.Messages {
 		x, err := proto.Marshal(message)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed serializing a message")
@@ -42,6 +37,9 @@ func (t *AsyncTelemetryProducer[_]) ProduceMessages(ctx context.Context) {
 		if len(currentBatch) >= t.BatchSize {
 			t.Writer.WriteMessages(ctx, currentBatch...)
 			clear(currentBatch)
+		}
+		if t.Shutdown.Load() {
+			break
 		}
 	}
 	slog.Info("kafka finished producing messages")
