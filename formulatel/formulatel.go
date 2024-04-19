@@ -45,11 +45,13 @@ func (f *FormulaTelPersist) Run(ctx context.Context) {
 			slog.ErrorContext(ctx, "failed reading telemetry", "error", err.Error())
 			continue
 		}
+		slog.DebugContext(ctx, "read telemetry")
 		if err = f.Persist(ctx, t); err != nil {
 			// TODO: probably should do something about this
 			slog.ErrorContext(ctx, "failed persisting telemetry", "error", err.Error())
 			continue
 		}
+		slog.DebugContext(ctx, "persisted telemetry")
 	}
 }
 

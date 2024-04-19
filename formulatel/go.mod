@@ -3,6 +3,7 @@ module github.com/isnor/formulatel
 go 1.22.1
 
 require (
+	github.com/opensearch-project/opensearch-go/v2 v2.3.0
 	github.com/segmentio/kafka-go v0.4.47
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.49.0
