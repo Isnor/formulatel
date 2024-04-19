@@ -19,16 +19,19 @@ import (
 // (unless your playstation/xbox is in the cluster)
 
 const (
-	BufferSize = 1000 // size of the queue of packets being worked on
+	BufferSize    = 1000  // size of the queue of packets being worked on
+	TelemetryPort = 27543 // chosen at "random"
 )
 
 func main() {
 	// setup the server
 	serverContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
-	conn, err := (&net.ListenConfig{}).ListenPacket(serverContext, "udp4", "0.0.0.0:27543") // TODO: add ip/port or addr to FormulaTelIngest struct
+	// TODO: we probably shouldn't bind to 0.0.0.0 (all interfaces), but I found using 127.0.0.1 didn't work: I didn't receive
+	// 	any telemetry packets
+	conn, err := (&net.ListenConfig{}).ListenPacket(serverContext, "udp4", fmt.Sprintf("0.0.0.0:%d", TelemetryPort))
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("failed listening for UDP packets", "port", TelemetryPort, "error", err.Error())
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -37,39 +40,46 @@ func main() {
 	vehicleData := make(chan *pb.GameTelemetry, 100)
 	buffer := make(chan []byte, BufferSize)
 
-	kafkaProducer := &formulatel.AsyncTelemetryProducer[*pb.GameTelemetry]{
-		Writer: kafka.NewWriter(kafka.WriterConfig{
-			Brokers: []string{"TODO"},
-			Topic:   "motion-data", // should we have a separate topic per data per title? I guess that makes it easier to scale transformation of data easier and more modular
-		}),
-		Messages:  vehicleData,
-		BatchSize: 12,
-		Shutdown:  shutdown,
+	vehicleDataKafkaProducer := &formulatel.KafkaTelemetryProducer{
+		Writer: &kafka.Writer{
+			Addr:       kafka.TCP("localhost:9092"),
+			Topic:      formulatel.VehicleDataTopic,
+			BatchSize:  12,
+			BatchBytes: 2048 * 12,
+			Async: true,
+			Balancer: kafka.Murmur2Balancer{},
+		},
+		Messages: vehicleData,
+		Shutdown: shutdown,
 	}
 
 	reader := &formulatel.F123PacketReader{
-		Packets:            buffer,
-		VehicleDataChannel: vehicleData,
+		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel: vehicleData, // write motion packets as their protobuf representation here
 		Shutdown:           shutdown,
 	}
 
-	// begin readers - we consume packets from the network, put them in a queue, and have other routines read and route them
+	// begin readers - we consume packets from the network, put them in a queue, and have other routines send them somewhere
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		reader.Consume(serverContext)
 	}()
-	go kafkaProducer.ProduceMessages(serverContext)
 
-	ingestionServer := &formulatel.F123FormulaTelIngest{
+	// TODO: if we wanted to handle sending telemetry via an API or some other queue other than Kafka, this is what
+	//	we would change. It's not exactly a drop-in replacement the way I'd like it to be eventually, but that's life.
+	// 	The contract is really just "read packets from this channel (buffer) and do something with them"
+	go vehicleDataKafkaProducer.ProduceMessages(serverContext)
+
+	f123Ingestion := &formulatel.F123FormulaTelIngest{
 		Shutdown:     shutdown,
 		Server:       conn,
 		Cancel:       cancel,
-		PacketBuffer: buffer,
+		PacketBuffer: buffer, // send all packets here
 	}
 
-	ingestionServer.Run(serverContext)
+	f123Ingestion.Run(serverContext)
 	wg.Wait()
 	slog.InfoContext(serverContext, "shutting down")
 }

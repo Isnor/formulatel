@@ -18,7 +18,7 @@ import (
 	"github.com/isnor/formulatel/model"
 )
 
-const MaxPacketSize = 2048 // the largest packet is just 1460 bytes.
+const maxPacketSize = 2048 // the largest packet is just 1460 bytes.
 
 // this is fairly EA/codemasters F1-specific
 func ReadBin[T any](reader io.Reader) *T {
@@ -51,7 +51,7 @@ func (f *F123FormulaTelIngest) Run(serverContext context.Context) {
 			if err := f.Server.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 				slog.Error("error reading from UDP connection", "error", err)
 			}
-			var packet []byte = make([]byte, MaxPacketSize)
+			var packet []byte = make([]byte, maxPacketSize)
 			numRead, _, err := f.Server.ReadFrom(packet)
 
 			// per ReadFrom doc, we should check the number of bytes read before looking at the error.
@@ -72,7 +72,7 @@ func (f *F123FormulaTelIngest) Run(serverContext context.Context) {
 	}
 }
 
-// this is a formulatel client that unpacks F123 packets and puts them in a channel
+// this is a game-specific implementation detail that unpacks F123 packets and puts them in a channel
 // specific to the type of telemetry in the packet
 type F123PacketReader struct {
 	Shutdown           *atomic.Bool
