@@ -77,6 +77,9 @@ mode: "deployment"
 # Base collector configuration.
 # Supports templating. To escape existing instances of {{ }}, use {{` <original content> `}}.
 # For example, {{ REDACTED_EMAIL }} becomes {{` {{ REDACTED_EMAIL }} `}}.
+image:
+  repository: "otel/opentelemetry-collector-k8s"
+
 config:
   exporters:
     debug: {}

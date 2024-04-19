@@ -42,12 +42,13 @@ func main() {
 
 	vehicleDataKafkaProducer := &formulatel.KafkaTelemetryProducer{
 		Writer: &kafka.Writer{
-			Addr:       kafka.TCP("localhost:9092"),
-			Topic:      formulatel.VehicleDataTopic,
-			BatchSize:  12,
-			BatchBytes: 2048 * 12,
-			Async: true,
-			Balancer: kafka.Murmur2Balancer{},
+			Addr:         kafka.TCP("localhost:9092"),
+			Topic:        formulatel.VehicleDataTopic,
+			BatchSize:    12,
+			BatchBytes:   2048 * 12,
+			RequiredAcks: kafka.RequireNone,
+			Async:        true,
+			Balancer:     kafka.Murmur2Balancer{},
 		},
 		Messages: vehicleData,
 		Shutdown: shutdown,
@@ -70,7 +71,11 @@ func main() {
 	// TODO: if we wanted to handle sending telemetry via an API or some other queue other than Kafka, this is what
 	//	we would change. It's not exactly a drop-in replacement the way I'd like it to be eventually, but that's life.
 	// 	The contract is really just "read packets from this channel (buffer) and do something with them"
-	go vehicleDataKafkaProducer.ProduceMessages(serverContext)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		vehicleDataKafkaProducer.ProduceMessages(serverContext)
+	}()
 
 	f123Ingestion := &formulatel.F123FormulaTelIngest{
 		Shutdown:     shutdown,
@@ -81,5 +86,6 @@ func main() {
 
 	f123Ingestion.Run(serverContext)
 	wg.Wait()
+	vehicleDataKafkaProducer.Writer.Close()
 	slog.InfoContext(serverContext, "shutting down")
 }

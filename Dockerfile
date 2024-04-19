@@ -19,6 +19,6 @@ RUN make build
 
 FROM gcr.io/distroless/static-debian11:debug
 
-COPY --from=build /src/out/rpc /
+COPY --from=build /src/out/persist /
 
-ENTRYPOINT ["/rpc"]
+ENTRYPOINT ["/persist"]

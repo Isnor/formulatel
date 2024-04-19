@@ -4,29 +4,29 @@ kind: Deployment
 metadata:
   namespace: formulatel
   labels:
-    app: rpc
-    opentelemetry.io/name: formulatel-rpc
+    app: persist
+    opentelemetry.io/name: formulatel-persist
     app.kubernetes.io/instance: formulatel
-    app.kubernetes.io/component: rpc
-    app.kubernetes.io/name: formulatel-rpc
+    app.kubernetes.io/component: persist
+    app.kubernetes.io/name: formulatel-persist
     app.kubernetes.io/part-of: formulatel
-  name: rpc
+  name: persist
 spec:
   selector:
     matchLabels:
-      app: rpc
+      app: persist
   template:
     metadata:
       labels:
-        app: rpc
-        opentelemetry.io/name: formulatel-rpc
+        app: persist
+        opentelemetry.io/name: formulatel-persist
         app.kubernetes.io/instance: formulatel
-        app.kubernetes.io/component: rpc
-        app.kubernetes.io/name: formulatel-rpc
+        app.kubernetes.io/component: persist
+        app.kubernetes.io/name: formulatel-persist
     spec:
       containers:
-        - name: rpc
-          image: formulatel_rpc:latest
+        - name: persist
+          image: formulatel_persist:latest
           imagePullPolicy: IfNotPresent
           env:
           - name: OTEL_SERVICE_NAME
@@ -44,9 +44,11 @@ spec:
             value: service.name=$(OTEL_SERVICE_NAME),service.namespace=formulatel
           - name: OTEL_METRIC_EXPORT_INTERVAL
             value: '1000'
+          - name: OPENSEARCH_URL
+            value: 'formulatel-opensearch:9200'
           ports:
             - containerPort: 29292
-              name: tcp-rpc
+              name: tcp-persist
               protocol: TCP
           # readinessProbe:
           #   failureThreshold: 3
@@ -70,11 +72,11 @@ apiVersion: v1
 kind: Service
 metadata:
   namespace: formulatel
-  name: rpc
+  name: persist
 spec:
   ports:
     - port: 29292
       protocol: TCP
       targetPort: 29292
   selector:
-    app: rpc
+    app: persist

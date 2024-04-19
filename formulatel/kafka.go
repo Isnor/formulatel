@@ -19,9 +19,8 @@ const (
 type KafkaTelemetryProducer struct {
 	Writer *kafka.Writer
 
-	Messages  chan *genproto.GameTelemetry // receives messages to write on this channel
-	Shutdown  *atomic.Bool
-	BatchSize int
+	Messages chan *genproto.GameTelemetry // receives messages to write on this channel
+	Shutdown *atomic.Bool
 }
 
 func (t *KafkaTelemetryProducer) Persist(ctx context.Context, data *genproto.GameTelemetry) error {
@@ -34,18 +33,13 @@ func (t *KafkaTelemetryProducer) Persist(ctx context.Context, data *genproto.Gam
 	return nil
 }
 
-// ProduceMessages reads from t.Messages and writes to a Kafka topic
+// ProduceMessages reads from t.Messages and writes to a Kafka topic.
+// This is a blocking function that runs until the producer is shutdown or its
+// Messages channel is closed
 func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 	if t.Shutdown.Load() {
 		return
 	}
-	currentBatch := make([]kafka.Message, 0, t.BatchSize)
-	defer func() {
-		if len(currentBatch) != 0 {
-			t.Writer.WriteMessages(ctx, currentBatch...)
-			clear(currentBatch)
-		}
-	}()
 	for message := range t.Messages {
 		protoBytes, err := proto.Marshal(message)
 		if err != nil {
@@ -53,11 +47,7 @@ func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 			slog.ErrorContext(ctx, "failed serializing a message")
 			continue
 		}
-		currentBatch = append(currentBatch, kafka.Message{Value: protoBytes})
-		if len(currentBatch) >= t.BatchSize {
-			t.Writer.WriteMessages(ctx, currentBatch...)
-			clear(currentBatch)
-		}
+		t.Writer.WriteMessages(ctx, kafka.Message{Value: protoBytes})
 		if t.Shutdown.Load() {
 			break
 		}
@@ -65,11 +55,11 @@ func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 	slog.Info("kafka finished producing messages")
 }
 
+// TODO: look into consumer groups
 type KafkaTelemetryConsumer struct {
 	Reader *kafka.Reader
 
 	Shutdown *atomic.Bool
-	// BatchSize int
 }
 
 func (c *KafkaTelemetryConsumer) ReadTelemetry(ctx context.Context) (*genproto.GameTelemetry, error) {
