@@ -23,15 +23,15 @@ type KafkaTelemetryProducer struct {
 	Shutdown *atomic.Bool
 }
 
-func (t *KafkaTelemetryProducer) Persist(ctx context.Context, data *genproto.GameTelemetry) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		t.Messages <- data
-	}
-	return nil
-}
+// func (t *KafkaTelemetryProducer) Persist(ctx context.Context, data *genproto.GameTelemetry) error {
+// 	select {
+// 	case <-ctx.Done():
+// 		return ctx.Err()
+// 	default:
+// 		t.Messages <- data
+// 	}
+// 	return nil
+// }
 
 // ProduceMessages reads from t.Messages and writes to a Kafka topic.
 // This is a blocking function that runs until the producer is shutdown or its
@@ -50,7 +50,8 @@ func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 		slog.DebugContext(ctx, "read a packet")
 		err = t.Writer.WriteMessages(ctx, kafka.Message{Value: protoBytes})
 		if err != nil {
-			slog.ErrorContext(ctx, "failed writing to Kafka")
+			slog.ErrorContext(ctx, "failed writing to Kafka", "error", err)
+			continue
 		}
 		if t.Shutdown.Load() {
 			break

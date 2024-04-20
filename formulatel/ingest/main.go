@@ -42,10 +42,12 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
+
+	// TODO: run this in k8s and see if that resolves the DNS issues
 	vehicleDataKafkaProducer := &formulatel.KafkaTelemetryProducer{
 		Writer: &kafka.Writer{
 			// TODO: I don't want to think about auth right now, so future Me, it's your problem now
-			Addr: kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
+			Addr: kafka.TCP("172.18.0.2:30143"),
 			Transport: &kafka.Transport{
 				Dial: kafka.DefaultDialer.DialFunc,
 				SASL: nil,

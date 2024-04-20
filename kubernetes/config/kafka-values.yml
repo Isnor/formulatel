@@ -1,5 +1,25 @@
+externalAccess:
+  enabled: true
+  controller:
+    service:
+      type: NodePort
+  broker:
+    service:
+      type: NodePort
+  autoDiscovery:
+    enabled: true
+rbac:
+  create: true
+serviceAccount:
+  create: true
+controller:
+  automountServiceAccountToken: true
+broker:
+  automountServiceAccountToken: true
 listeners:
   client:
     protocol: 'PLAINTEXT'
   controller:
+    protocol: 'PLAINTEXT'
+  external:
     protocol: 'PLAINTEXT'
