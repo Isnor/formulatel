@@ -47,10 +47,15 @@ func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 			slog.ErrorContext(ctx, "failed serializing a message")
 			continue
 		}
-		t.Writer.WriteMessages(ctx, kafka.Message{Value: protoBytes})
+		slog.DebugContext(ctx, "read a packet")
+		err = t.Writer.WriteMessages(ctx, kafka.Message{Value: protoBytes})
+		if err != nil {
+			slog.ErrorContext(ctx, "failed writing to Kafka")
+		}
 		if t.Shutdown.Load() {
 			break
 		}
+		slog.DebugContext(ctx, "wrote to kafka")
 	}
 	slog.Info("kafka finished producing messages")
 }
@@ -67,6 +72,7 @@ func (c *KafkaTelemetryConsumer) ReadTelemetry(ctx context.Context) (*genproto.G
 	if err != nil {
 		return nil, err
 	}
+	slog.DebugContext(ctx, "read from kafka")
 	var res genproto.GameTelemetry
 	if err := proto.Unmarshal(msg.Value, &res); err != nil {
 		return nil, err

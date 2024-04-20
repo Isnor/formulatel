@@ -39,16 +39,26 @@ func main() {
 	shutdown := &atomic.Bool{}
 	vehicleData := make(chan *pb.GameTelemetry, 100)
 	buffer := make(chan []byte, BufferSize)
-
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
 	vehicleDataKafkaProducer := &formulatel.KafkaTelemetryProducer{
 		Writer: &kafka.Writer{
-			Addr:         kafka.TCP("localhost:9092"),
+			// TODO: I don't want to think about auth right now, so future Me, it's your problem now
+			Addr: kafka.TCP("localhost:9092", "localhost:9093", "localhost:9094"),
+			Transport: &kafka.Transport{
+				Dial: kafka.DefaultDialer.DialFunc,
+				SASL: nil,
+				TLS:  nil,
+			},
 			Topic:        formulatel.VehicleDataTopic,
 			BatchSize:    12,
 			BatchBytes:   2048 * 12,
 			RequiredAcks: kafka.RequireNone,
 			Async:        true,
 			Balancer:     kafka.Murmur2Balancer{},
+			Logger:       slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}), slog.LevelInfo),
+			ErrorLogger:  slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}), slog.LevelError),
 		},
 		Messages: vehicleData,
 		Shutdown: shutdown,

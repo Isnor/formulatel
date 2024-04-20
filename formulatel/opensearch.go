@@ -18,6 +18,7 @@ type OpenSearchTelemetryPersistor struct {
 }
 
 func (p *OpenSearchTelemetryPersistor) Persist(ctx context.Context, data *genproto.GameTelemetry) error {
+	slog.DebugContext(ctx, "writing to opensearch")
 	// TODO: this doesn't do any batching and it would probably be more efficient if it did
 	protoJSON, err := protojson.Marshal(data)
 	if err != nil {

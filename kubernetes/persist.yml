@@ -45,7 +45,7 @@ spec:
           - name: OTEL_METRIC_EXPORT_INTERVAL
             value: '1000'
           - name: OPENSEARCH_URL
-            value: 'formulatel-opensearch:9200'
+            value: 'opensearch:9200'
           ports:
             - containerPort: 29292
               name: tcp-persist

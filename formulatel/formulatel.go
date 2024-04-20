@@ -38,7 +38,9 @@ type FormulaTelPersist struct {
 
 // Run reads telemetry and persists it depending on the reader and persistor
 func (f *FormulaTelPersist) Run(ctx context.Context) {
+	defer slog.DebugContext(ctx, "finished persisting")
 	for !f.Shutdown.Load() {
+		slog.DebugContext(ctx, "reading")
 		t, err := f.ReadTelemetry(ctx)
 		if err != nil {
 			// TODO: probably should do something about this
@@ -54,14 +56,3 @@ func (f *FormulaTelPersist) Run(ctx context.Context) {
 		slog.DebugContext(ctx, "persisted telemetry")
 	}
 }
-
-// FormulaTelIngest is very similar to FormulaTelPersist, but Ingest is more of a cosmetic organizational tool
-// to put my mind at ease. For now, I couldn't figure out a better way of abstracting the way different titles
-// could send us telemetry, so this sort of works.
-// I had second thoughts about this and for now, am no longer interested in this abstraction
-// type FormulaTelIngest struct {
-// 	// read from the source of telemetry - e.g. read packets from over UDP
-// 	GameSpecificTelemetryReader TelemetryReader
-// 	// write the telemetry from the TelemetryReader - e.g. write to a kafka topic
-// 	TelemetryPersistor
-// }

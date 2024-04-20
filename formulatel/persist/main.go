@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -15,29 +16,30 @@ import (
 
 func main() {
 	serverContext, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
 	shutdown := &atomic.Bool{}
-
+	slog.InfoContext(serverContext, "starting formulatel persist")
 	osClient, err := opensearch.NewDefaultClient()
 	if err != nil {
-		panic(err) // TODO: handle
+		slog.ErrorContext(serverContext, "failed connecting to open search")
 	}
 
 	kafkaConsumer := &formulatel.KafkaTelemetryConsumer{
 		Reader: kafka.NewReader(kafka.ReaderConfig{
-			Brokers: []string{"kafka:9092"},
+			Brokers: []string{"kafka:9092", "kafka:9094"},
 			Topic:   formulatel.VehicleDataTopic,
 			Dialer: &kafka.Dialer{
 				SASLMechanism: nil,
 				TLS:           nil,
 				Timeout:       5 * time.Second,
 			},
-			MaxBytes:         2048, // game-specific
-			QueueCapacity:    12,
-			ReadBatchTimeout: time.Second,
+			MaxBytes: 2048, // game-specific
+			Logger: slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}), slog.LevelInfo),
+			ErrorLogger: slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}), slog.LevelError),
 		}),
 	}
-
-	defer kafkaConsumer.Reader.Close()
 	// TODO: configure via cli, env, or config
 	// also, we need 1 of these per topic
 	kafkaToElasticSearchPersistor := &formulatel.FormulaTelPersist{
@@ -48,6 +50,7 @@ func main() {
 		},
 		Shutdown: shutdown,
 	}
+	slog.DebugContext(serverContext, "starting reading")
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -56,8 +59,9 @@ func main() {
 		kafkaToElasticSearchPersistor.Run(serverContext)
 	}()
 
-	// block until ctrl+c cancels the context
+	// block until interrupt cancels the context
 	<-serverContext.Done()
 	shutdown.Store(true)
 	wg.Wait()
+	slog.Info("persist shut down")
 }
