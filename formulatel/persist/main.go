@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -21,7 +23,15 @@ func main() {
 	})))
 	shutdown := &atomic.Bool{}
 	slog.InfoContext(serverContext, "starting formulatel persist")
-	osClient, err := opensearch.NewDefaultClient()
+
+	osClient, err := opensearch.NewClient(opensearch.Config{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		// TODO: there's probably environment variables for this that we can set with a secret in k8s
+		Username: "admin",
+		Password: "admin",
+	})
 	if err != nil {
 		slog.ErrorContext(serverContext, "failed connecting to open search")
 	}
@@ -35,8 +45,8 @@ func main() {
 				TLS:           nil,
 				Timeout:       5 * time.Second,
 			},
-			MaxBytes: 2048, // game-specific
-			Logger: slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}), slog.LevelInfo),
+			MaxBytes:    2048, // game-specific
+			Logger:      slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}), slog.LevelDebug),
 			ErrorLogger: slog.NewLogLogger(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}), slog.LevelError),
 		}),
 	}

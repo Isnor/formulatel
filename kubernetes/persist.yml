@@ -45,11 +45,7 @@ spec:
           - name: OTEL_METRIC_EXPORT_INTERVAL
             value: '1000'
           - name: OPENSEARCH_URL
-            value: 'opensearch:9200'
-          ports:
-            - containerPort: 29292
-              name: tcp-persist
-              protocol: TCP
+            value: 'https://opensearch-cluster-master:9200'
           # readinessProbe:
           #   failureThreshold: 3
           #   httpGet:
@@ -67,16 +63,3 @@ spec:
             requests:
               cpu: 250m
               memory: 750Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: formulatel
-  name: persist
-spec:
-  ports:
-    - port: 29292
-      protocol: TCP
-      targetPort: 29292
-  selector:
-    app: persist

@@ -16,7 +16,7 @@ controller:
   automountServiceAccountToken: true
 broker:
   automountServiceAccountToken: true
-listeners:
+listeners: # TODO: probably shouldn't be plaintext
   client:
     protocol: 'PLAINTEXT'
   controller:

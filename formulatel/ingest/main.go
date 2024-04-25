@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
@@ -23,8 +24,13 @@ const (
 	TelemetryPort = 27543 // chosen at "random"
 )
 
+var (
+	port = flag.Int("port", 1234, "the port ingest will run on")
+)
+
 func main() {
 	// setup the server
+	flag.Parse()
 	serverContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 	// TODO: we probably shouldn't bind to 0.0.0.0 (all interfaces), but I found using 127.0.0.1 didn't work: I didn't receive
@@ -43,11 +49,11 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
-	// TODO: run this in k8s and see if that resolves the DNS issues
 	vehicleDataKafkaProducer := &formulatel.KafkaTelemetryProducer{
 		Writer: &kafka.Writer{
 			// TODO: I don't want to think about auth right now, so future Me, it's your problem now
-			Addr: kafka.TCP("172.18.0.2:30143"),
+			// future Me here; you suck past-me!
+			Addr: kafka.TCP(fmt.Sprintf("172.18.0.2:%d", *port)), // TODO: obviously can't use a static IP/port, the port is random and I get it by looking at `kubectl get all`
 			Transport: &kafka.Transport{
 				Dial: kafka.DefaultDialer.DialFunc,
 				SASL: nil,
