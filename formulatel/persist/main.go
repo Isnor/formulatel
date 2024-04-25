@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,9 +29,8 @@ func main() {
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
-		// TODO: there's probably environment variables for this that we can set with a secret in k8s
-		Username: "admin",
-		Password: "admin",
+		Username: mustLoadEnv("OPENSEARCH_USERNAME"),
+		Password: mustLoadEnv("OPENSEARCH_PASSWORD"),
 	})
 	if err != nil {
 		slog.ErrorContext(serverContext, "failed connecting to open search")
@@ -74,4 +74,12 @@ func main() {
 	shutdown.Store(true)
 	wg.Wait()
 	slog.Info("persist shut down")
+}
+
+func mustLoadEnv(env string) string {
+	value, found := os.LookupEnv(env)
+	if !found {
+		panic(fmt.Sprintf("could not load %s from environment", env))
+	}
+	return value
 }

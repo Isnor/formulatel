@@ -23,16 +23,6 @@ type KafkaTelemetryProducer struct {
 	Shutdown *atomic.Bool
 }
 
-// func (t *KafkaTelemetryProducer) Persist(ctx context.Context, data *genproto.GameTelemetry) error {
-// 	select {
-// 	case <-ctx.Done():
-// 		return ctx.Err()
-// 	default:
-// 		t.Messages <- data
-// 	}
-// 	return nil
-// }
-
 // ProduceMessages reads from t.Messages and writes to a Kafka topic.
 // This is a blocking function that runs until the producer is shutdown or its
 // Messages channel is closed
@@ -40,6 +30,7 @@ func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 	if t.Shutdown.Load() {
 		return
 	}
+	// TODO: Messages is not properly flushed at shutdown
 	for message := range t.Messages {
 		protoBytes, err := proto.Marshal(message)
 		if err != nil {
@@ -61,14 +52,15 @@ func (t *KafkaTelemetryProducer) ProduceMessages(ctx context.Context) {
 	slog.Info("kafka finished producing messages")
 }
 
-// TODO: look into consumer groups
+// KafkaTelemetryConsumer reads formulatel data from a Kafka queue
 type KafkaTelemetryConsumer struct {
+	// TODO: look into consumer groups
 	Reader *kafka.Reader
-
-	Shutdown *atomic.Bool
 }
 
+// ReadTelemetry reads
 func (c *KafkaTelemetryConsumer) ReadTelemetry(ctx context.Context) (*genproto.GameTelemetry, error) {
+	// TODO: blocks until the context is canceled -> this may not actually shutdown properly.
 	msg, err := c.Reader.ReadMessage(ctx)
 	if err != nil {
 		return nil, err
@@ -78,5 +70,7 @@ func (c *KafkaTelemetryConsumer) ReadTelemetry(ctx context.Context) (*genproto.G
 	if err := proto.Unmarshal(msg.Value, &res); err != nil {
 		return nil, err
 	}
+	// TODO: do we need to commit the offsets here or something? whenver I start persist (with tilt), it looks like it's "replaying" messages
+	//   which makes me think they may still be in the Kafka queue. It's been a minute or two since I worked with Kafka so I should revisit the doc
 	return &res, nil
 }

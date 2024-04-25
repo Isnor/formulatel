@@ -46,6 +46,16 @@ spec:
             value: '1000'
           - name: OPENSEARCH_URL
             value: 'https://opensearch-cluster-master:9200'
+          - name: OPENSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: formulatel-opensearch-login
+                key: username
+          - name: OPENSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: formulatel-opensearch-login
+                key: password
           # readinessProbe:
           #   failureThreshold: 3
           #   httpGet:
