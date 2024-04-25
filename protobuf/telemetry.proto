@@ -1,6 +1,7 @@
 syntax = "proto3";
 package formulatel;
 
+import "google/protobuf/timestamp.proto";
 // this file is concerned with the models that the backend will store, and is an attempt
 // to represent vehicle data in a standard way that works for multiple titles
 
@@ -20,6 +21,7 @@ message GameTelemetry {
   // so maybe for now we'll rely on the title to give us a session ID.
   string session_id = 2;
   string user_id = 3; // identify the user/vehicle within the session
+  google.protobuf.Timestamp timestamp = 4;
 
   // should we do this, or have a different message for each type of telemetry?
   // on one hand, we'd only need one RPC, but on the other we can't scale each service

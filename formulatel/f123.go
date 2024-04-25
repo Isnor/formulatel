@@ -14,6 +14,7 @@ import (
 	"time"
 
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/isnor/formulatel/model"
 )
@@ -164,6 +165,7 @@ func (f *F123PacketReader) Route(ctx context.Context, header *model.PacketHeader
 			Title:     pb.GameTitle_GAME_TITLE_F123,
 			SessionId: fmt.Sprint(header.SessionUID),
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_VehicleData{
 				VehicleData: &pb.VehicleData{
 					Speed: uint32(playerTelemetry.Speed),
