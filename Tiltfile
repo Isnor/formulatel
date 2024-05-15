@@ -6,7 +6,7 @@ helm_resource("otel-col", chart="open-telemetry/opentelemetry-collector", namesp
 helm_resource("kafka", chart="oci://registry-1.docker.io/bitnamicharts/kafka", namespace="formulatel",  flags=["--values", "./kubernetes/config/kafka-values.yml"])
 helm_resource("opensearch", chart="opensearch/opensearch", namespace="formulatel", flags=["--values", "./kubernetes/config/opensearch-values.yml"], port_forwards="9200")
 helm_resource("opensearch-dashboards", chart="opensearch/opensearch-dashboards", namespace="formulatel", flags=["--values", "./kubernetes/config/opensearch-dashboards-values.yml"], port_forwards="5601")
-
+helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000")
 
 docker_build("formulatel_persist", ".", dockerfile="Dockerfile", only=[
   "./formulatel/",

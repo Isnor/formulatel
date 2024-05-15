@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	port = flag.Int("port", 1234, "the port ingest will run on")
+	port = flag.Int("kafka-port", 1234, "kafka broker port")
 )
 
 func main() {

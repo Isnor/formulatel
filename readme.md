@@ -54,8 +54,9 @@ In the future, I hope to add support for more ingestion types and improve / stan
 
 `formulatel` is two services:
 - `ingest` - a service that consumes telemetry data from some source; e.g. via packets over a local UDP connection
-- - In this is the functionality responsible for converting raw telemetry data into the backend format
-- `rpc` - a horribly named service that receives telemetry data in `formulatel` protobuf format and adds it to the data store.
+- - This is the functionality responsible for converting raw telemetry data into the backend format
+- - Right now, `ingest` pushes data on to Kafka topics that send asynchronously without any delivery guaruntees
+- `persist` - a service that consumes from Kafka queues and pushes to a datastore
 
 Right now, the only telemetry data supported is from EA/Codemaster's F123 and that logic is built into `ingest`.
 
@@ -75,18 +76,19 @@ end
 
 space down2<[" "]>(down) space
 
-block:rpc_service:3
-    r1["rpc"]
-    r2["rpc"]
-    r3["rpc"]
+
+block:kafka:3
+    kafka1["vehicle data"]
+    kafka2["motion data"]
+    kafka3["lap data"]
 end
 
-space down3<[" "]>(down) space
+space down3<[" "]>(up) space
 
-block:otel_col:3
-    otel1["otel-col"]
-    otel2["otel-col"]
-    otel3["otel-col"]
+block:persist:3
+    persist1["persist"]
+    persist2["persist"]
+    persist3["persist"]
 end
 
 space down4<[" "]>(down) space
