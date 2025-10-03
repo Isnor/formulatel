@@ -38,7 +38,7 @@ I should make a docker-compose for this at some point
 ## Goals
 
 - [x] have fun!
-- [x] grafana dashboards reading from k8s cluster (see helm chart `prometheus-community/kube-prometheus-stack`) **note**: I'm now trying to rip out the prom/grafana parts of the opentel demo
+- [x] grafana dashboards reading from k8s cluster (see helm chart `prometheus-community/kube-prometheus-stack`)
 - [x] chart telemetry data
 - [ ] generic racing telemetry<->metric conversion? It will be a hassle to turn each protobuf into a metric manually, is there a better way?
 - [ ] build a dashboard for interesting telemetry data
@@ -77,10 +77,10 @@ end
 space down2<[" "]>(down) space
 
 
-block:kafka:3
-    kafka1["vehicle data"]
-    kafka2["motion data"]
-    kafka3["lap data"]
+block:queue:3
+    queue1["vehicle data"]
+    queue2["motion data"]
+    queue3["lap data"]
 end
 
 space down3<[" "]>(up) space

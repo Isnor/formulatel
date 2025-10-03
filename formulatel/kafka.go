@@ -19,7 +19,8 @@ const (
 type KafkaTelemetryProducer struct {
 	Writer *kafka.Writer
 
-	Messages chan *genproto.GameTelemetry // receives messages to write on this channel
+	// the producer reads telemetry from this channel and writes to Kafka
+	Messages <-chan *genproto.GameTelemetry
 	Shutdown *atomic.Bool
 }
 
