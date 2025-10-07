@@ -9,8 +9,8 @@ package formulatel
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"sync/atomic"
 
 	"github.com/isnor/formulatel/internal/genproto"
 )
@@ -32,27 +32,33 @@ type TelemetryReader interface {
 type FormulaTelPersist struct {
 	TelemetryReader
 	TelemetryPersistor
-
-	Shutdown *atomic.Bool
 }
 
 // Run reads telemetry and persists it depending on the reader and persistor
-func (f *FormulaTelPersist) Run(ctx context.Context) {
+func (f *FormulaTelPersist) Run(ctx context.Context) error {
+	if f.TelemetryReader == nil || f.TelemetryPersistor == nil {
+		return fmt.Errorf("formulatel persist not initialized")
+	}
 	defer slog.DebugContext(ctx, "finished persisting")
-	for !f.Shutdown.Load() {
-		slog.DebugContext(ctx, "reading")
-		t, err := f.ReadTelemetry(ctx)
-		if err != nil {
-			// TODO: probably should do something about this
-			slog.ErrorContext(ctx, "failed reading telemetry", "error", err.Error())
-			continue
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			slog.DebugContext(ctx, "reading")
+			t, err := f.ReadTelemetry(ctx)
+			if err != nil {
+				// TODO: probably should do something about this
+				slog.ErrorContext(ctx, "failed reading telemetry", "error", err.Error())
+				continue
+			}
+			slog.DebugContext(ctx, "read telemetry")
+			if err = f.Persist(ctx, t); err != nil {
+				// TODO: probably should do something about this
+				slog.ErrorContext(ctx, "failed persisting telemetry", "error", err.Error())
+				continue
+			}
+			slog.DebugContext(ctx, "persisted telemetry")
 		}
-		slog.DebugContext(ctx, "read telemetry")
-		if err = f.Persist(ctx, t); err != nil {
-			// TODO: probably should do something about this
-			slog.ErrorContext(ctx, "failed persisting telemetry", "error", err.Error())
-			continue
-		}
-		slog.DebugContext(ctx, "persisted telemetry")
 	}
 }
