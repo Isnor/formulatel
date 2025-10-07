@@ -30,6 +30,7 @@ func ReadBin[T any](reader io.Reader) *T {
 
 type F123FormulaTelIngest struct {
 	Server       net.PacketConn
+	// TODO: get rid of shutdown and wait on context like a normal person
 	Shutdown     *atomic.Bool
 	Cancel       context.CancelFunc
 	PacketBuffer chan<- []byte
@@ -119,7 +120,6 @@ func (f *F123PacketReader) handlePacket(ctx context.Context, packet []byte) {
 }
 
 // Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
-// It generally calls makes an RPC call afterwards
 // TODO: consider the signature here, it was hacked together initially
 func (f *F123PacketReader) Route(ctx context.Context, header *model.PacketHeader, data *bytes.Buffer) error {
 

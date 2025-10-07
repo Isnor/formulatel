@@ -23,9 +23,9 @@ const (
 	TelemetryPort = 27543 // chosen at "random"
 )
 
-var (
-	port = flag.Int("kafka-port", 1234, "kafka broker port")
-)
+// var (
+// 	port = flag.Int("kafka-port", 1234, "kafka broker port")
+// )
 
 func main() {
 	// setup the server

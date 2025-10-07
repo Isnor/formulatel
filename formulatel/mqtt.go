@@ -74,12 +74,14 @@ func GetMqttConnection(options GetConnectionRequest) (*autopaho.ConnectionManage
 }
 
 // just a rudamentary, hacked together PoC of reading vehicledata from a channel to an MQTT topic
+// create a single one of these and call the Run function from many routines, maybe 1 per topic
 type MQTTFormulatelIngest struct {
 	MQTT *autopaho.ConnectionManager
 	// the producer reads telemetry from this channel and writes to MQTT
 	Messages <-chan *genproto.GameTelemetry
 }
 
+// Run consumes messages from `m.Messages` and publishes to the MQTT `topic` until `ctx` is cancelled
 func (m *MQTTFormulatelIngest) Run(ctx context.Context, topic string) {
 
 	for {

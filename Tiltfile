@@ -9,7 +9,7 @@ helm_repo("k8s-at-home", url="https://k8s-at-home.com/charts/")
 # helm_resource("opensearch-dashboards", chart="opensearch/opensearch-dashboards", namespace="formulatel", flags=["--values", "./kubernetes/config/opensearch-dashboards-values.yml"], port_forwards="5601")
 # helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000")
 helm_resource("prometheus", chart="prometheus-community/kube-prometheus-stack", namespace="formulatel", port_forwards="3000")
-helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel")
+helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1884")
 # docker_build("formulatel_persist", ".", dockerfile="Dockerfile", only=[
 #   "./formulatel/",
 #   "./protobuf/",
