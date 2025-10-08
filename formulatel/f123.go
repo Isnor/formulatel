@@ -30,8 +30,6 @@ func ReadBin[T any](reader io.Reader) *T {
 
 type F123FormulaTelIngest struct {
 	Server       net.PacketConn
-	// TODO: get rid of shutdown and wait on context like a normal person
-	Shutdown     *atomic.Bool
 	Cancel       context.CancelFunc
 	PacketBuffer chan<- []byte
 }
@@ -40,13 +38,11 @@ func (f *F123FormulaTelIngest) Run(serverContext context.Context) {
 	slog.InfoContext(serverContext, "starting formulatel server")
 
 	// listen for packets
-	for !f.Shutdown.Load() {
+	for {
 		select {
 		// this is our "graceful shutdown" attempt
 		case <-serverContext.Done():
 			slog.InfoContext(serverContext, "closing server")
-			f.Shutdown.Store(true)
-			close(f.PacketBuffer)
 		default:
 			// read a packet of data up to MaxPacketSize bytes from a UDP connection
 			// TODO: there's probably a better way to handle this deadline / avoid blocking on ReadFrom, this is just the first
@@ -77,9 +73,11 @@ func (f *F123FormulaTelIngest) Run(serverContext context.Context) {
 // this is a game-specific implementation detail that unpacks F123 packets and puts them in a channel
 // specific to the type of telemetry in the packet
 type F123PacketReader struct {
+	// TODO: remove this and use context
 	Shutdown           *atomic.Bool
 	Packets            <-chan []byte
 	VehicleDataChannel chan<- *pb.GameTelemetry // a channel for the vehicle data
+	MotionDataChannel  chan<- *pb.GameTelemetry // a channel for motion data
 	capture            bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
 }
 
@@ -129,7 +127,17 @@ func (f *F123PacketReader) Route(ctx context.Context, header *model.PacketHeader
 	case model.CarMotionPacket:
 		motionArray := ReadBin[[22]model.CarMotionData](data)
 		motion := motionArray[header.PlayerCarIndex]
-		fmt.Printf("%+v\n%+v\n", header, motion)
+		slog.DebugContext(ctx, "got a motion packet", "data", fmt.Sprintf("%#v", motion))
+		// TODO: need to add the protobuf for MotionData and/or figure out how we're going to handle this.
+		t := &pb.GameTelemetry{
+			Title: pb.GameTitle_GAME_TITLE_F123,
+			Data: &pb.GameTelemetry_VehicleData{
+				VehicleData: &pb.VehicleData{
+					Steering: motion.WorldPositionX,
+				},
+			},
+		}
+		f.MotionDataChannel <- t
 		// if f.CarMotionDataServiceClient != nil {
 		// 	_, err := f.CarMotionDataServiceClient.SendCarMotionData(todoContext, &f123.CarMotionData{
 		// 		WorldPositionX:     motion.WorldPositionX,

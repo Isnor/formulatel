@@ -51,23 +51,27 @@ func main() {
 
 	reader := &formulatel.F123PacketReader{
 		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel: vehicleData, // write motion packets as their protobuf representation here
-		Shutdown:           shutdown,
+		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
+		// MotionDataChannel:  vehicleData,
+		Shutdown: shutdown,
 	}
 
 	// begin readers - we consume packets from the network, put them in a queue, and have other routines send them somewhere
 	var wg sync.WaitGroup
 	wg.Go(func() {
+		defer func() {
+			if err := recover(); err != nil {
+				cancel()
+				slog.Error("something terrible has happened", "error", err)
+			}
+		}()
 		reader.Consume(serverContext)
 	})
 
-	// what was the plan for extension here exactly? Just tell developers to write their own version of this file?
-
-	mqttConnection, err := formulatel.GetMqttConnection(formulatel.GetConnectionRequest{
-		Context: serverContext,
+	mqttConnection, err := formulatel.GetMqttConnection(serverContext, formulatel.GetConnectionRequest{
 		// TODO: make command line flags for this because we had to forward the port manually/via k9s
 		ConnectionString: "mqtt://localhost:1884",
-		ClientID:         "formulatel_test",
+		ClientID:         "formulatel_test_ingest",
 	})
 
 	if err != nil {
@@ -75,20 +79,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TODO: this is all real dumb, think it over and try again.
+
 	mqttFormulatelIngestor := formulatel.MQTTFormulatelIngest{
 		MQTT:     mqttConnection,
 		Messages: vehicleData,
 	}
 
-	// TODO: if we wanted to handle sending telemetry via an API or some other queue other than Kafka, this is what
-	//	we would change. It's not exactly a drop-in replacement the way I'd like it to be eventually, but that's life.
-	// 	The contract is really just "read packets from this channel (buffer) and do something with them"
 	wg.Go(func() {
+		defer func() {
+			if err := recover(); err != nil {
+				cancel()
+				slog.Error("something terrible has happened", "error", err)
+			}
+		}()
 		mqttFormulatelIngestor.Run(serverContext, "formulatel/vehicle-data")
 	})
 
 	f123Ingestion := &formulatel.F123FormulaTelIngest{
-		Shutdown:     shutdown,
 		Server:       conn,
 		Cancel:       cancel,
 		PacketBuffer: buffer, // send all packets here
@@ -96,6 +104,5 @@ func main() {
 
 	f123Ingestion.Run(serverContext)
 	wg.Wait()
-	// vehicleDataKafkaProducer.Writer.Close()
 	slog.InfoContext(serverContext, "shut down succesfully")
 }

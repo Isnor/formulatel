@@ -1,5 +1,7 @@
 package formulatel
 
+// this file contains ingestors and persistors
+
 import (
 	"context"
 	"fmt"
@@ -12,19 +14,24 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// GetConnectionRequest has parameters required for the paho library to create a basic mqtt
+// connection
 type GetConnectionRequest struct {
-	Context          context.Context
 	ConnectionString string // e.g. mqtt://mqtt.eclipseprojects.io:1883
 	ClientID         string
+	Topic            string // only used for creating subscriptions
 }
 
-func GetMqttConnection(options GetConnectionRequest) (*autopaho.ConnectionManager, error) {
+// GetMqttConnection returns a connection manager for interacting with topics and subscriptions.
+func GetMqttConnection(ctx context.Context, options GetConnectionRequest) (*autopaho.ConnectionManager, error) {
 
 	u, err := url.Parse(options.ConnectionString)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: this is from the documentation; it may behoove us to look more closely at this parameters and potentially
+	// a "non-auto" version of this Client.
 	cliCfg := autopaho.ClientConfig{
 		ServerUrls: []*url.URL{u},
 		KeepAlive:  20, // Keepalive message should be sent every 20 seconds
@@ -36,6 +43,22 @@ func GetMqttConnection(options GetConnectionRequest) (*autopaho.ConnectionManage
 		// (60 = 1 minute, 3600 = 1 hour, 86400 = one day, 0xFFFFFFFE = 136 years, 0xFFFFFFFF = don't expire)
 		SessionExpiryInterval: 86400,
 		OnConnectionUp: func(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
+			// Subscribing in the OnConnectionUp callback is recommended (ensures the subscription is reestablished if
+			// the connection drops)
+			if len(options.Topic) > 0 {
+				if _, err := cm.Subscribe(ctx, &paho.Subscribe{
+					Subscriptions: []paho.SubscribeOptions{
+						{
+							Topic: options.Topic,
+							QoS:   1,
+						},
+					},
+				}); err != nil {
+					fmt.Printf("failed to subscribe (%s). This is likely to mean no messages will be received.", err)
+				} else {
+					slog.DebugContext(ctx, "subscribed to topic", "topic", options.Topic)
+				}
+			}
 			fmt.Println("mqtt connection up")
 		},
 		OnConnectError: func(err error) { fmt.Printf("error whilst attempting connection: %s\n", err) },
@@ -64,13 +87,13 @@ func GetMqttConnection(options GetConnectionRequest) (*autopaho.ConnectionManage
 		},
 	}
 
-	c, err := autopaho.NewConnection(options.Context, cliCfg) // starts process; will reconnect until context cancelled
+	c, err := autopaho.NewConnection(ctx, cliCfg) // starts process; will reconnect until context cancelled
 	if err != nil {
 		return nil, err
 	}
 
 	// Wait for the connection to come up
-	return c, c.AwaitConnection(options.Context)
+	return c, c.AwaitConnection(ctx)
 }
 
 // just a rudamentary, hacked together PoC of reading vehicledata from a channel to an MQTT topic
@@ -99,6 +122,7 @@ func (m *MQTTFormulatelIngest) Run(ctx context.Context, topic string) {
 
 			resp, err := m.MQTT.Publish(ctx, &paho.Publish{
 				Topic:   topic,
+				QoS:     1,
 				Payload: protoBytes,
 			})
 

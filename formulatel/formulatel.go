@@ -18,11 +18,14 @@ import (
 // TelemetryPersistor describes something that can persist Formulatel telemetry to an external store
 // For example, an implementation could persist to a kafka topic or an opensearch cluster
 type TelemetryPersistor interface {
+	// Persist writes a single GameTelemetry
 	Persist(context.Context, *genproto.GameTelemetry) error
 }
 
-// TelemetryReader describes something that can read telemetry
+// TelemetryReader describes something that can read telemetry.
 type TelemetryReader interface {
+	// ReadTelemetry should read a single "piece" of telemetry, i.e. whatever the smallest unit of data
+	// required to create a single GameTelemetry object.
 	ReadTelemetry(context.Context) (*genproto.GameTelemetry, error)
 }
 
@@ -34,7 +37,8 @@ type FormulaTelPersist struct {
 	TelemetryPersistor
 }
 
-// Run reads telemetry and persists it depending on the reader and persistor
+// Run blocks, reading telemetry and persisting it depending on the reader and persistor. It reads a single
+// GameTelemetry and persists it sequentially, so it's _possible_ there is room for improvement here.
 func (f *FormulaTelPersist) Run(ctx context.Context) error {
 	if f.TelemetryReader == nil || f.TelemetryPersistor == nil {
 		return fmt.Errorf("formulatel persist not initialized")
