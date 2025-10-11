@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	mqttv3 "github.com/eclipse/paho.mqtt.golang"
-	"github.com/golang/protobuf/proto"
 	"github.com/isnor/formulatel"
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // TODO: turns out we can't forward a UDP port in k8s without some extra stuff, so ingest needs to run on the host, not in k8s
@@ -112,7 +112,7 @@ func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-ch
 				return
 			case data := <-dataChan:
 				// TODO: this needs to be JSON instead
-				protoBytes, err := proto.Marshal(data)
+				protoBytes, err := protojson.Marshal(data)
 				if err != nil {
 					// TODO: handle better
 					slog.ErrorContext(ctx, "mqtt ingest failed serializing a message")

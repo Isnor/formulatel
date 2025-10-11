@@ -24,14 +24,21 @@ local_resource(
   "build_ingest",
   cmd="make build",
   trigger_mode=TRIGGER_MODE_MANUAL,
-  auto_init=True, 
-  # only=[
-  #   "./formulatel/cmd/ingest",
-  #   "./formulatel/",
-  #   "./protobuf/",
-  #   "./Makefile",
-  # ],
+  deps=[
+    "./formulatel/cmd/ingest",
+    "./formulatel/",
+    "./protobuf/",
+    "./Makefile",
+  ],
   labels=["formulatel"]
+)
+local_resource(
+  "run_ingest",
+  cmd="./out/ingest",
+  deps=[
+    "./out/ingest",
+  ],
+  labels=["formulatel"],
 )
 
 
