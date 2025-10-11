@@ -17,18 +17,9 @@ func main() {
 	})))
 	slog.InfoContext(serverContext, "starting formulatel persist")
 
-	// TODO: create the telemetryreader and telemetry persistory based on some kind of input?
-	// remember, this is like a tool to run "formulatel persistors", it isn't a component.
-
-	// ftelPersistor := &formulatel.FormulaTelPersist{
-	// 	// TelemetryReader: nil,
-
-	// 	// TelemetryPersistor: nil,
-	// }
-
 	var wg sync.WaitGroup
 	wg.Go(func() {
-		if err := listenToMQTTTopic(serverContext, formulatel.GetConnectionRequest{
+		if err := listenToMQTTv5Topic(serverContext, formulatel.GetConnectionRequest{
 			ConnectionString: "mqtt://localhost:1883",
 			ClientID:         "formulatel_test_persist",
 			Topic:            "formulatel/vehicle-data",
@@ -44,8 +35,8 @@ func main() {
 	slog.Info("persist shut down")
 }
 
-func listenToMQTTTopic(ctx context.Context, options formulatel.GetConnectionRequest) error {
-	mqc, err := formulatel.GetMqttConnection(ctx, options)
+func listenToMQTTv5Topic(ctx context.Context, options formulatel.GetConnectionRequest) error {
+	mqc, err := formulatel.GetMQTTv5Connection(ctx, options)
 	if err != nil {
 		return err
 	}

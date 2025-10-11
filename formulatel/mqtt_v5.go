@@ -1,6 +1,8 @@
 package formulatel
 
-// this file contains ingestors and persistors
+// this file contains utilities to create a connection with an mqtt v5 broker and provide a
+// basic way of publishing and subscribing for forumlatel telemetry. it is ill-conceived
+// and, especially considering grafana does not support the v5 protocol, not well thought out.
 
 import (
 	"context"
@@ -22,8 +24,8 @@ type GetConnectionRequest struct {
 	Topic            string // only used for creating subscriptions
 }
 
-// GetMqttConnection returns a connection manager for interacting with topics and subscriptions.
-func GetMqttConnection(ctx context.Context, options GetConnectionRequest) (*autopaho.ConnectionManager, error) {
+// GetMQTTv5Connection returns a connection manager for interacting with topics and subscriptions.
+func GetMQTTv5Connection(ctx context.Context, options GetConnectionRequest) (*autopaho.ConnectionManager, error) {
 
 	u, err := url.Parse(options.ConnectionString)
 	if err != nil {
@@ -98,14 +100,14 @@ func GetMqttConnection(ctx context.Context, options GetConnectionRequest) (*auto
 
 // just a rudamentary, hacked together PoC of reading vehicledata from a channel to an MQTT topic
 // create a single one of these and call the Run function from many routines, maybe 1 per topic
-type MQTTFormulatelIngest struct {
-	MQTT *autopaho.ConnectionManager
+type MQTTv5FormulatelIngest struct {
+	MQTTv5 *autopaho.ConnectionManager
 	// the producer reads telemetry from this channel and writes to MQTT
 	Messages <-chan *genproto.GameTelemetry
 }
 
 // Run consumes messages from `m.Messages` and publishes to the MQTT `topic` until `ctx` is cancelled
-func (m *MQTTFormulatelIngest) Run(ctx context.Context, topic string) {
+func (m *MQTTv5FormulatelIngest) Run(ctx context.Context, topic string) {
 
 	for {
 		select {
@@ -120,7 +122,7 @@ func (m *MQTTFormulatelIngest) Run(ctx context.Context, topic string) {
 			}
 			slog.DebugContext(ctx, "mqtt ingest read a packet")
 
-			resp, err := m.MQTT.Publish(ctx, &paho.Publish{
+			resp, err := m.MQTTv5.Publish(ctx, &paho.Publish{
 				Topic:   topic,
 				QoS:     1,
 				Payload: protoBytes,
