@@ -5,3 +5,15 @@ grafana.ini:
 
 plugins:
   - grafana-mqtt-datasource
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: formulatel_mqtt
+        type: grafana-mqtt-datasource
+        jsonData:
+          uri: "tcp://mosquitto:1883"
+          tlsAuth: false
+          clientID: formulatel_grafana
+          isDefault: true
