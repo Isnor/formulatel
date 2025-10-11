@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"sync/atomic"
 
 	"github.com/isnor/formulatel"
 	pb "github.com/isnor/formulatel/internal/genproto"
@@ -41,7 +40,6 @@ func main() {
 	}
 	defer conn.Close()
 
-	shutdown := &atomic.Bool{}
 	// TODO: make this configurable
 	vehicleData := make(chan *pb.GameTelemetry, 100)
 	buffer := make(chan []byte, BufferSize)
@@ -52,8 +50,7 @@ func main() {
 	reader := &formulatel.F123PacketReader{
 		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
 		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
-		// MotionDataChannel:  vehicleData,
-		Shutdown: shutdown,
+		MotionDataChannel:  vehicleData,
 	}
 
 	// begin readers - we consume packets from the network, put them in a queue, and have other routines send them somewhere
@@ -69,8 +66,7 @@ func main() {
 	})
 
 	mqttConnection, err := formulatel.GetMqttConnection(serverContext, formulatel.GetConnectionRequest{
-		// TODO: make command line flags for this because we had to forward the port manually/via k9s
-		ConnectionString: "mqtt://localhost:1884",
+		ConnectionString: "mqtt://localhost:1883",
 		ClientID:         "formulatel_test_ingest",
 	})
 
@@ -79,9 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: this is all real dumb, think it over and try again.
-
-	mqttFormulatelIngestor := formulatel.MQTTFormulatelIngest{
+	mqttPacketQueuer := formulatel.MQTTFormulatelIngest{
 		MQTT:     mqttConnection,
 		Messages: vehicleData,
 	}
@@ -93,7 +87,8 @@ func main() {
 				slog.Error("something terrible has happened", "error", err)
 			}
 		}()
-		mqttFormulatelIngestor.Run(serverContext, "formulatel/vehicle-data")
+		mqttPacketQueuer.Run(serverContext, "formulatel/vehicle-data")
+		slog.Debug("queue routine finished")
 	})
 
 	f123Ingestion := &formulatel.F123FormulaTelIngest{

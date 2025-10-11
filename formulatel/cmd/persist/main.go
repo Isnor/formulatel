@@ -29,7 +29,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		if err := listenToMQTTTopic(serverContext, formulatel.GetConnectionRequest{
-			ConnectionString: "mqtt://localhost:1884",
+			ConnectionString: "mqtt://localhost:1883",
 			ClientID:         "formulatel_test_persist",
 			Topic:            "formulatel/vehicle-data",
 		}); err != nil {
