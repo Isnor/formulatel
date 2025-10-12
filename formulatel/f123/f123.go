@@ -1,4 +1,4 @@
-package formulatel
+package f123
 
 import (
 	"bytes"
@@ -14,8 +14,6 @@ import (
 
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/isnor/formulatel/model"
 )
 
 const maxPacketSize = 2048 // the largest packet is just 1460 bytes.
@@ -101,7 +99,7 @@ func (f *F123PacketReader) handlePacket(ctx context.Context, packet []byte) {
 		clone = bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
 	}
 	buf := bytes.NewBuffer(packet)
-	header := ReadBin[model.PacketHeader](buf)
+	header := ReadBin[PacketHeader](buf)
 	if f.capture {
 		packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
 		if err != nil {
@@ -115,13 +113,13 @@ func (f *F123PacketReader) handlePacket(ctx context.Context, packet []byte) {
 
 // Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
 // TODO: consider the signature here, it was hacked together initially
-func (f *F123PacketReader) Route(ctx context.Context, header *model.PacketHeader, data *bytes.Buffer) error {
+func (f *F123PacketReader) Route(ctx context.Context, header *PacketHeader, data *bytes.Buffer) error {
 
 	// TODO: create a child context and add tracing
 	// todoContext := ctx
 	switch header.PacketId {
-	case model.CarMotionPacket:
-		motionArray := ReadBin[[22]model.CarMotionData](data)
+	case CarMotionPacket:
+		motionArray := ReadBin[[22]CarMotionData](data)
 		motion := motionArray[header.PlayerCarIndex]
 		slog.DebugContext(ctx, "got a motion packet", "data", fmt.Sprintf("%#v", motion))
 		// TODO: need to add the protobuf for MotionData and/or figure out how we're going to handle this.
@@ -160,11 +158,10 @@ func (f *F123PacketReader) Route(ctx context.Context, header *model.PacketHeader
 		// 		fmt.Println(fmt.Errorf("oh no, an error %s", err))
 		// 	}
 		// }
-	case model.CarTelemetryPacket:
-		telemetryArray := ReadBin[[22]model.CarTelemetryData](data)
+	case CarTelemetryPacket:
+		telemetryArray := ReadBin[[22]CarTelemetryData](data)
 		playerTelemetry := telemetryArray[header.PlayerCarIndex]
-
-		println(playerTelemetry.Speed)
+		slog.DebugContext(ctx, "read a car telemetry packet")
 
 		telproto := &pb.GameTelemetry{
 			Title:     pb.GameTitle_GAME_TITLE_F123,
@@ -173,7 +170,15 @@ func (f *F123PacketReader) Route(ctx context.Context, header *model.PacketHeader
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_VehicleData{
 				VehicleData: &pb.VehicleData{
-					Speed: uint32(playerTelemetry.Speed),
+					Speed:             uint32(playerTelemetry.Speed),
+					Rpm:               uint32(playerTelemetry.EngineRPM),
+					Throttle:          playerTelemetry.Throttle,
+					Break:             playerTelemetry.Brake,
+					Steering:          playerTelemetry.Steer,
+					Gear:              int32(playerTelemetry.Gear),
+					EngineTemperature: uint32(playerTelemetry.EngineTemperature),
+					// TODO: tires are a bit more complex because they aren't a 1:1 mapping from f123
+					// Tires: ,
 				},
 			},
 		}

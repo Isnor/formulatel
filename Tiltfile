@@ -10,24 +10,16 @@ helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
 
 local_resource(
-  "build_ingest",
+  "formulatel_ingest",
   cmd="make build",
+  serve_cmd="./out/ingest",
   # trigger_mode=TRIGGER_MODE_MANUAL,
   deps=[
     "./formulatel/cmd/ingest",
+    "./formulatel/f123",
   ],
   labels=["formulatel"]
 )
-
-local_resource(
-  "run_ingest",
-  serve_cmd="./out/ingest",
-  deps=[
-    "./out/ingest",
-  ],
-  labels=["formulatel"],
-)
-
 
 # docker_build("formulatel_persist", ".", dockerfile="Dockerfile", only=[
 #   "./formulatel/",

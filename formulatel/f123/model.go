@@ -1,4 +1,4 @@
-package model
+package f123
 
 // this file contains the spec for the EA/codemasters F1 23 telemetry packets, converted into Go
 // From the spec document (23):
@@ -75,8 +75,6 @@ type PacketHeader struct {
 type EventData struct {
 	// PacketHeader // the header will be read off the wire first
 	EventStringCode [4]uint8
-	// eventStringCode string // I thought this would actually make sense because we can't type the above as a string and have it read properly
-	// 	I think maybe because the structs need to be a fixed size, and string is variable?
 }
 
 // This is the largest packet that is sent at the rate specified in the menu, and is therefore the largest consumer of bandwidth

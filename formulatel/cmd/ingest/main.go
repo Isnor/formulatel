@@ -12,6 +12,7 @@ import (
 
 	mqttv3 "github.com/eclipse/paho.mqtt.golang"
 	"github.com/isnor/formulatel"
+	"github.com/isnor/formulatel/f123"
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -23,10 +24,6 @@ const (
 	BufferSize    = 1000  // size of the queue of packets being worked on
 	TelemetryPort = 27543 // chosen at "random"
 )
-
-// var (
-// 	port = flag.Int("kafka-port", 1234, "kafka broker port")
-// )
 
 func main() {
 	// setup the server
@@ -49,7 +46,7 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
-	reader := &formulatel.F123PacketReader{
+	reader := &f123.F123PacketReader{
 		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
 		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
 		MotionDataChannel:  vehicleData,
@@ -69,7 +66,6 @@ func main() {
 
 	mqttPublisherCtx, cancel := context.WithCancel(serverContext)
 	defer cancel()
-	// startMQTTv5Publisher(mqttPublisherCtx, &wg, vehicleData)
 
 	startMQTTv3Publisher(mqttPublisherCtx, &wg, vehicleData)
 
@@ -78,7 +74,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	f123Ingestion := &formulatel.F123FormulaTelIngest{
+	f123Ingestion := &f123.F123FormulaTelIngest{
 		Server:       conn,
 		Cancel:       cancel,
 		PacketBuffer: buffer, // send all packets here
@@ -89,7 +85,7 @@ func main() {
 	slog.InfoContext(serverContext, "shut down succesfully")
 }
 
-// startMQTTv3Publisher is similar to v5, but for v3
+// startMQTTv3Publisher reads data from `dataChan` and publishes it to an MQTT topic
 func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-chan *pb.GameTelemetry) error {
 	// Enable logging by uncommenting the below
 	mqttv3.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
@@ -97,6 +93,7 @@ func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-ch
 	// mqtt.CRITICAL = slog.NewLogLogger()
 	// mqtt.WARN = slog.NewLogLogger()
 
+	// TODO: make it configurable
 	connectionOptions := mqttv3.NewClientOptions().AddBroker("tcp://localhost:1883")
 	connectionOptions.ClientID = "formulatel_ingest"
 	mqttClient, err := formulatel.NewMQTTv3Connection(connectionOptions)
@@ -111,7 +108,6 @@ func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-ch
 				slog.InfoContext(ctx, "finished publishing to mqtt")
 				return
 			case data := <-dataChan:
-				// TODO: this needs to be JSON instead
 				protoBytes, err := protojson.Marshal(data)
 				if err != nil {
 					// TODO: handle better
@@ -119,36 +115,13 @@ func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-ch
 					continue
 				}
 				slog.DebugContext(ctx, "mqtt ingest read a packet")
+				// TODO: make it configurable
 				if token := mqttClient.Publish("formulatel/vehicledata", 1, false, protoBytes); !token.Wait() || token.Error() != nil {
 					slog.ErrorContext(ctx, "v3 client failed publishing", "error", token.Error())
 				}
 				slog.DebugContext(ctx, "published vehicle data to mqtt topic")
 			}
 		}
-	})
-
-	return nil
-}
-
-// startMQTTv5Publisher starts an MQTTv5 client and sends data from `dataChan` to it
-func startMQTTv5Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-chan *pb.GameTelemetry) error {
-	mqttConnection, err := formulatel.GetMQTTv5Connection(ctx, formulatel.GetConnectionRequest{
-		ConnectionString: "mqtt://localhost:1883",
-		ClientID:         "formulatel_test_ingest",
-	})
-
-	if err != nil {
-		return err
-	}
-
-	mqttPacketQueuer := formulatel.MQTTv5FormulatelIngest{
-		MQTTv5:   mqttConnection,
-		Messages: dataChan,
-	}
-
-	wg.Go(func() {
-		mqttPacketQueuer.Run(ctx, "formulatel/vehicle-data")
-		slog.Debug("queue routine finished")
 	})
 
 	return nil
