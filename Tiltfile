@@ -23,18 +23,15 @@ helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel"
 local_resource(
   "build_ingest",
   cmd="make build",
-  trigger_mode=TRIGGER_MODE_MANUAL,
+  # trigger_mode=TRIGGER_MODE_MANUAL,
   deps=[
     "./formulatel/cmd/ingest",
-    "./formulatel/",
-    "./protobuf/",
-    "./Makefile",
   ],
   labels=["formulatel"]
 )
 local_resource(
   "run_ingest",
-  cmd="./out/ingest",
+  serve_cmd="./out/ingest",
   deps=[
     "./out/ingest",
   ],

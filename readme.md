@@ -4,98 +4,92 @@ Open source sim-racing telemetry
 
 ## Work in progress
 
-This repository contains zero finished code and is very much a work in progress. Much of what's in this repo may not ever be pragmatic because one of the goals I have for this project is to play around with some new technologies. Eventually, I'll figure out what I think is best and remove the extraneous pieces.
+This repository contains zero finished code and is very much a work in progress.
 
 ## Overview
-I like playing the F1 simarcade games and I thought it would be a fairly painless lift to read the telemetry data because the [spec](https://answers.ea.com/t5/General-Discussion/F1-23-UDP-Specification/m-p/12633159?attachment-id=704910) is publicly available, convert that to metrics and chart them with Grafana. Then I thought it might be helpful to convert the data into protocol buffers so that others could easily make their own racing telemetry applications.
+
+This project is about collecting, transforming, and visualizing racing sim telemetry data. The main idea is that it would be neat to create and share telemetry dashboards, and it would be even more neat if we could standardize the telemetry model so that dashboards could be reused by different titles. 
+
+```mermaid
+---
+config:
+  theme: redux
+  look: neo
+---
+flowchart LR
+  subgraph Sources [Sim Racing Games]
+    T1[Title A]
+    T2[Title B]
+    TN[Title C]
+  end
+  X[Service X<br/>Ingest + Transform + Publish]
+  subgraph PubSub [Pub/Sub Topics by Type]
+    TypeA[Topic: Motion]
+    TypeB[Topic: Weather]
+    TypeN[Topic: Tires]
+  end
+  G[Grafana<br/>Visualization]
+  Y[persist<br/>Persistence Layer]
+  DB[(Datastore)]
+  T1 --> X
+  T2 --> X
+  TN --> X
+  X --> TypeA
+  X --> TypeB
+  X --> TypeN
+  TypeA --> G
+  TypeB --> G
+  TypeN --> G
+  TypeA --> Y
+  TypeB --> Y
+  TypeN --> Y
+  Y --> DB
+```
+
+## Development
+
+### Using tilt 
+
+This project uses [Tilt](https://tilt.dev).
+
+* `tilt up` - start the services in Kubernetes and forward ports. It will also rebuild `persist` and `ingest` when code changes are made.
+  * `make k8s-cluster` - uses `ctlptl` and `kind` to create a kubernetes cluster
+
+`tilt` will run `ingest` outside of the cluster because of complications with forwarding UDP ports. The kubernetes cluster will contain a Grafana instance and MQTT broker, both of which have their ports forwarded; i.e. 3000 and 1883, respectively.
+
+### Sans k8s
+
+Kubernetes isn't a requirement for developing or running `formulatel`, but it is a convenient way to launch an MQTT broker and Grafana instance. If you have your own Grafana and MQTT broker to connect to or are interested in writing a non-MQTT `ingest`, you can build and run the `forumlatel` tools locally as long as you have Golang installed:
+
+* `make build` - builds the binaries for `ingest`, `persist`, and `replay`.
+* `./out/ingest` - run the `ingest` binary (assuming you are in the root of the repository) to read telemetry from your game
+* `./out/replay` - useful for development; run `ingest` with the `capture` flag set to capture packets from a game to replay later. 
+
+## Goals
+
+- [x] have fun!
+- [x] grafana dashboards reading from k8s cluster
+- [x] chart telemetry data
+- [ ] generic racing telemetry<->metric conversion? It will be a hassle to turn each protobuf into a metric manually, is there a better way?
+- [ ] build a dashboard for interesting telemetry data
+- [x] realtime charting with something like Grafana Live
+- [~] --opensearch-- implemented a PoC with Kafka and didn't get much out of it
+- [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
+- [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
+
+
+## Architecture
+
+`formulatel` is a pretty straightforward ETL pipeline:
+- `ingest` - a service that consumes telemetry data, transforms it into the formulatel format, and sends it to persist. 
+  - This is the functionality responsible for converting raw telemetry data into the backend format
+  - Right now, `ingest` pushes data on to MQTT topics that send asynchronously without any delivery guaruntees
+- `persist` - a service that subscribes to telemetry topics and persists data to a datastore
+- Visualization - Grafana dashboards for the telemetry. If `ingest` is using MQTT, we can do live visualization with a Grafana plugin
 
 ## Problems
 
 Some of the problems I've encountered so far include:
 
-- Initially I thought that it would make sense to use the collector to take in telemetry from a bunch of different sources and export them to a persistent storage for charts after a race and some type of "more live" storage to view during the race. In practise, I think what I'm discovering is that showing metrics in realtime is expensive if I want something quicker than say a 100ms poll. One neat idea I had was to use my phone as a car dashboard "app", but it would only make sense with a very low latency stream. Grafana Live may well be a good choice.
-- I really wanted to provide a backend service that a racer could just "send telemetry to"; I wanted to separate the ingestion from the charting so that if somebody wanted to extend it or add support for another game, they would just need to write the frontend part. When I implemented this, I realized that the "backend" service I was providing was just recording metrics and that if I want to chart something in real-time I'd want to skip that extra hop and record them directly from the ingestion service.
-
-## Development
-
-This project uses [Tilt](https://tilt.dev).
-
-* `tilt up` - start the services in Kubernetes and forward ports. It will also rebuild `persist` when code changes are made.
-* `make k8s-cluster` - uses `ctlptl` and `kind` to create a kubernetes cluster
-* `make build` - builds the binaries for `ingest`, `persist`, and `replay`.
-* `./out/ingest` - run the `ingest` binary (assuming you are in the root of the repository) to read telemetry from your game
-* `./out/replay` - useful for development; run `ingest` with the `capture` flag set to capture packets from a game to replay later. 
-
-
-This assumes that a Kubernetes cluster is running on your machine. If you use `kind` and have `ctlptl` installed, `make k8s-cluster` will create a cluster and registry for `formulatel`. Otherwise, you'll need to create a cluster before bringing up the application with `tilt`.
-
-## Goals
-
-- [x] have fun!
-- [x] grafana dashboards reading from k8s cluster (see helm chart `prometheus-community/kube-prometheus-stack`)
-- [x] chart telemetry data
-- [ ] generic racing telemetry<->metric conversion? It will be a hassle to turn each protobuf into a metric manually, is there a better way?
-- [ ] build a dashboard for interesting telemetry data
-- [ ] realtime charting with something like Grafana Live
-- [ ] opensearch?
-- [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
-- [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
-
-
-In the future, I hope to add support for more ingestion types and improve / standardize the protobufs as an open spec so that they can be used for more than one racing game and people can build their own stuff.
-
-## Architecture
-
-`formulatel` is two services:
-- `ingest` - a service that consumes telemetry data from some source; e.g. via packets over a local UDP connection
-- - This is the functionality responsible for converting raw telemetry data into the backend format
-- - Right now, `ingest` pushes data on to Kafka topics that send asynchronously without any delivery guaruntees
-- `persist` - a service that consumes from Kafka queues and pushes to a datastore
-
-Right now, the only telemetry data supported is from EA/Codemaster's F123 and that logic is built into `ingest`.
-
-Similarly with `rpc`, there's only one backend for now; the first goal is just to chart some metrics, then we'll build a dashboard and eventually try to get things charted in real time.
-
-```mermaid
-block-beta
-columns 3
-tel>"telemetry data"]:3
-space down1<[" "]>(down) space
-
-block:ingest_servcice:3
-    i1["ingest"]
-    i2["ingest"]
-    i3["ingest"]
-end
-
-space down2<[" "]>(down) space
-
-
-block:queue:3
-    queue1["vehicle data"]
-    queue2["motion data"]
-    queue3["lap data"]
-end
-
-space down3<[" "]>(up) space
-
-block:persist:3
-    persist1["persist"]
-    persist2["persist"]
-    persist3["persist"]
-end
-
-space down4<[" "]>(down) space
-
-block:datastore:3
-    influxdb
-    prometheus
-    opensearch
-end
-
-up1<[" "]>(up) up2<[" "]>(up) up3<[" "]>(up)
-
-block:visualize:3
-    grafana
-end
-```
+- One of my initial goals was to learn about and use open telemetry; I thought that it would make sense to use the otel collector to take in telemetry from a bunch of different sources and export them to a persistent storage for charts after a race and some type of "more live" storage to view during the race. As I learned more and developed some of the PoC work, I realized what I wanted most was a way to view the data live and decided on an easier-to-setup pub/sub queue model instead.
+- I really wanted to provide a backend service that a racer could just "send telemetry to"; I wanted to separate the ingestion from the charting so that if somebody wanted to extend it or add support for another game, they would just need to write the data translation. When I implemented this, I realized that the "backend" service I was providing was just recording metrics and that if I want to chart something in real-time I'd want to skip that extra hop and record them directly from the ingestion service.
