@@ -1,4 +1,5 @@
-FROM golang:1.22.1 AS build
+# TODO: use latest major version?
+FROM golang:1.25.1 AS build
 
 # TODO: turns out this isn't a good idea, do the correct thing instead with go tools/go generate
 WORKDIR /protoc

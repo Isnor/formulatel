@@ -9,8 +9,8 @@ package formulatel
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"sync/atomic"
 
 	"github.com/isnor/formulatel/internal/genproto"
 )
@@ -18,11 +18,14 @@ import (
 // TelemetryPersistor describes something that can persist Formulatel telemetry to an external store
 // For example, an implementation could persist to a kafka topic or an opensearch cluster
 type TelemetryPersistor interface {
+	// Persist writes a single GameTelemetry
 	Persist(context.Context, *genproto.GameTelemetry) error
 }
 
-// TelemetryReader describes something that can read telemetry
+// TelemetryReader describes something that can read telemetry.
 type TelemetryReader interface {
+	// ReadTelemetry should read a single "piece" of telemetry, i.e. whatever the smallest unit of data
+	// required to create a single GameTelemetry object.
 	ReadTelemetry(context.Context) (*genproto.GameTelemetry, error)
 }
 
@@ -32,27 +35,34 @@ type TelemetryReader interface {
 type FormulaTelPersist struct {
 	TelemetryReader
 	TelemetryPersistor
-
-	Shutdown *atomic.Bool
 }
 
-// Run reads telemetry and persists it depending on the reader and persistor
-func (f *FormulaTelPersist) Run(ctx context.Context) {
+// Run blocks, reading telemetry and persisting it depending on the reader and persistor. It reads a single
+// GameTelemetry and persists it sequentially, so it's _possible_ there is room for improvement here.
+func (f *FormulaTelPersist) Run(ctx context.Context) error {
+	if f.TelemetryReader == nil || f.TelemetryPersistor == nil {
+		return fmt.Errorf("formulatel persist not initialized")
+	}
 	defer slog.DebugContext(ctx, "finished persisting")
-	for !f.Shutdown.Load() {
-		slog.DebugContext(ctx, "reading")
-		t, err := f.ReadTelemetry(ctx)
-		if err != nil {
-			// TODO: probably should do something about this
-			slog.ErrorContext(ctx, "failed reading telemetry", "error", err.Error())
-			continue
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			slog.DebugContext(ctx, "reading")
+			t, err := f.ReadTelemetry(ctx)
+			if err != nil {
+				// TODO: probably should do something about this
+				slog.ErrorContext(ctx, "failed reading telemetry", "error", err.Error())
+				continue
+			}
+			slog.DebugContext(ctx, "read telemetry")
+			if err = f.Persist(ctx, t); err != nil {
+				// TODO: probably should do something about this
+				slog.ErrorContext(ctx, "failed persisting telemetry", "error", err.Error())
+				continue
+			}
+			slog.DebugContext(ctx, "persisted telemetry")
 		}
-		slog.DebugContext(ctx, "read telemetry")
-		if err = f.Persist(ctx, t); err != nil {
-			// TODO: probably should do something about this
-			slog.ErrorContext(ctx, "failed persisting telemetry", "error", err.Error())
-			continue
-		}
-		slog.DebugContext(ctx, "persisted telemetry")
 	}
 }
