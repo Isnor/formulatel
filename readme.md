@@ -22,7 +22,7 @@ flowchart LR
     T2[Title B]
     TN[Title C]
   end
-  X[Service X<br/>Ingest + Transform + Publish]
+  X[ingest<br/>Receive, Transform, Publish]
   subgraph PubSub [Pub/Sub Topics by Type]
     TypeA[Topic: Motion]
     TypeB[Topic: Weather]
@@ -44,6 +44,7 @@ flowchart LR
   TypeB --> Y
   TypeN --> Y
   Y --> DB
+  DB --> G
 ```
 
 ## Development
