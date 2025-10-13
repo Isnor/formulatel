@@ -30,8 +30,7 @@ func main() {
 	flag.Parse()
 	serverContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
-	// TODO: we probably shouldn't bind to 0.0.0.0 (all interfaces), but I found using 127.0.0.1 didn't work: I didn't receive
-	// 	any telemetry packets
+	// TODO: we probably shouldn't bind to 0.0.0.0
 	conn, err := (&net.ListenConfig{}).ListenPacket(serverContext, "udp4", fmt.Sprintf("0.0.0.0:%d", TelemetryPort))
 	if err != nil {
 		slog.Error("failed listening for UDP packets", "port", TelemetryPort, "error", err.Error())
@@ -45,15 +44,28 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
+	var wg sync.WaitGroup
 
-	reader := &f123.F123PacketReader{
-		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
-		MotionDataChannel:  vehicleData,
+	// start reading packets
+	f123Ingestion := &f123.F123PacketReader{
+		Server:       conn,
+		PacketBuffer: buffer, // send all packets here
 	}
 
-	// begin readers - we consume packets from the network, put them in a queue, and have other routines send them somewhere
-	var wg sync.WaitGroup
+	wg.Go(func() {
+		if err := f123Ingestion.Run(serverContext); err != nil {
+			slog.ErrorContext(serverContext, "error reading packets. stopping.", "error", err.Error())
+			cancel()
+		}
+	})
+
+	// transform packets into our telemetry type
+	transformer := &f123.F123PacketTransformer{
+		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
+		// MotionDataChannel:  vehicleData,
+	}
+
 	wg.Go(func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -61,32 +73,12 @@ func main() {
 				slog.Error("something terrible has happened", "error", err)
 			}
 		}()
-		reader.Consume(serverContext)
+		transformer.Consume(serverContext)
 	})
 
 	mqttPublisherCtx, cancel := context.WithCancel(serverContext)
 	defer cancel()
 
-	startMQTTv3Publisher(mqttPublisherCtx, &wg, vehicleData)
-
-	if err != nil {
-		slog.ErrorContext(serverContext, err.Error())
-		os.Exit(1)
-	}
-
-	f123Ingestion := &f123.F123FormulaTelIngest{
-		Server:       conn,
-		Cancel:       cancel,
-		PacketBuffer: buffer, // send all packets here
-	}
-
-	f123Ingestion.Run(serverContext)
-	wg.Wait()
-	slog.InfoContext(serverContext, "shut down succesfully")
-}
-
-// startMQTTv3Publisher reads data from `dataChan` and publishes it to an MQTT topic
-func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-chan *pb.GameTelemetry) error {
 	// Enable logging by uncommenting the below
 	mqttv3.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
 	mqttv3.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
@@ -96,33 +88,46 @@ func startMQTTv3Publisher(ctx context.Context, wg *sync.WaitGroup, dataChan <-ch
 	// TODO: make it configurable
 	connectionOptions := mqttv3.NewClientOptions().AddBroker("tcp://localhost:1883")
 	connectionOptions.ClientID = "formulatel_ingest"
+
+	// put our telemetry type on a queue
 	mqttClient, err := formulatel.NewMQTTv3Connection(connectionOptions)
 	if err != nil {
-		return err
+		slog.ErrorContext(serverContext, err.Error())
+		cancel()
+		os.Exit(1)
 	}
 
 	wg.Go(func() {
-		for {
-			select {
-			case <-ctx.Done():
-				slog.InfoContext(ctx, "finished publishing to mqtt")
-				return
-			case data := <-dataChan:
-				protoBytes, err := protojson.Marshal(data)
-				if err != nil {
-					// TODO: handle better
-					slog.ErrorContext(ctx, "mqtt ingest failed serializing a message")
-					continue
-				}
-				slog.DebugContext(ctx, "mqtt ingest read a packet")
-				// TODO: make it configurable
-				if token := mqttClient.Publish("formulatel/vehicledata", 1, false, protoBytes); !token.Wait() || token.Error() != nil {
-					slog.ErrorContext(ctx, "v3 client failed publishing", "error", token.Error())
-				}
-				slog.DebugContext(ctx, "published vehicle data to mqtt topic")
-			}
+		if err := startMQTTv3Publisher(mqttPublisherCtx, mqttClient, vehicleData); err != nil {
+			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
 		}
 	})
 
-	return nil
+	wg.Wait()
+	slog.InfoContext(serverContext, "shut down successfully")
+}
+
+// startMQTTv3Publisher reads data from `dataChan` and publishes it to an MQTT topic
+func startMQTTv3Publisher(ctx context.Context, mqttClient mqttv3.Client, dataChan <-chan *pb.GameTelemetry) error {
+
+	for {
+		select {
+		case <-ctx.Done():
+			slog.InfoContext(ctx, "finished publishing to mqtt")
+			return nil
+		case data := <-dataChan:
+			protoBytes, err := protojson.Marshal(data)
+			if err != nil {
+				// TODO: handle better
+				slog.ErrorContext(ctx, "mqtt ingest failed serializing a message")
+				continue
+			}
+			slog.DebugContext(ctx, "mqtt ingest read a packet")
+			// TODO: make it configurable
+			if token := mqttClient.Publish("formulatel/vehicledata", 1, false, protoBytes); !token.Wait() || token.Error() != nil {
+				slog.ErrorContext(ctx, "v3 client failed publishing", "error", token.Error())
+			}
+			slog.DebugContext(ctx, "published vehicle data to mqtt topic")
+		}
+	}
 }
