@@ -7,11 +7,13 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "internal/genproto";
 
-service VehicleTelemetryService {
-  rpc SendGameTelemetry (stream GameTelemetry) returns (TelemetryAck) {};
-}
+// TODO: this an old idea that might be interesting if a) there was a grafana plugin
+// for reading from grpc streams; or b) we wanted to build such a plugin
+// service VehicleTelemetryService {
+//   rpc SendGameTelemetry (stream GameTelemetry) returns (TelemetryAck) {};
+// }
 
-message TelemetryAck {};
+// message TelemetryAck {};
 
 // GameTelemetry is a message containing information attached to each chartable metric to allow backend
 // time-series data to be aggregated consistenly between titles
@@ -53,7 +55,7 @@ message VehicleData {
   Tires tires = 12;
 }
 
-// this message describes tire information, such as temperature, pressure, and wear. 
+// this message describes tire information, such as temperature, pressure, and wear.
 message TireData {
   uint32 brake_temperature = 1;
   uint32 inner_temperature = 2;
