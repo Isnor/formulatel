@@ -1,11 +1,6 @@
 package formulatel
 
-// This file contains the highest level of abstractions my small mind could cobble together. They
-// are extremely general and simple with the hope of providing some sense of consistency while
-// connecting arbitrary telemetry sources together. There may well be no point to this at all.
-//
-// FormulaTelPersist is a sort of concrete implementation of "read from X and write it to Y",
-// whereas FormulaTelIngest is more of a container to indicate what an ingestion service should do
+// TODO: I'm not sure what purpose this serves
 
 import (
 	"context"
@@ -16,9 +11,9 @@ import (
 )
 
 // TelemetryPersistor describes something that can persist Formulatel telemetry to an external store
-// For example, an implementation could persist to a kafka topic or an opensearch cluster
 type TelemetryPersistor interface {
-	// Persist writes a single GameTelemetry
+	// Persist should write a single GameTelemetry and return an error if the write was unsuccesful
+	// for any reason.
 	Persist(context.Context, *genproto.GameTelemetry) error
 }
 

@@ -11,10 +11,8 @@ import (
 	"sync"
 
 	mqttv3 "github.com/eclipse/paho.mqtt.golang"
-	"github.com/isnor/formulatel"
 	"github.com/isnor/formulatel/f123"
 	pb "github.com/isnor/formulatel/internal/genproto"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // TODO: turns out we can't forward a UDP port in k8s without some extra stuff, so ingest needs to run on the host, not in k8s
@@ -90,7 +88,7 @@ func main() {
 	connectionOptions.ClientID = "formulatel_ingest"
 
 	// put our telemetry type on a queue
-	mqttClient, err := formulatel.NewMQTTv3Connection(connectionOptions)
+	mqttClient, err := NewMQTTv3Connection(connectionOptions)
 	if err != nil {
 		slog.ErrorContext(serverContext, err.Error())
 		cancel()
@@ -98,36 +96,11 @@ func main() {
 	}
 
 	wg.Go(func() {
-		if err := startMQTTv3Publisher(mqttPublisherCtx, mqttClient, vehicleData); err != nil {
+		if err := StartMQTTv3Publisher(mqttPublisherCtx, mqttClient, vehicleData); err != nil {
 			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
 		}
 	})
 
 	wg.Wait()
 	slog.InfoContext(serverContext, "shut down successfully")
-}
-
-// startMQTTv3Publisher reads data from `dataChan` and publishes it to an MQTT topic
-func startMQTTv3Publisher(ctx context.Context, mqttClient mqttv3.Client, dataChan <-chan *pb.GameTelemetry) error {
-
-	for {
-		select {
-		case <-ctx.Done():
-			slog.InfoContext(ctx, "finished publishing to mqtt")
-			return nil
-		case data := <-dataChan:
-			protoBytes, err := protojson.Marshal(data)
-			if err != nil {
-				// TODO: handle better
-				slog.ErrorContext(ctx, "mqtt ingest failed serializing a message")
-				continue
-			}
-			slog.DebugContext(ctx, "mqtt ingest read a packet")
-			// TODO: make it configurable
-			if token := mqttClient.Publish("formulatel/vehicledata", 1, false, protoBytes); !token.Wait() || token.Error() != nil {
-				slog.ErrorContext(ctx, "v3 client failed publishing", "error", token.Error())
-			}
-			slog.DebugContext(ctx, "published vehicle data to mqtt topic")
-		}
-	}
 }
