@@ -20,6 +20,7 @@ var maxSpeed = flag.Int("max-kph", 250, "max speed of the car in k/m")
 
 // var telemetryType = flag.String("type", "vehicle-data", "the type of telemetry to generate")
 
+// -frequency=10 -max-gear=10 -max-rpm=15000 -max-kph=400 -acceleration=.1 ended up being OK
 func main() {
 	flag.Parse()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
