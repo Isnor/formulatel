@@ -8,14 +8,34 @@ import (
 	pb "github.com/isnor/formulatel/internal/genproto"
 )
 
+// coefficients to apply to the rising RPM in different gears
+var powerMapping map[int32]float32 = map[int32]float32{
+	0: 0.0,
+	1: 50,
+	2: 15,
+	3: 10,
+	4: 5,
+	5: 5,
+	6: 3.7,
+	7: 3.3,
+	8: 3,
+	9: 2.5,
+	10: 1.9,
+}
+
+const kphToNmMS = 277778
+
+
 type TelemetryGenerator struct {
 	MaxGear   uint32
 	MaxRPM    uint32
 	RPMRate   uint32
 	MaxSpeed  float32
-	SpeedRate float32 // how much the speed goes up per tick
+	SpeedRate float32 // how much the speed goes up per tick, in nm/ms
 
-	frequency int // how many ticks per second
+	// TODO: might be better to let the programmer access `ticker` so that they
+	// could reset it if they wanted?
+	ticksPerSecond int // how many ticks per second
 	ticker    *time.Ticker
 }
 
@@ -25,8 +45,8 @@ func NewTelemetryGenerator(frequency int) *TelemetryGenerator {
 	}
 	t := time.NewTicker(time.Second / time.Duration(frequency))
 	return &TelemetryGenerator{
-		ticker: t,
-		frequency: frequency,
+		ticker:    t,
+		ticksPerSecond: frequency,
 	}
 }
 
@@ -65,27 +85,42 @@ func (g *TelemetryGenerator) GenerateLoop(ctx context.Context, handleFunc func(t
 	}
 }
 
+// 1k/h -> 277778nm/ms . If speed is really going to be an integer, we need to use a unit
+// other than kph in order to increase it per tick (because we can't add .01 kph, but can add 10000 nm/ms)
 func (g *TelemetryGenerator) NextTelemetry(last time.Time, previous *pb.VehicleData) *pb.VehicleData {
+	// I guess I shouldn't be copying the lock by value here, but I really don't care about it,
+	// I just want to use the data. I wonder what I should be doing
 	var x = *previous
+
 	var timeSinceLast = time.Since(last)
-	slog.Debug("creating new telemetry", "time-since-last", timeSinceLast)
+	// this function should run every "tick", but if there was a delay for some reason, we should try to account
+	// for it by determining how many ticks have elapsed from now and last
+	// how much time since the last tick have elapsed / how often each tick should occur
+	var ticksSinceLast = timeSinceLast.Nanoseconds() / (time.Second / time.Duration(g.ticksPerSecond)).Nanoseconds()
+	slog.Debug("creating new telemetry",
+		"time_since_last", timeSinceLast,
+		"ticks_since_last", ticksSinceLast, // should always be one unless there was a delay
+	)
 
 	if previous.Speed >= uint32(g.MaxSpeed) && previous.Rpm >= g.MaxRPM && previous.Gear >= int32(g.MaxGear) {
 		// we're at the limit, just increase the temperature
 		x.EngineTemperature += 10
 		return &x
 	}
-	// bit annoying that we can only increase the speed by steps of 1, maybe we should change this
-	speedIncrease := uint32(g.SpeedRate * float32(timeSinceLast.Milliseconds()) / float32(g.frequency))
-	slog.Debug("increased speed", "increase", speedIncrease, "speed_rate", g.SpeedRate, "tsl", timeSinceLast.Seconds())
-	x.Speed += speedIncrease
 	x.EngineTemperature += 2
 
+	speedIncrease := g.SpeedRate * float32(ticksSinceLast)
+	if previous.Speed < uint32(g.MaxSpeed) {
+		// bit annoying that we can only increase the speed by steps of 1, maybe we should change this
+		slog.Debug("increased speed", "increase", speedIncrease / kphToNmMS, "speed_rate", g.SpeedRate / kphToNmMS, "tsl", timeSinceLast.Seconds())
+		x.Speed += uint32(speedIncrease / 2)
+	}
+
 	if previous.Rpm < g.MaxRPM {
-		x.Rpm += speedIncrease * 100
+		x.Rpm += uint32(speedIncrease / kphToNmMS * 10 * powerMapping[x.Gear])
 	} else if x.Gear != int32(g.MaxGear) {
 		x.Gear += 1
-		x.Rpm -= 9000
+		x.Rpm -= 7000
 		x.Speed -= 10
 	}
 
