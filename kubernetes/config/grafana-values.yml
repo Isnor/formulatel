@@ -17,3 +17,9 @@ datasources:
           tlsAuth: false
           clientID: formulatel_grafana
           isDefault: true
+
+# having trouble with this, or maybe my dashboard JSON is no good
+dashboards:
+  default:
+    formulatel_test:
+      file: test_dashboard.json
