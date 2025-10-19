@@ -10,21 +10,20 @@ import (
 
 // coefficients to apply to the rising RPM in different gears
 var powerMapping map[int32]float32 = map[int32]float32{
-	0: 0.0,
-	1: 50,
-	2: 15,
-	3: 10,
-	4: 5,
-	5: 5,
-	6: 3.7,
-	7: 3.3,
-	8: 3,
-	9: 2.5,
-	10: 1.9,
+	0:  0.0,
+	1:  150,
+	2:  100,
+	3:  70,
+	4:  60,
+	5:  50,
+	6:  40,
+	7:  30,
+	8:  20,
+	9:  10,
+	10: 2,
 }
 
 const kphToNmMS = 277778
-
 
 type TelemetryGenerator struct {
 	MaxGear   uint32
@@ -36,7 +35,7 @@ type TelemetryGenerator struct {
 	// TODO: might be better to let the programmer access `ticker` so that they
 	// could reset it if they wanted?
 	ticksPerSecond int // how many ticks per second
-	ticker    *time.Ticker
+	ticker         *time.Ticker
 }
 
 func NewTelemetryGenerator(frequency int) *TelemetryGenerator {
@@ -45,7 +44,7 @@ func NewTelemetryGenerator(frequency int) *TelemetryGenerator {
 	}
 	t := time.NewTicker(time.Second / time.Duration(frequency))
 	return &TelemetryGenerator{
-		ticker:    t,
+		ticker:         t,
 		ticksPerSecond: frequency,
 	}
 }
@@ -112,12 +111,17 @@ func (g *TelemetryGenerator) NextTelemetry(last time.Time, previous *pb.VehicleD
 	speedIncrease := g.SpeedRate * float32(ticksSinceLast)
 	if previous.Speed < uint32(g.MaxSpeed) {
 		// bit annoying that we can only increase the speed by steps of 1, maybe we should change this
-		slog.Debug("increased speed", "increase", speedIncrease / kphToNmMS, "speed_rate", g.SpeedRate / kphToNmMS, "tsl", timeSinceLast.Seconds())
+		// instead, I changed its meaning from "k / h" to "nm / ms"
+		slog.Debug("increased speed",
+			"increase", speedIncrease/kphToNmMS,
+			"speed_rate", g.SpeedRate/kphToNmMS,
+			"tsl", timeSinceLast,
+		)
 		x.Speed += uint32(speedIncrease / 2)
 	}
 
 	if previous.Rpm < g.MaxRPM {
-		x.Rpm += uint32(speedIncrease / kphToNmMS * 10 * powerMapping[x.Gear])
+		x.Rpm += uint32(powerMapping[x.Gear] * speedIncrease / kphToNmMS)
 	} else if x.Gear != int32(g.MaxGear) {
 		x.Gear += 1
 		x.Rpm -= 7000

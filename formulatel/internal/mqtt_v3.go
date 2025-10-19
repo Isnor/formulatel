@@ -1,4 +1,4 @@
-package main
+package internal
 
 // utilities for v3 mqtt connection
 // https://github.com/eclipse-paho/paho.mqtt.golang/blob/master/cmd/docker/publisher/main.go

@@ -9,7 +9,11 @@ import (
 	"os"
 	"os/signal"
 
+	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/isnor/formulatel/internal"
 	"github.com/isnor/formulatel/internal/genproto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var frequency = flag.Int("frequency", 1, "frequency at which to generate telemetry; how many to generate per second")
@@ -27,14 +31,40 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})))
+
 	tg := NewTelemetryGenerator(*frequency)
 	tg.MaxGear = uint32(*maxGear)
 	tg.MaxRPM = uint32(*maxRPM)
 	tg.MaxSpeed = float32(*maxSpeed) * kphToNmMS
 	tg.SpeedRate = float32(*acceleration)
+
+	mqttConfig := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
+	mqttConfig.ClientID = "formulatel_gentel"
+	topic, err := internal.NewMQTTv3Connection(mqttConfig)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed creating mqtt connection", "error", err)
+	}
+
 	tg.GenerateLoop(ctx, func(t *genproto.VehicleData) {
-		// TODO: put on mqtt topic
-		slog.InfoContext(ctx, "vroom vroom", "gear", t.Gear, "speed", t.Speed / kphToNmMS, "rpm", t.Rpm, "temp", t.EngineTemperature)
+		slog.InfoContext(ctx, "vroom vroom",
+			"gear", t.Gear,
+			"speed", t.Speed/kphToNmMS,
+			"rpm", t.Rpm,
+			"temp", t.EngineTemperature,
+		)
+		x := &genproto.GameTelemetry{
+			Title:     genproto.GameTitle_GAME_TITLE_UNKNOWN,
+			Timestamp: timestamppb.Now(),
+			Data: &genproto.GameTelemetry_VehicleData{
+				VehicleData: t,
+			},
+		}
+		msgBytes, err := protojson.Marshal(x)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed converting telemetry to json", "error", err)
+			return
+		}
+		topic.Publish("formulatel/vehicle_data", 1, false, msgBytes)
 	})
 	<-ctx.Done()
 }

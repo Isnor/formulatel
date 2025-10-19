@@ -9,17 +9,29 @@ k8s_yaml("kubernetes/namespace.yml")
 helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000", labels=["infra"])
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
 
-local_resource(
-  "formulatel_ingest",
-  cmd="make build",
-  serve_cmd="./out/ingest",
-  # trigger_mode=TRIGGER_MODE_MANUAL,
-  deps=[
-    "./formulatel/cmd/ingest",
-    "./formulatel/f123",
-  ],
-  labels=["formulatel"]
-)
+# local_resource(
+#   "formulatel_ingest",
+#   cmd="make build",
+#   serve_cmd="./out/ingest",
+#   # trigger_mode=TRIGGER_MODE_MANUAL,
+#   deps=[
+#     "./formulatel/cmd/ingest",
+#     "./formulatel/f123",
+#   ],
+#   labels=["formulatel"]
+# )
+
+# local_resource(
+#   "formulatel_gentel",
+#   cmd="make build",
+#   serve_cmd="./out/gentel -frequency=60 -max-gear=10 -max-rpm=15000 -max-kph=400 -acceleration=300000",
+#   # trigger_mode=TRIGGER_MODE_MANUAL,
+#   deps=[
+#     "./formulatel/cmd/gentel",
+#     "./formulatel/f123",
+#   ],
+#   labels=["formulatel"]
+# )
 
 # docker_build("formulatel_persist", ".", dockerfile="Dockerfile", only=[
 #   "./formulatel/",

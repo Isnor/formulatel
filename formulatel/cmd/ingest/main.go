@@ -12,6 +12,7 @@ import (
 
 	mqttv3 "github.com/eclipse/paho.mqtt.golang"
 	"github.com/isnor/formulatel/f123"
+	"github.com/isnor/formulatel/internal"
 	pb "github.com/isnor/formulatel/internal/genproto"
 )
 
@@ -88,7 +89,7 @@ func main() {
 	connectionOptions.ClientID = "formulatel_ingest"
 
 	// put our telemetry type on a queue
-	mqttClient, err := NewMQTTv3Connection(connectionOptions)
+	mqttClient, err := internal.NewMQTTv3Connection(connectionOptions)
 	if err != nil {
 		slog.ErrorContext(serverContext, err.Error())
 		cancel()
@@ -96,7 +97,7 @@ func main() {
 	}
 
 	wg.Go(func() {
-		if err := StartMQTTv3Publisher(mqttPublisherCtx, mqttClient, vehicleData); err != nil {
+		if err := internal.StartMQTTv3Publisher(mqttPublisherCtx, mqttClient, vehicleData); err != nil {
 			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
 		}
 	})
