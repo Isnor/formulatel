@@ -16,7 +16,7 @@ option go_package = "internal/genproto";
 // message TelemetryAck {};
 
 // GameTelemetry is a message containing information attached to each chartable metric to allow backend
-// time-series data to be aggregated consistenly between titles
+// time-series data to be aggregated consistently between titles
 message GameTelemetry {
   GameTitle title = 1;
   // how would we, from ingest or otherwise, create a session ID? could/should we use an IP address? UDP doesn't really have a "connection",

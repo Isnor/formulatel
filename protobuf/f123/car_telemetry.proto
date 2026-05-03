@@ -17,7 +17,7 @@ message CarTelemetryData {
   uint32 clutch = 5; // Amount of clutch applied (0 to 100)
   int32 gear = 6; // Gear selected (1-8, N=0, R=-1)
   uint32 engineRPM = 7; // Engine RPM
-  uint32 drs = 8; // DRS - 0 = off, 1 = on 
+  uint32 drs = 8; // DRS - 0 = off, 1 = on
   uint32 revLightsPercent = 9; // Rev lights indicator (percentage)
   uint32 revLightsBitValue = 10; // Rev lights (bit 0 = leftmost LED, bit 14 = rightmost LED)
   // TODO: these came from the packet model, but we probably want the proto to be easier to work with;

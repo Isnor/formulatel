@@ -22,7 +22,7 @@ message PacketHeader  {
 }
 
 enum PacketType {
-  // TODO: per the doc, we should reserve 0 for an unsupported value, but there is already a 0 defined for packet type. 
+  // TODO: per the doc, we should reserve 0 for an unsupported value, but there is already a 0 defined for packet type.
   CarMotion = 0;
   Session = 1;
   LapData = 2;
