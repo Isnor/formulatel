@@ -5,7 +5,7 @@ build: proto
 
 proto:
 	@ which protoc protoc-gen-go || (echo "protoc and protoc-gen-go are required" && false)
-	protoc -I=./protobuf --go_out=./formulatel ./protobuf/*.proto protobuf/*/*.proto
+	protoc -I=./protobuf --go_out=./formulatel ./protobuf/*.proto
 
 k8s-cluster:
 	@ which ctlptl || (echo "cattle patrol needed: https://github.com/tilt-dev/ctlptl" && false)
