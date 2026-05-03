@@ -82,7 +82,7 @@ func (f *F123PacketReader) Run(serverContext context.Context) error {
 type F123PacketTransformer struct {
 	Packets            <-chan []byte
 	VehicleDataChannel chan<- *pb.GameTelemetry // a channel for the vehicle data
-	// MotionDataChannel  chan<- *pb.GameTelemetry // a channel for motion data
+	MotionDataChannel  chan<- *pb.GameTelemetry // a channel for motion data
 	capture bool // TODO: remove, just for testing. when set, writes a file for every packet received
 }
 
@@ -119,6 +119,71 @@ func (f *F123PacketTransformer) handlePacket(ctx context.Context, packet []byte)
 	f.Route(ctx, header, buf)
 }
 
+// normalizeVehicleData maps F1 23 CarTelemetryData to protobuf VehicleData
+func (f *F123PacketTransformer) normalizeVehicleData(
+	header *PacketHeader,
+	telemetry *CarTelemetryData,
+) *pb.VehicleData {
+	tires := &pb.VehicleData_Tires{
+		FrontLeft: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]),  // FL
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[2]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[2]),
+			Pressure:          uint32(telemetry.TyresPressure[2]),
+		},
+		FrontRight: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]),  // FR
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[3]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[3]),
+			Pressure:          uint32(telemetry.TyresPressure[3]),
+		},
+		BackLeft: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]),  // RL
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[0]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[0]),
+			Pressure:          uint32(telemetry.TyresPressure[0]),
+		},
+		BackRight: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]),  // RR
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[1]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[1]),
+			Pressure:          uint32(telemetry.TyresPressure[1]),
+		},
+	}
+
+	return &pb.VehicleData{
+		Speed:             uint32(telemetry.Speed),
+		Rpm:               uint32(telemetry.EngineRPM),
+		Throttle:          telemetry.Throttle,
+		Break:             telemetry.Brake,
+		Steering:          telemetry.Steer,
+		Gear:              int32(telemetry.Gear),
+		EngineTemperature: uint32(telemetry.EngineTemperature),
+		Tires:             tires,
+	}
+}
+
+// normalizeMotionData maps F1 23 CarMotionData to protobuf MotionData
+func (f *F123PacketTransformer) normalizeMotionData(
+	header *PacketHeader,
+	motion *CarMotionData,
+) *pb.MotionData {
+	return &pb.MotionData{
+		PositionX:           motion.WorldPositionX,
+		PositionY:           motion.WorldPositionY,
+		PositionZ:           motion.WorldPositionZ,
+		VelocityX:           motion.WorldVelocityX,
+		VelocityY:           motion.WorldVelocityY,
+		VelocityZ:           motion.WorldVelocityZ,
+		GForceLateral:       motion.GForceLateral,
+		GForceLongitudinal: motion.GForceLongitudinal,
+		GForceVertical:      motion.GForceVertical,
+		Yaw:                 motion.Yaw,
+		Pitch:               motion.Pitch,
+		Roll:                motion.Roll,
+	}
+}
+
 // Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
 // TODO: consider the signature here, it was hacked together initially
 func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader, data *bytes.Buffer) error {
@@ -137,20 +202,25 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_VehicleData{
-				VehicleData: &pb.VehicleData{
-					Speed:             uint32(playerTelemetry.Speed),
-					Rpm:               uint32(playerTelemetry.EngineRPM),
-					Throttle:          playerTelemetry.Throttle,
-					Break:             playerTelemetry.Brake,
-					Steering:          playerTelemetry.Steer,
-					Gear:              int32(playerTelemetry.Gear),
-					EngineTemperature: uint32(playerTelemetry.EngineTemperature),
-					// TODO: tires are a bit more complex because they aren't a 1:1 mapping from f123
-					// Tires: ,
-				},
+				VehicleData: f.normalizeVehicleData(header, &playerTelemetry),
 			},
 		}
 		f.VehicleDataChannel <- telproto
+	case CarMotionPacket:
+		motionArray := ReadBin[[22]CarMotionData](data)
+		playerMotion := motionArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a motion packet")
+
+		motionProto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_MotionData{
+				MotionData: f.normalizeMotionData(header, &playerMotion),
+			},
+		}
+		f.MotionDataChannel <- motionProto
 	}
 
 	return nil

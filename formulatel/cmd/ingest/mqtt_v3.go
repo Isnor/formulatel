@@ -54,7 +54,7 @@ type StartPublisherConfig struct {
 	topic      string
 }
 
-// StartMQTTv3Publisher reads data from `dataChan` and publishes it to an MQTT topic
+// StartMQTTv3Publisher reads data from `data` and publishes it to an MQTT topic
 func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 
 	for {
@@ -70,7 +70,6 @@ func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 				continue
 			}
 			slog.DebugContext(ctx, "mqtt ingest read a packet")
-			// TODO: make it configurable
 			if token := req.mqttClient.Publish(req.topic, 1, false, protoBytes); !token.Wait() || token.Error() != nil {
 				slog.ErrorContext(ctx, "failed publishing to mqtt topic", "error", token.Error())
 			}

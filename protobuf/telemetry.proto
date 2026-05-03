@@ -30,7 +30,7 @@ message GameTelemetry {
   // independently because there's only one instead of one per packet type
   oneof data {
     VehicleData vehicle_data = 11;
-    // PhysicsData VehiclePhysics = 12;
+    MotionData motion_data = 12;
     // SessionData, etc.
   }
 }
@@ -55,15 +55,37 @@ message VehicleData {
   Tires tires = 12;
 }
 
-// this message describes tire information, such as temperature, pressure, and wear.
+// this message describes tire information, such as temperature, and pressure.
 message TireData {
   uint32 brake_temperature = 1;
   uint32 inner_temperature = 2;
   uint32 surface_temperature = 3;
   uint32 pressure = 4;
-  float wear = 5; // [0,1.0] 0 = new tire, 1 = dead tire
 
   // SurfaceType surface = 13;
+}
+
+// this message describes physics data for the vehicle, including position, velocity, and forces.
+message MotionData {
+  // Position in world space (metres)
+  float positionX = 1;
+  float positionY = 2;
+  float positionZ = 3;
+
+  // Velocity in world space (metres/s)
+  float velocityX = 4;
+  float velocityY = 5;
+  float velocityZ = 6;
+
+  // G-Force components
+  float gForceLateral = 7;
+  float gForceLongitudinal = 8;
+  float gForceVertical = 9;
+
+  // Rotation angles (radians)
+  float yaw = 10;
+  float pitch = 11;
+  float roll = 12;
 }
 
 enum GameTitle {

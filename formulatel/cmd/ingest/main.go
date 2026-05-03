@@ -38,6 +38,7 @@ func main() {
 
 	// TODO: make this configurable
 	vehicleData := make(chan *pb.GameTelemetry, 100)
+	motionData := make(chan *pb.GameTelemetry, 100)
 	buffer := make(chan []byte, BufferSize)
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -59,9 +60,9 @@ func main() {
 
 	// transform packets into our telemetry type
 	transformer := &f123.F123PacketTransformer{
-		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
-		// MotionDataChannel:  vehicleData,
+		Packets:            buffer,       // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel: vehicleData,  // write vehicle packets as their protobuf representation here
+		MotionDataChannel:  motionData,   // write motion packets as their protobuf representation here
 	}
 
 	wg.Go(func() {
@@ -83,8 +84,9 @@ func main() {
 	// mqtt.CRITICAL = slog.NewLogLogger()
 	// mqtt.WARN = slog.NewLogLogger()
 
-	// TODO: make it configurable
+	// TODO: make broker configurable
 	connectionOptions := mqttv3.NewClientOptions().AddBroker("tcp://localhost:1883")
+	// TODO: this should be deterministic in some way
 	connectionOptions.ClientID = "formulatel_ingest"
 
 	// put our telemetry type on a queue
@@ -101,6 +103,17 @@ func main() {
 			mqttClient: mqttClient,
 			data:       vehicleData,
 			topic:      "formulatel/vehicledata/f123",
+		}); err != nil {
+			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
+		}
+	})
+
+	wg.Go(func() {
+		// start a routine to read f123-specific [MotionData] into a hard-coded topic `formulatel/motiondata/f123`
+		if err := StartMQTTv3Publisher(mqttPublisherCtx, StartPublisherConfig{
+			mqttClient: mqttClient,
+			data:       motionData,
+			topic:      "formulatel/motiondata/f123",
 		}); err != nil {
 			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
 		}
