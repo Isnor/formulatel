@@ -18,8 +18,20 @@ datasources:
           clientID: formulatel_grafana
           isDefault: true
 
-# having trouble with this, or maybe my dashboard JSON is no good
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'formulatel'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/formulatel
+
 dashboards:
-  default:
-    formulatel_test:
-      file: test_dashboard.json
+  formulatel:
+    test_dashboard:
+      json: "" # TODO: this is kind of a hack; we're setting this using helm's `--set-file` flag, which we set in the Tiltfile

@@ -6,7 +6,7 @@ helm_repo("grafana", resource_name="grafana_helm_repo", url="https://grafana.git
 # TODO: probably remove this and use `tilt up --namespace=`. namespace will need to be created before tilt is run
 k8s_yaml("kubernetes/namespace.yml")
 
-helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000", labels=["infra"])
+helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml", "--set-file", "dashboards.formulatel.test_dashboard.json=./kubernetes/config/test_dashboard.json"], port_forwards="3000", labels=["infra"])
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
 
 local_resource(
