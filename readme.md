@@ -8,7 +8,7 @@ This repository contains zero finished code and is very much a work in progress.
 
 ## Overview
 
-This project is about collecting, transforming, and visualizing racing sim telemetry data. The main idea is that it would be neat to create and share telemetry dashboards, and it would be even more neat if we could standardize the telemetry model so that dashboards could be reused by different titles. 
+This project is about collecting, transforming, and visualizing racing sim telemetry data. The main idea is that it would be neat to create and share telemetry dashboards, and it would be even more neat if we could standardize the telemetry model so that dashboards could be reused by different titles.
 
 ```mermaid
 ---
@@ -49,7 +49,7 @@ flowchart LR
 
 ## Development
 
-### Using tilt 
+### Using tilt
 
 This project uses [Tilt](https://tilt.dev).
 
@@ -64,7 +64,7 @@ Kubernetes isn't a requirement for developing or running `formulatel`, but it is
 
 * `make build` - builds the binaries for `ingest`, `persist`, and `replay`.
 * `./out/ingest` - run the `ingest` binary (assuming you are in the root of the repository) to read telemetry from your game
-* `./out/replay` - useful for development; run `ingest` with the `capture` flag set to capture packets from a game to replay later. 
+* `./out/replay` - useful for development; run `ingest` with the `capture` flag set to capture packets from a game to replay later.
 
 ## Goals
 
@@ -82,7 +82,7 @@ Kubernetes isn't a requirement for developing or running `formulatel`, but it is
 ## Architecture
 
 `formulatel` is a pretty straightforward ETL pipeline:
-- `ingest` - a service that consumes telemetry data, transforms it into the formulatel format, and sends it to persist. 
+- `ingest` - a service that consumes telemetry data, transforms it into the formulatel format, and sends it to persist.
   - This is the functionality responsible for converting raw telemetry data into the backend format
   - Right now, `ingest` pushes data on to MQTT topics that send asynchronously without any delivery guaruntees
 - `persist` - a service that subscribes to telemetry topics and persists data to a datastore
