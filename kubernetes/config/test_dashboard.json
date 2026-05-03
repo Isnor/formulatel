@@ -80,7 +80,7 @@
             "uid": "PAD508E29D1B5373F"
           },
           "refId": "A",
-          "topic": "formulatel/vehicledata"
+          "topic": "formulatel/vehicledata/f123"
         }
       ],
       "title": "vehicle data",
@@ -159,7 +159,7 @@
             "uid": "PAD508E29D1B5373F"
           },
           "refId": "A",
-          "topic": "formulatel/vehicledata"
+          "topic": "formulatel/vehicledata/f123"
         }
       ],
       "title": "player speed",

@@ -96,7 +96,12 @@ func main() {
 	}
 
 	wg.Go(func() {
-		if err := StartMQTTv3Publisher(mqttPublisherCtx, mqttClient, vehicleData); err != nil {
+		// start a routine to read f123-specific [VehicleData] into a hard-coded topic `formulatel/vehicledata/f123`
+		if err := StartMQTTv3Publisher(mqttPublisherCtx, StartPublisherConfig{
+			mqttClient: mqttClient,
+			data:       vehicleData,
+			topic:      "formulatel/vehicledata/f123",
+		}); err != nil {
 			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
 		}
 	})

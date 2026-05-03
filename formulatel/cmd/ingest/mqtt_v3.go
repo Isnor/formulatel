@@ -48,15 +48,21 @@ func NewMQTTv3Connection(opts *mqtt.ClientOptions) (mqtt.Client, error) {
 	return client, nil
 }
 
+type StartPublisherConfig struct {
+	mqttClient mqtt.Client
+	data       <-chan *pb.GameTelemetry
+	topic      string
+}
+
 // StartMQTTv3Publisher reads data from `dataChan` and publishes it to an MQTT topic
-func StartMQTTv3Publisher(ctx context.Context, mqttClient mqtt.Client, dataChan <-chan *pb.GameTelemetry) error {
+func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 
 	for {
 		select {
 		case <-ctx.Done():
 			slog.InfoContext(ctx, "finished publishing to mqtt")
 			return nil
-		case data := <-dataChan:
+		case data := <-req.data:
 			protoBytes, err := protojson.Marshal(data)
 			if err != nil {
 				// TODO: handle better
@@ -65,8 +71,8 @@ func StartMQTTv3Publisher(ctx context.Context, mqttClient mqtt.Client, dataChan 
 			}
 			slog.DebugContext(ctx, "mqtt ingest read a packet")
 			// TODO: make it configurable
-			if token := mqttClient.Publish("formulatel/vehicledata", 1, false, protoBytes); !token.Wait() || token.Error() != nil {
-				slog.ErrorContext(ctx, "v3 client failed publishing", "error", token.Error())
+			if token := req.mqttClient.Publish(req.topic, 1, false, protoBytes); !token.Wait() || token.Error() != nil {
+				slog.ErrorContext(ctx, "failed publishing to mqtt topic", "error", token.Error())
 			}
 			slog.DebugContext(ctx, "published vehicle data to mqtt topic")
 		}
