@@ -2,10 +2,6 @@
 
 Open source sim-racing telemetry
 
-## Work in progress
-
-This repository contains zero finished code and is very much a work in progress.
-
 ## Overview
 
 This project is about collecting, transforming, and visualizing racing sim telemetry data. The main idea is that it would be neat to create and share telemetry dashboards, and it would be even more neat if we could standardize the telemetry model so that dashboards could be reused by different titles.
@@ -75,7 +71,7 @@ Kubernetes isn't a requirement for developing or running `formulatel`, but it is
 - [ ] build a dashboard for interesting telemetry data
 - [x] realtime charting with something like Grafana Live
 - [~] --opensearch-- implemented a PoC with Kafka and didn't get much out of it
-- [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal breaking point? racing line? I don't know) or maybe predict when the tires will die or something.
+- [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal braking point? racing line? I don't know) or maybe predict when the tires will die or something.
 - [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
 
 
@@ -84,7 +80,7 @@ Kubernetes isn't a requirement for developing or running `formulatel`, but it is
 `formulatel` is a pretty straightforward ETL pipeline:
 - `ingest` - a service that consumes telemetry data, transforms it into the formulatel format, and sends it to persist.
   - This is the functionality responsible for converting raw telemetry data into the backend format
-  - Right now, `ingest` pushes data on to MQTT topics that send asynchronously without any delivery guaruntees
+  - Right now, `ingest` pushes data on to MQTT topics that send asynchronously without any delivery guarantees
 - `persist` - a service that subscribes to telemetry topics and persists data to a datastore
 - Visualization - Grafana dashboards for the telemetry. If `ingest` is using MQTT, we can do live visualization with a Grafana plugin
 

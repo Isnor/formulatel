@@ -62,7 +62,7 @@ func (f *F123PacketReader) Run(serverContext context.Context) error {
 				// all the server does is read packet by packet into a channel. The server needs to create
 				// child routines to read the packets and handle them with the client
 				f.PacketBuffer <- packet
-				slog.DebugContext(serverContext, "f123 wrote a packet")
+				slog.DebugContext(serverContext, "formulatel_ingest_f123 read a packet")
 				continue
 			} else {
 				time.Sleep(500 * time.Millisecond) // we didn't receive any bytes, wait for a bit
@@ -83,7 +83,7 @@ type F123PacketTransformer struct {
 	Packets            <-chan []byte
 	VehicleDataChannel chan<- *pb.GameTelemetry // a channel for the vehicle data
 	MotionDataChannel  chan<- *pb.GameTelemetry // a channel for motion data
-	capture bool // TODO: remove, just for testing. when set, writes a file for every packet received
+	capture            bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
 }
 
 // Consume reads packets from a buffered channel until the channel is closed or the reader is shutdown
@@ -126,28 +126,28 @@ func (f *F123PacketTransformer) normalizeVehicleData(
 ) *pb.VehicleData {
 	tires := &pb.VehicleData_Tires{
 		FrontLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]),  // FL
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]), // FL
 			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[2]),
 			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[2]),
-			Pressure:          uint32(telemetry.TyresPressure[2]),
+			Pressure:           uint32(telemetry.TyresPressure[2]),
 		},
 		FrontRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]),  // FR
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]), // FR
 			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[3]),
 			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[3]),
-			Pressure:          uint32(telemetry.TyresPressure[3]),
+			Pressure:           uint32(telemetry.TyresPressure[3]),
 		},
 		BackLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]),  // RL
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]), // RL
 			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[0]),
 			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[0]),
-			Pressure:          uint32(telemetry.TyresPressure[0]),
+			Pressure:           uint32(telemetry.TyresPressure[0]),
 		},
 		BackRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]),  // RR
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]), // RR
 			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[1]),
 			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[1]),
-			Pressure:          uint32(telemetry.TyresPressure[1]),
+			Pressure:           uint32(telemetry.TyresPressure[1]),
 		},
 	}
 
@@ -155,7 +155,7 @@ func (f *F123PacketTransformer) normalizeVehicleData(
 		Speed:             uint32(telemetry.Speed),
 		Rpm:               uint32(telemetry.EngineRPM),
 		Throttle:          telemetry.Throttle,
-		Break:             telemetry.Brake,
+		Brake:             telemetry.Brake,
 		Steering:          telemetry.Steer,
 		Gear:              int32(telemetry.Gear),
 		EngineTemperature: uint32(telemetry.EngineTemperature),
@@ -169,18 +169,18 @@ func (f *F123PacketTransformer) normalizeMotionData(
 	motion *CarMotionData,
 ) *pb.MotionData {
 	return &pb.MotionData{
-		PositionX:           motion.WorldPositionX,
-		PositionY:           motion.WorldPositionY,
-		PositionZ:           motion.WorldPositionZ,
-		VelocityX:           motion.WorldVelocityX,
-		VelocityY:           motion.WorldVelocityY,
-		VelocityZ:           motion.WorldVelocityZ,
-		GForceLateral:       motion.GForceLateral,
+		PositionX:          motion.WorldPositionX,
+		PositionY:          motion.WorldPositionY,
+		PositionZ:          motion.WorldPositionZ,
+		VelocityX:          motion.WorldVelocityX,
+		VelocityY:          motion.WorldVelocityY,
+		VelocityZ:          motion.WorldVelocityZ,
+		GForceLateral:      motion.GForceLateral,
 		GForceLongitudinal: motion.GForceLongitudinal,
-		GForceVertical:      motion.GForceVertical,
-		Yaw:                 motion.Yaw,
-		Pitch:               motion.Pitch,
-		Roll:                motion.Roll,
+		GForceVertical:     motion.GForceVertical,
+		Yaw:                motion.Yaw,
+		Pitch:              motion.Pitch,
+		Roll:               motion.Roll,
 	}
 }
 
