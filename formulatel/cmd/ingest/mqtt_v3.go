@@ -56,14 +56,19 @@ type StartPublisherConfig struct {
 
 // StartMQTTv3Publisher reads data from `data` and publishes it to an MQTT topic
 func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
-
+	// these options are required to make sure our 0-value fields aren't dropped when marshaling to JSON
+	marshalOpts := protojson.MarshalOptions{
+		EmitDefaultValues: true,
+		EmitUnpopulated:   true,
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			slog.InfoContext(ctx, "finished publishing to mqtt")
 			return nil
 		case data := <-req.data:
-			protoBytes, err := protojson.Marshal(data)
+
+			protoBytes, err := marshalOpts.Marshal(data)
 			if err != nil {
 				// TODO: handle better
 				slog.ErrorContext(ctx, "mqtt ingest failed serializing a message")
