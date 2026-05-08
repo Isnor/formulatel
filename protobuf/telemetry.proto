@@ -40,7 +40,7 @@ message VehicleData {
   uint32 speed = 1;
   uint32 rpm = 2;
   float throttle = 3;
-  float break = 4;
+  float brake = 4;
   float steering = 5;
   int32 gear = 6;
   uint32 engine_temperature = 7;
@@ -86,6 +86,8 @@ message MotionData {
   float yaw = 10;
   float pitch = 11;
   float roll = 12;
+
+  // TODO: add direction? it seems like we have that already with rotation
 }
 
 enum GameTitle {

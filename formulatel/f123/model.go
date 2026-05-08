@@ -80,7 +80,7 @@ type EventData struct {
 // This is the largest packet that is sent at the rate specified in the menu, and is therefore the largest consumer of bandwidth
 // It is 1352 bytes and can be sent at a frequency up to 120Hz -> 120*1352= 162240 bytes/second, or ~159k/s
 type CarTelemetryData struct {
-	Speed                   uint16     // Speed of car in kilometres per hour
+	Speed                   uint16     // Speed of car in kilometers per hour
 	Throttle                float32    // Amount of throttle applied (0.0 to 1.0)
 	Steer                   float32    // Steering (-1.0 (full lock left) to 1.0 (full lock right))
 	Brake                   float32    // Amount of brake applied (0.0 to 1.0)

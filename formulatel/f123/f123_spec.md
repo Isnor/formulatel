@@ -327,10 +327,8 @@ union EventDataDetails
         float speed;      		// Top speed achieved in kilometres per hour
         uint8 isOverallFastestInSession; // Overall fastest speed in session = 1, otherwise 0
         uint8 isDriverFastestInSession;  // Fastest speed for driver in session = 1, otherwise 0
-        uint8 fastestVehicleIdxInSession;// Vehicle index of the vehicle that is the fastest
-// in this session
-        float fastestSpeedInSession;      // Speed of the vehicle that is the fastest
- // in this session
+        uint8 fastestVehicleIdxInSession;// Vehicle index of the vehicle that is the fastest in this session
+        float fastestSpeedInSession;      // Speed of the vehicle that is the fastest in this session
     } SpeedTrap;
 
     struct
@@ -423,8 +421,7 @@ struct ParticipantData
     uint8      m_myTeam;            // My team flag – 1 = My Team, 0 = otherwise
     uint8      m_raceNumber;        // Race number of the car
     uint8      m_nationality;       // Nationality of the driver
-    char       m_name[48];          // Name of participant in UTF-8 format – null terminated
-				   // Will be truncated with … (U+2026) if too long
+    char       m_name[48];          // Name of participant in UTF-8 format – null terminated Will be truncated with … (U+2026) if too long
     uint8      m_yourTelemetry;     // The player's UDP setting, 0 = restricted, 1 = public
     uint8      m_showOnlineNames;   // The player's show online names setting, 0 = off, 1 = on
     uint8      m_platform;          // 1 = Steam, 3 = PlayStation, 4 = Xbox, 6 = Origin, 255 = unknown
@@ -434,8 +431,7 @@ struct PacketParticipantsData
 {
     PacketHeader    m_header;            // Header
 
-    uint8           m_numActiveCars;	// Number of active cars in the data – should match number of
-                                         // cars on HUD
+    uint8           m_numActiveCars;	// Number of active cars in the data – should match number of cars on HUD
     ParticipantData m_participants[22];
 };
 
@@ -500,7 +496,7 @@ struct CarTelemetryData
     float     m_throttle;                 // Amount of throttle applied (0.0 to 1.0)
     float     m_steer;                    // Steering (-1.0 (full lock left) to 1.0 (full lock right))
     float     m_brake;                    // Amount of brake applied (0.0 to 1.0)
-    uint8     m_clutch;                   // Amount of clutch applied (0 to 100\)
+    uint8     m_clutch;                   // Amount of clutch applied (0 to 100)
     int8      m_gear;                     // Gear selected (1-8, N=0, R=-1)
     uint16    m_engineRPM;                // Engine RPM
     uint8     m_drs;                      // 0 = off, 1 = on
