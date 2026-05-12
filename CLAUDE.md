@@ -15,7 +15,7 @@ Formula Telemetry is an open-source sim-racing telemetry system that collects, t
 ### Building and Running
 - `make build` - Build binaries for `ingest`, `persist`, and `replay` to `./out/`
 - `./out/ingest` - Run the ingest service locally (reads UDP telemetry from F1 23)
-- `./out/replay` - Replay captured packets for development
+- `./out/replay` - Replay captured packets for development (capture must be enabled during ingest)
 
 ### Protobuf
 - Protobuf definitions are in `protobuf/` and generated Go code is in `formulatel/internal/genproto/`
@@ -27,14 +27,15 @@ Formula Telemetry is an open-source sim-racing telemetry system that collects, t
 The system is an ETL pipeline with three main components:
 
 ### ingest (`formulatel/cmd/ingest/`)
-- Reads UDP packets from F1 23 game on port 20777
+- Reads UDP packets from F1 23 game on port 27543
 - Parses binary packets using `formulatel/f123/` package
 - Transforms to standard `GameTelemetry` protobuf format
 - Publishes to MQTT topics (v3 protocol, mosquitto broker)
 - Uses `mqtt_v3.go` for MQTT publishing
 
 ### persist (`formulatel/cmd/persist/`)
-- Currently a stub - intended to subscribe to MQTT topics and persist to a datastore
+- Intentionally empty stub - placeholder for future persistence layer
+- Intended to subscribe to MQTT topics and persist to a datastore (e.g., database, filesystem)
 - Uses `formulatel/formulatel.go` interfaces for pluggable readers/persistors
 
 ### Visualization
@@ -70,16 +71,17 @@ Each title package (e.g., `formulatel/f123/`) contains:
 
 3. **Routing Logic** - Directs different packet types to appropriate handlers
    - Uses packet headers to determine packet type
-   - Each packet type has its own handler in the `Route()` method
+   - Currently only handles 2 of 12 packet types: CarTelemetryPacket and CarMotionPacket
+   - Other packet types (Session, LapData, Event, Participants, Setups, Status, FinalClassification, Lobby, Damage, SessionHistory, TyreSets, MotionEx) are ignored
 
 #### Normalization Pattern
 
 The transformer performs two key operations:
 
-1. **Parsing**: Reads the title's binary format (e.g., `ReadBin[[22]CarTelemetryData](data)`)
-2. **Normalization**: Maps to standard protobuf schema (e.g., `Speed: uint32(playerTelemetry.Speed)`)
+1. **Parsing**: Reads the title's binary format using `ReadBin[[22]CarTelemetryData](file:///home/james/workspace/f1telemetry/formulatel/f123/f123.go#L23-L26)`
+2. **Normalization**: Maps to standard protobuf schema (e.g., `Speed: uint32(telemetry.Speed)`)
 
-This happens in the `Route()` method - see [formulatel/f123/f123.go:124-156](formulatel/f123/f123.go#L124-L156).
+This happens in the `Route()` method - see [formulatel/f123/f123.go:189-227](formulatel/f123/f123.go#L189-L227). Only two packet types are handled (CarTelemetryPacket and CarMotionPacket).
 
 #### Adding a New Title
 
@@ -107,8 +109,10 @@ To add support for a new racing sim:
 Data is published to MQTT topics by telemetry type. The Grafana datasource connects to `tcp://mosquitto:1883`.
 
 Current topics:
-- `formulatel/vehicledata/f123` - Vehicle telemetry from F1 23
+- `formulatel/vehicledata/f123` - Vehicle telemetry (speed, throttle, steering, brake, RPM, gear, etc.)
+- `formulatel/motiondata/f123` - Motion/physics data (position, velocity, g-force, angles, etc.)
 
 ## Packet Capture
 
-For development, `ingest` can capture packets to `captured_packets/` directory for later replay with `./out/replay`.
+For development, `ingest` has a `capture` flag that can write packets to `captured_packets/` directory for later replay with `./out/replay`.
+**Note:** Packet capture is currently disabled (the flag exists but is not enabled by default). Enable by setting `capture: true` in the `F123PacketTransformer`.
