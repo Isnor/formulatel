@@ -33,7 +33,5 @@ dashboardProviders:
 
 dashboards:
   formulatel:
-    test_dashboard:
-      json: "" # TODO: this is kind of a hack; we're setting this using helm's `--set-file` flag, which we set in the Tiltfile
     live:
       json: "" # TODO: same hack as above. Have we tried using the Grafana k8s resource type?

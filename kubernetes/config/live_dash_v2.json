@@ -306,20 +306,21 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 2,
           "mappings": [],
-          "max": 400,
-          "min": 0,
-          "noValue": "0",
           "thresholds": {
-            "mode": "absolute",
+            "mode": "percentage",
             "steps": [
               {
                 "color": "green",
                 "value": 0
+              },
+              {
+                "color": "orange",
+                "value": 85
+              },
+              {
+                "color": "red",
+                "value": 95
               }
             ]
           },
@@ -336,17 +337,8 @@
       "id": 11,
       "interval": "100ms",
       "options": {
-        "displayMode": "gradient",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "maxVizHeight": 300,
-        "minVizHeight": 16,
-        "minVizWidth": 8,
-        "namePlacement": "auto",
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -355,9 +347,9 @@
           "fields": "/^speed$/",
           "values": false
         },
-        "showUnfilled": false,
-        "sizing": "auto",
-        "valueMode": "color"
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
       },
       "pluginVersion": "12.3.1",
       "targets": [
@@ -384,7 +376,7 @@
           }
         }
       ],
-      "type": "bargauge"
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -395,7 +387,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "continuous-GrYlRd"
           },
           "custom": {
             "axisBorderShow": false,
@@ -412,16 +404,17 @@
             "lineStyle": {
               "fill": "solid"
             },
-            "lineWidth": 0,
+            "lineWidth": 1,
             "pointShape": "circle",
             "pointSize": {
-              "fixed": 5
+              "fixed": 15,
+              "max": 10
             },
             "pointStrokeWidth": 1,
             "scaleDistribution": {
               "type": "linear"
             },
-            "show": "lines"
+            "show": "points+lines"
           },
           "mappings": [],
           "thresholds": {
@@ -445,6 +438,7 @@
       "hideTimeOverride": true,
       "id": 4,
       "interval": "500ms",
+      "maxDataPoints": 2500,
       "options": {
         "legend": {
           "calcs": [],
@@ -455,6 +449,12 @@
         "mapping": "auto",
         "series": [
           {
+            "color": {
+              "matcher": {
+                "id": "byName",
+                "options": "velocity_sum"
+              }
+            },
             "x": {
               "matcher": {
                 "id": "byName",
@@ -487,6 +487,7 @@
         }
       ],
       "timeFrom": "600s",
+      "timeShift": "600s",
       "title": "position",
       "transformations": [
         {
@@ -500,9 +501,44 @@
               },
               {
                 "path": "positionY"
+              },
+              {
+                "path": "velocityX"
+              },
+              {
+                "path": "velocityY"
+              },
+              {
+                "path": "velocityZ"
               }
             ],
+            "keepTime": true,
+            "replace": true,
             "source": "motionData"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "velocity_sum",
+            "cumulative": {
+              "field": "positionX",
+              "reducer": "sum"
+            },
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "velocityY",
+                "velocityZ",
+                "velocityX"
+              ],
+              "reducer": "sum"
+            },
+            "replaceFields": false,
+            "unary": {
+              "fieldName": "velocityX",
+              "operator": "exp"
+            }
           }
         }
       ],
@@ -1073,341 +1109,6 @@
         }
       ],
       "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-mqtt-datasource",
-        "uid": "PAD508E29D1B5373F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 80,
-            "gradientMode": "hue",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineWidth": 1,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "fieldMinMax": true,
-          "mappings": [],
-          "min": 0.01,
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              }
-            ]
-          },
-          "unit": "velocitykmh"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 22
-      },
-      "id": 7,
-      "interval": "100ms",
-      "options": {
-        "barRadius": 0,
-        "barWidth": 0.97,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 100
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-mqtt-datasource",
-            "uid": "PAD508E29D1B5373F"
-          },
-          "refId": "A",
-          "topic": "formulatel/motiondata/f123"
-        }
-      ],
-      "title": "speed",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "format": "json",
-            "jsonPaths": [
-              {
-                "path": "velocityX"
-              },
-              {
-                "path": "velocityY"
-              },
-              {
-                "path": "velocityZ"
-              }
-            ],
-            "keepTime": true,
-            "replace": true,
-            "source": "motionData"
-          }
-        }
-      ],
-      "type": "barchart"
-    },
-    {
-      "datasource": {
-        "type": "grafana-mqtt-datasource",
-        "uid": "PAD508E29D1B5373F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 22
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-mqtt-datasource",
-            "uid": "PAD508E29D1B5373F"
-          },
-          "refId": "A",
-          "topic": "formulatel/motiondata/f123"
-        }
-      ],
-      "title": "motion",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "format": "auto",
-            "source": "motionData"
-          }
-        }
-      ],
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "grafana-mqtt-datasource",
-        "uid": "PAD508E29D1B5373F"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 30
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "refId": "A",
-          "topic": "formulatel/vehicledata/f123"
-        }
-      ],
-      "title": "vehicle",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "source": "vehicleData"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "tires": true,
-              "title": true,
-              "vehicleData": true
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "vehicleData": ""
-            }
-          }
-        }
-      ],
-      "type": "timeseries"
     }
   ],
   "preload": false,
