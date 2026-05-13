@@ -10,8 +10,9 @@ import (
 	"os/signal"
 	"sync"
 
-	mqttv3 "github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/isnor/formulatel/f123"
+	"github.com/isnor/formulatel/internal/mqttutil"
 	pb "github.com/isnor/formulatel/internal/genproto"
 )
 
@@ -79,18 +80,18 @@ func main() {
 	defer cancel()
 
 	// Enable logging by uncommenting the below
-	mqttv3.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
-	mqttv3.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
+	mqtt.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
+	mqtt.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
 	// mqtt.CRITICAL = slog.NewLogLogger()
 	// mqtt.WARN = slog.NewLogLogger()
 
 	// TODO: make broker configurable
-	connectionOptions := mqttv3.NewClientOptions().AddBroker("tcp://localhost:1883")
+	connectionOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
 	// TODO: this should be deterministic in some way
 	connectionOptions.ClientID = "formulatel_ingest"
 
 	// put our telemetry type on a queue
-	mqttClient, err := NewMQTTv3Connection(connectionOptions)
+	mqttClient, err := mqttutil.NewMQTTv3Connection(connectionOptions)
 	if err != nil {
 		slog.ErrorContext(serverContext, err.Error())
 		cancel()

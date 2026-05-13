@@ -15,6 +15,7 @@ Formula Telemetry is an open-source sim-racing telemetry system that collects, t
 ### Building and Running
 - `make build` - Build binaries for `ingest`, `persist`, and `replay` to `./out/`
 - `./out/ingest` - Run the ingest service locally (reads UDP telemetry from F1 23)
+- `./out/persist` - Run the persist service (writes to TimescaleDB)
 - `./out/replay` - Replay captured packets for development (capture must be enabled during ingest)
 
 ### Protobuf
@@ -31,12 +32,13 @@ The system is an ETL pipeline with three main components:
 - Parses binary packets using `formulatel/f123/` package
 - Transforms to standard `GameTelemetry` protobuf format
 - Publishes to MQTT topics (v3 protocol, mosquitto broker)
-- Uses `mqtt_v3.go` for MQTT publishing
+- Uses `mqttutil.NewMQTTv3Connection()` from `internal/mqttutil`
 
 ### persist (`formulatel/cmd/persist/`)
-- Intentionally empty stub - placeholder for future persistence layer
-- Intended to subscribe to MQTT topics and persist to a datastore (e.g., database, filesystem)
-- Uses `formulatel/formulatel.go` interfaces for pluggable readers/persistors
+- Subscribes to `formulatel/+/f123` MQTT wild-card topic
+- Batches messages and writes to TimescaleDB using `pgx.CopyFrom`
+- Dual-trigger flush (batch size + time interval)
+- Graceful shutdown with buffer drain
 
 ### Visualization
 - Grafana with `grafana-mqtt-datasource` plugin for live charting
@@ -49,6 +51,28 @@ The system is an ETL pipeline with three main components:
 - `formulatel/f123/` - F1 23 specific packet parsing (`F123PacketReader`, `F123PacketTransformer`)
 - `formulatel/formulatel.go` - Core interfaces (`TelemetryReader`, `TelemetryPersistor`, `FormulaTelPersist`)
 - `formulatel/internal/genproto/` - Generated protobuf code for telemetry format
+- `formulatel/internal/mqttutil/` - Shared MQTT connection utilities
+- `formulatel/internal/timescale/` - TimescaleDB persistence layer
+
+### TimescaleDB Persistence (`internal/timescale/`)
+
+- **`config.go`** - Environment variable binding via `envconfig`
+  - `TIMESCALE_DSN`: PostgreSQL connection string
+  - `MQTT_BROKER`: MQTT broker URL
+  - `MQTT_PREFIX`: MQTT topic prefix (default: `formulatel`)
+  - `BATCH_SIZE`: Max rows per batch (default: 500)
+  - `FLUSH_INTERVAL`: Flush interval (default: 200ms)
+
+- **`schema.go`** - TimescaleDB hypertable DDL
+  - `VehicleDataSchema`: Vehicle telemetry with 16 tire sensor columns
+  - `MotionDataSchema`: Physics data (position, velocity, g-force, rotation)
+  - `EnsureSchema()`: Creates hypertables with `timescaledb.hypertable`
+
+- **`batcher.go`** - Batched writes with dual-trigger flush
+  - `TableBatcher`: Owns channel, mutex-guarded buffer, ticker
+  - `BatchRouter`: Routes messages to vehicle_data and motion_data batchers
+  - Uses `pgx.CopyFrom` for efficient COPY protocol inserts
+  - Flushes when batch size reached OR flush interval elapsed
 
 ## Development
 
@@ -108,9 +132,14 @@ To add support for a new racing sim:
 
 Data is published to MQTT topics by telemetry type. The Grafana datasource connects to `tcp://mosquitto:1883`.
 
-Current topics:
+**Publish topics** (from `ingest`):
 - `formulatel/vehicledata/f123` - Vehicle telemetry (speed, throttle, steering, brake, RPM, gear, etc.)
 - `formulatel/motiondata/f123` - Motion/physics data (position, velocity, g-force, angles, etc.)
+
+**Subscribe topic** (by `persist` and `grafana_plugin`):
+- `formulatel/+/f123` - Wild-card subscription for all telemetry types
+
+Data is published as JSON using protojson marshaling with `EmitDefaultValues: true` and `EmitUnpopulated: true` to avoid dropping zero fields.
 
 ## Packet Capture
 
