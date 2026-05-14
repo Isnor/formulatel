@@ -1,0 +1,66 @@
+# stolen from https://www.tigerdata.com/docs/get-started/choose-your-path/install-timescaledb
+# volume for the postgres instance
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: formulatel-pvc
+  namespace: formulatel
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# postgres
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: formulatel
+spec:
+  serviceName: timescaledb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timescaledb
+  template:
+    metadata:
+      labels:
+        app: timescaledb
+    spec:
+      containers:
+        - name: timescaledb
+          image: 'timescale/timescaledb-ha:pg18'
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: formulatel-storage
+      volumes:
+        - name: formulatel-storage
+          persistentVolumeClaim:
+            claimName: formulatel-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: formulatel
+  name: timescaledb-service
+spec:
+ selector:
+   app: timescaledb
+ ports:
+   - protocol: TCP
+     port: 5432
+     targetPort: 5432
+ type: ClusterIP

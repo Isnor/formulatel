@@ -1,15 +1,9 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: formulatel
   labels:
     app: persist
-    opentelemetry.io/name: formulatel-persist
-    app.kubernetes.io/instance: formulatel
-    app.kubernetes.io/component: persist
-    app.kubernetes.io/name: formulatel-persist
-    app.kubernetes.io/part-of: formulatel
   name: persist
 spec:
   selector:
@@ -19,57 +13,17 @@ spec:
     metadata:
       labels:
         app: persist
-        opentelemetry.io/name: formulatel-persist
-        app.kubernetes.io/instance: formulatel
-        app.kubernetes.io/component: persist
-        app.kubernetes.io/name: formulatel-persist
     spec:
       containers:
         - name: persist
-          image: formulatel_persist:latest
+          image: persist:latest
           imagePullPolicy: IfNotPresent
           env:
-          - name: OTEL_SERVICE_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.labels['app.kubernetes.io/component']
-          - name: OTEL_COLLECTOR_NAME
-            value: 'otel-col-otel-collector'
-          - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-            value: cumulative
-          - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: http://$(OTEL_COLLECTOR_NAME):4317
-          - name: OTEL_RESOURCE_ATTRIBUTES
-            value: service.name=$(OTEL_SERVICE_NAME),service.namespace=formulatel
-          - name: OTEL_METRIC_EXPORT_INTERVAL
-            value: '1000'
-          # - name: OPENSEARCH_URL
-          #   value: 'https://opensearch-cluster-master:9200'
-          # - name: OPENSEARCH_USERNAME
-          #   valueFrom:
-          #     secretKeyRef:
-          #       name: formulatel-opensearch-login
-          #       key: username
-          # - name: OPENSEARCH_PASSWORD
-          #   valueFrom:
-          #     secretKeyRef:
-          #       name: formulatel-opensearch-login
-          #       key: password
-          # readinessProbe:
-          #   failureThreshold: 3
-          #   httpGet:
-          #     port: 27543
-          #     scheme: UDP
-          # livenessProbe:
-          #   failureThreshold: 3
-          #   initialDelaySeconds: 30
-          #   periodSeconds: 10
-          #   successThreshold: 1
-          #   udpSocket:
-          #     port: 27543
-          #   timeoutSeconds: 1
+          - name: TIMESCALE_DSN
+            value: 'postgres://postgres:postgres@timescaledb-service:5432/postgres?sslmode=disable'
+          - name: MQTT_BROKER
+            value: 'tcp://mosquitto:1883'
           resources:
             requests:
               cpu: 250m
-              memory: 750Mi
+              memory: 512Mi

@@ -10,3 +10,6 @@ proto:
 k8s-cluster:
 	@ which ctlptl || (echo "cattle patrol needed: https://github.com/tilt-dev/ctlptl" && false)
 	ctlptl create cluster kind --name=kind-formulatel --registry=ctl-formulatel
+
+migrate:
+	migrate -path ./migrations -database postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable up

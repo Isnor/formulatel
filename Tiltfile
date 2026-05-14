@@ -6,9 +6,14 @@ helm_repo("grafana", resource_name="grafana_helm_repo", url="https://grafana.git
 # TODO: probably remove this and use `tilt up --namespace=`. namespace will need to be created before tilt is run
 k8s_yaml("kubernetes/namespace.yml")
 
-helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml", "--set-file", "dashboards.formulatel.test_dashboard.json=./kubernetes/config/test_dashboard.json", "--set-file", "dashboards.formulatel.live.json=./kubernetes/config/live_dash_v2.json"], port_forwards="3000", labels=["infra"])
+helm_resource("grafana", chart="grafana/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml", "--set-file", "dashboards.formulatel.live.json=./kubernetes/config/live_dash_v2.json"], port_forwards="3000", labels=["infra"])
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
 
+# set up a postgres instance with timescaleDB
+k8s_yaml("kubernetes/datastore.yml")
+k8s_resource("timescaledb", port_forwards="5432", labels=["infra"])
+
+# build, run, and reload ingest
 local_resource(
   "formulatel_ingest",
   cmd="make build",
@@ -17,14 +22,16 @@ local_resource(
   deps=[
     "./formulatel/cmd/ingest",
     "./formulatel/f123",
+    "./formulatel/internal/mqttutil",
+    "./protobuf",
   ],
+  env={
+    "LOG_LEVEL": "info",
+  },
   labels=["formulatel"]
 )
 
-# docker_build("formulatel_persist", ".", dockerfile="Dockerfile", only=[
-#   "./formulatel/",
-#   "./protobuf/",
-#   "./Makefile",
-# ], labels=["formulatel"])
-# k8s_yaml("kubernetes/persist.yml", labels=["formulatel"])
-# k8s_resource("persist", labels=["formulatel"])
+# build the persist image used for the persist kubernetes service
+docker_build("persist", context="./formulatel", dockerfile="formulatel/persist.Dockerfile")
+k8s_yaml("kubernetes/persist.yml")
+k8s_resource("persist", labels=["formulatel"])
