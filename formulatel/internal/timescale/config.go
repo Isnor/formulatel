@@ -11,11 +11,11 @@ import (
 // Config holds configuration for the TimescaleDB persistence service.
 // Fields are tagged to bind environment variables automatically.
 type Config struct {
-	TimescaleDSN  string        `env:"TIMESCALE_DSN" default:"postgres://postgres:postgres@localhost:5432/formulatel?sslmode=disable"`
-	MQTTBroker    string        `env:"MQTT_BROKER" default:"tcp://localhost:1883"`
-	MQTTPrefix    string        `env:"MQTT_PREFIX" default:"formulatel"`
-	BatchSize     int           `env:"BATCH_SIZE" default:"500"`
-	FlushInterval time.Duration `env:"FLUSH_INTERVAL" default:"10s"`
+	TimescaleDSN  string        `envconfig:"TIMESCALE_DSN" required:"true"`
+	MQTTBroker    string        `envconfig:"MQTT_BROKER" required:"true"`
+	MQTTPrefix    string        `envconfig:"MQTT_PREFIX" default:"formulatel"`
+	BatchSize     int           `split_words:"true" default:"500"`
+	FlushInterval time.Duration `split_words:"true" default:"10s"`
 }
 
 // NewConnection creates a new pgx connection pool.

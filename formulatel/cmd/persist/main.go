@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	pb "github.com/isnor/formulatel/internal/genproto"
@@ -49,12 +50,6 @@ func main() {
 		}
 	}()
 
-	// Ensure schema exists
-	if err := timescale.EnsureSchema(ctx, conn); err != nil {
-		slog.ErrorContext(ctx, "failed to ensure schema", "error", err)
-		os.Exit(1)
-	}
-
 	// Create batch router
 	msgChan := make(chan *pb.GameTelemetry, msgChanBufferSize)
 	router, err := timescale.NewBatchRouter(ctx, conn, msgChan, cfg.BatchSize, cfg.FlushInterval)
@@ -65,6 +60,7 @@ func main() {
 
 	// Connect to MQTT
 	mqttOptions := mqtt.NewClientOptions().AddBroker(cfg.MQTTBroker)
+	// TODO: should this be configurable?
 	mqttOptions.ClientID = "formulatel_persist"
 	mqttOptions.SetOrderMatters(true)
 	mqttOptions.ConnectRetry = true
@@ -82,6 +78,7 @@ func main() {
 		slog.DebugContext(ctx, "received message on topic", "topic", msg.Topic())
 
 		// Reconstruct the protobuf from JSON
+		// TODO: see notes on transport in the readme
 		var telemetry pb.GameTelemetry
 		if err := protojson.Unmarshal(msg.Payload(), &telemetry); err != nil {
 			slog.ErrorContext(ctx, "failed to unmarshal mqtt message", "error", err)
@@ -95,9 +92,7 @@ func main() {
 	// Wait for disconnect or errors
 	slog.InfoContext(ctx, "subscribed to mqtt topic", "topic", subTopic)
 	<-ctx.Done()
-	slog.InfoContext(ctx, "context cancelled, shutting down")
-
-	// Close router to flush remaining data
-	router.Close()
+	slog.InfoContext(ctx, "shutting down...")
+	time.Sleep(time.Millisecond * 500)
 	slog.InfoContext(ctx, "persist service shut down successfully")
 }

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"github.com/jackc/pgx/v5"
 )
 
 // TableBatcher batches messages and flushes to TimescaleDB using pgx.CopyFrom.
@@ -19,30 +19,31 @@ type TableBatcher struct {
 	batchSize     int
 	flushInterval time.Duration
 	ticker        *time.Ticker
-	buffer        []map[string]interface{}
+	buffer        []map[string]any
 	bufferMu      sync.Mutex
 }
 
+// TODO: I hate this, write a function per type instead
 // buildRow converts a GameTelemetry to a row map for the specified table.
-func buildRow(msg *pb.GameTelemetry, tableName string) map[string]interface{} {
+func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
 	if tableName == "vehicle_data" {
 		vd := msg.GetVehicleData()
 		if vd == nil {
 			return nil
 		}
 
-		row := map[string]interface{}{
-			"time":                msg.Timestamp.AsTime(),
-			"session_id":          msg.SessionId,
-			"user_id":             msg.UserId,
-			"title":               msg.Title,
-			"speed":               vd.Speed,
-			"rpm":                 vd.Rpm,
-			"throttle":            vd.Throttle,
-			"brake":               vd.Brake,
-			"steering":            vd.Steering,
-			"gear":                vd.Gear,
-			"engine_temperature":  vd.EngineTemperature,
+		row := map[string]any{
+			"time":               msg.Timestamp.AsTime(),
+			"session_id":         msg.SessionId,
+			"user_id":            msg.UserId,
+			"title":              msg.Title,
+			"speed":              vd.Speed,
+			"rpm":                vd.Rpm,
+			"throttle":           vd.Throttle,
+			"brake":              vd.Brake,
+			"steering":           vd.Steering,
+			"gear":               vd.Gear,
+			"engine_temperature": vd.EngineTemperature,
 		}
 
 		if vd.Tires != nil {
@@ -73,23 +74,23 @@ func buildRow(msg *pb.GameTelemetry, tableName string) map[string]interface{} {
 		return nil
 	}
 
-	return map[string]interface{}{
-		"time":                  msg.Timestamp.AsTime(),
-		"session_id":            msg.SessionId,
-		"user_id":               msg.UserId,
-		"title":                 msg.Title,
-		"position_x":            md.PositionX,
-		"position_y":            md.PositionY,
-		"position_z":            md.PositionZ,
-		"velocity_x":            md.VelocityX,
-		"velocity_y":            md.VelocityY,
-		"velocity_z":            md.VelocityZ,
-		"gforce_lateral":        md.GForceLateral,
-		"gforce_longitudinal":   md.GForceLongitudinal,
-		"gforce_vertical":       md.GForceVertical,
-		"yaw":                   md.Yaw,
-		"pitch":                 md.Pitch,
-		"roll":                  md.Roll,
+	return map[string]any{
+		"time":                msg.Timestamp.AsTime(),
+		"session_id":          msg.SessionId,
+		"user_id":             msg.UserId,
+		"title":               msg.Title,
+		"position_x":          md.PositionX,
+		"position_y":          md.PositionY,
+		"position_z":          md.PositionZ,
+		"velocity_x":          md.VelocityX,
+		"velocity_y":          md.VelocityY,
+		"velocity_z":          md.VelocityZ,
+		"gforce_lateral":      md.GForceLateral,
+		"gforce_longitudinal": md.GForceLongitudinal,
+		"gforce_vertical":     md.GForceVertical,
+		"yaw":                 md.Yaw,
+		"pitch":               md.Pitch,
+		"roll":                md.Roll,
 	}
 }
 
@@ -100,7 +101,7 @@ func NewTableBatcher(ctx context.Context, conn *pgx.Conn, tableName string, msgC
 		tableName:     tableName,
 		conn:          conn,
 		msgChan:       msgChan,
-		buffer:        make([]map[string]interface{}, 0),
+		buffer:        make([]map[string]any, 0),
 		bufferMu:      sync.Mutex{},
 		batchSize:     batchSize,
 		flushInterval: flushInterval,
@@ -120,11 +121,13 @@ func (b *TableBatcher) flusherWorker(ctx context.Context) {
 		case <-ctx.Done():
 			b.flush()
 			b.ticker.Stop()
+			slog.InfoContext(ctx, "table batcher stopped", "reason", "context finished")
 			return
 		case msg, ok := <-b.msgChan:
 			if !ok {
 				b.flush()
 				b.ticker.Stop()
+				slog.InfoContext(ctx, "table batcher stopped", "reason", "channel closed")
 				return
 			}
 			b.bufferMu.Lock()
@@ -161,14 +164,14 @@ func (b *TableBatcher) flush() {
 }
 
 // writeBatch writes rows to the database using pgx.CopyFrom.
-func (b *TableBatcher) writeBatch(rows []map[string]interface{}) error {
+func (b *TableBatcher) writeBatch(rows []map[string]any) error {
 	// Build column order from first row keys
 	keys := rowKeys(rows[0])
 
 	// Build pgx.CopyFromSource with properly typed values
-	sourceRows := make([][]interface{}, len(rows))
+	sourceRows := make([][]any, len(rows))
 	for i, row := range rows {
-		values := make([]interface{}, len(keys))
+		values := make([]any, len(keys))
 		for j, key := range keys {
 			values[j] = row[key]
 		}
@@ -190,10 +193,10 @@ func (b *TableBatcher) writeBatch(rows []map[string]interface{}) error {
 
 // copyFromSource implements pgx.CopyFromSource for our typed rows.
 type copyFromSource struct {
-	rows [][]interface{}
+	rows [][]any
 }
 
-func (c *copyFromSource) ReadRow(ctx context.Context) ([]interface{}, error) {
+func (c *copyFromSource) ReadRow(ctx context.Context) ([]any, error) {
 	if len(c.rows) == 0 {
 		return nil, pgx.ErrNoRows
 	}
@@ -210,7 +213,7 @@ func (c *copyFromSource) Next() bool {
 	return len(c.rows) > 0
 }
 
-func (c *copyFromSource) Values() ([]interface{}, error) {
+func (c *copyFromSource) Values() ([]any, error) {
 	if len(c.rows) == 0 {
 		return nil, nil
 	}
@@ -220,7 +223,7 @@ func (c *copyFromSource) Values() ([]interface{}, error) {
 }
 
 // rowKeys extracts column keys from a row map in a stable order.
-func rowKeys(row map[string]interface{}) []string {
+func rowKeys(row map[string]any) []string {
 	if len(row) == 0 {
 		return nil
 	}
@@ -301,10 +304,4 @@ func (b *BatchRouter) Add(msg *pb.GameTelemetry) {
 			// Channel full, skip to avoid blocking
 		}
 	}
-}
-
-// Close closes the batch router and waits for remaining data to flush.
-func (b *BatchRouter) Close() {
-	// Wait a bit for remaining data to flush
-	time.Sleep(100 * time.Millisecond)
 }

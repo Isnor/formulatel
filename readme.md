@@ -56,11 +56,21 @@ This project uses [Tilt](https://tilt.dev).
 
 ### Sans k8s
 
-Kubernetes isn't a requirement for developing or running `formulatel`, but it is a convenient way to launch an MQTT broker and Grafana instance. If you have your own Grafana and MQTT broker to connect to or are interested in writing a non-MQTT `ingest`, you can build and run the `forumlatel` tools locally as long as you have Golang installed:
+Kubernetes isn't a requirement for developing or running `formulatel`, but it is a convenient way to launch an MQTT broker, a datastore, and Grafana instance. If you have your own Grafana, postgres instance, and MQTT broker to connect to or are interested in writing a non-MQTT `ingest`, you can build and run the `forumlatel` tools locally as long as you have Golang installed:
 
-* `make build` - builds the binaries for `ingest`, `persist`, and `replay`.
+* `make build`   - builds the protobufs and the binaries for `ingest`, `persist`, and `replay`.
 * `./out/ingest` - run the `ingest` binary (assuming you are in the root of the repository) to read telemetry from your game
 * `./out/replay` - useful for development; run `ingest` with the `capture` flag set to capture packets from a game to replay later.
+
+### Database migrations
+
+Create new migrations with the [migrate](https://github.com/golang-migrate/migrate) CLI; e.g.:
+
+`migrate create -dir migrations -ext sql create_motion_data_table`
+
+Run the migrations with
+
+`make migrate`
 
 ## Goals
 

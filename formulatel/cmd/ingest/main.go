@@ -12,8 +12,8 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/isnor/formulatel/f123"
-	"github.com/isnor/formulatel/internal/mqttutil"
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"github.com/isnor/formulatel/internal/mqttutil"
 )
 
 // TODO: turns out we can't forward a UDP port in k8s without some extra stuff, so ingest needs to run on the host, not in k8s
@@ -42,7 +42,7 @@ func main() {
 	motionData := make(chan *pb.GameTelemetry, 100)
 	buffer := make(chan []byte, BufferSize)
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	})))
 	var wg sync.WaitGroup
 
@@ -61,9 +61,9 @@ func main() {
 
 	// transform packets into our telemetry type
 	transformer := &f123.F123PacketTransformer{
-		Packets:            buffer,       // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel: vehicleData,  // write vehicle packets as their protobuf representation here
-		MotionDataChannel:  motionData,   // write motion packets as their protobuf representation here
+		Packets:            buffer,      // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel: vehicleData, // write vehicle packets as their protobuf representation here
+		MotionDataChannel:  motionData,  // write motion packets as their protobuf representation here
 	}
 
 	wg.Go(func() {
