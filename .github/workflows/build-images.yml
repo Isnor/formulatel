@@ -2,6 +2,7 @@ name: Build and Push Images
 
 on:
   pull_request:
+    types: ["opened", "reopened"]
     branches:
       - main
       - beta
@@ -24,9 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image_name: ["persist", "timescaledb-migrations"]
-        build_context: ["./formulatel", "./migrations"]
-        dockerfile: ["persist.Dockerfile", "migrations.Dockerfile"]
+        include:
+          - image_name: "persist"
+            build_context: "./formulatel"
+            dockerfile: "persist.Dockerfile"
+          - image_name: "timescaledb-migrations"
+            build_context: "./migrations"
+            dockerfile: "migrations.Dockerfile"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
