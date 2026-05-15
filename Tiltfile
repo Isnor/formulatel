@@ -1,7 +1,6 @@
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 # this repo gives us an easy way to start an MQTT broker, mosquitto
 helm_repo("k8s-at-home", resource_name="k8s-at-home_helm_repo", url="https://k8s-at-home.com/charts/", labels=["helm"])
-# helm_repo("grafana", resource_name="grafana_helm_repo", url="https://grafana-community.github.io/helm-charts", labels=["helm"])
 
 # TODO: probably remove this and use `tilt up --namespace=`. namespace will need to be created before tilt is run
 k8s_yaml("kubernetes/namespace.yml")
