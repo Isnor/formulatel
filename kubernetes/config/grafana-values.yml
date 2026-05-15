@@ -17,6 +17,21 @@ datasources:
           tlsAuth: false
           clientID: formulatel_grafana
           isDefault: true
+      - name: formulatel_psql
+        type: postgres
+        url: timescaledb:5432
+        user: postgres
+        secureJsonData:
+          password: 'postgres'
+        jsonData:
+          database: postgres
+          sslmode: 'disable' # disable/require/verify-ca/verify-full
+          maxOpenConns: 100
+          maxIdleConns: 100
+          maxIdleConnsAuto: true
+          connMaxLifetime: 14400
+          postgresVersion: 1800
+          timescaledb: true
 
 dashboardProviders:
   dashboardproviders.yaml:
