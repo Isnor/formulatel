@@ -20,7 +20,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
           - name: TIMESCALE_DSN
-            value: 'postgres://postgres:postgres@timescaledb-service:5432/postgres?sslmode=disable'
+            value: 'postgres://postgres:postgres@timescaledb:5432/postgres?sslmode=disable'
           - name: MQTT_BROKER
             value: 'tcp://mosquitto:1883'
           resources:

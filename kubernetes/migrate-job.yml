@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: formulatel
+  name: db-migrations
+spec:
+  template:
+    spec:
+      containers:
+      - name: dbmigrate
+        image: formulatel/migrate
+        command: ["migrate"]
+        args: ["-path", "migrations", "-database", "postgres://timescaledb:5432/$(PG_DB)?sslmode=disable", "up"]
+        env:
+        - name: PGUSER
+          value: 'postgres'
+          # TODO: you know what
+        - name: PGPASSWORD
+          value: 'postgres'
+        - name: PG_DB
+          value: 'postgres'
+      restartPolicy: Never
+  backOffLimit: 3
