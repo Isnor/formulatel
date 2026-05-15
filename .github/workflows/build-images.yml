@@ -2,10 +2,8 @@ name: Build and Push Images
 
 on:
   pull_request:
-    types: ["opened", "reopened"]
     branches:
-      - 'fix/**'
-      - 'feat/**'
+      - main
       - beta
   push:
     branches:
