@@ -29,8 +29,8 @@ jobs:
             build_context: "./formulatel"
             dockerfile: "formulatel/persist.Dockerfile"
           - image_name: "timescaledb-migrations"
-            build_context: "./migrations"
-            dockerfile: "migrations/migrations.Dockerfile"
+            build_context: "."
+            dockerfile: "migrations.Dockerfile"
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -12,7 +12,7 @@ helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel"
 k8s_yaml("kubernetes/datastore.yml")
 k8s_resource("timescaledb", port_forwards="5432", labels=["infra"])
 
-docker_build("formulatel/migrate", context=".", dockerfile="migrations/migrations.Dockerfile")
+docker_build("formulatel/migrate", context=".", dockerfile="migrations.Dockerfile")
 k8s_yaml("kubernetes/migrate-job.yml")
 k8s_resource("db-migrations", labels=["infra"])
 
