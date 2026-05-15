@@ -25,7 +25,7 @@ datasources:
           password: 'postgres'
         jsonData:
           database: postgres
-          sslmode: 'disable' # disable/require/verify-ca/verify-full
+          sslmode: 'disable'
           maxOpenConns: 100
           maxIdleConns: 100
           maxIdleConnsAuto: true
@@ -49,4 +49,4 @@ dashboardProviders:
 dashboards:
   formulatel:
     live:
-      json: "" # TODO: same hack as above. Have we tried using the Grafana k8s resource type?
+      json: "" # TODO: this is a bit of a hack. Have we tried using the Grafana k8s resource type?

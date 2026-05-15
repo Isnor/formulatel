@@ -23,8 +23,8 @@ type TableBatcher struct {
 	bufferMu      sync.Mutex
 }
 
-// TODO: I hate this, write a function per type instead
 // buildRow converts a GameTelemetry to a row map for the specified table.
+// Returns a complete row with all columns, using zero values for missing data.
 func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
 	if tableName == "vehicle_data" {
 		vd := msg.GetVehicleData()
@@ -32,6 +32,7 @@ func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
 			return nil
 		}
 
+		// Always include all columns, even if tire data is missing
 		row := map[string]any{
 			"time":               msg.Timestamp.AsTime(),
 			"session_id":         msg.SessionId,
@@ -44,25 +45,23 @@ func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
 			"steering":           vd.Steering,
 			"gear":               vd.Gear,
 			"engine_temperature": vd.EngineTemperature,
-		}
-
-		if vd.Tires != nil {
-			row["fl_brake_temp"] = vd.Tires.FrontLeft.BrakeTemperature
-			row["fl_inner_temp"] = vd.Tires.FrontLeft.InnerTemperature
-			row["fl_surface_temp"] = vd.Tires.FrontLeft.SurfaceTemperature
-			row["fl_pressure"] = vd.Tires.FrontLeft.Pressure
-			row["fr_brake_temp"] = vd.Tires.FrontRight.BrakeTemperature
-			row["fr_inner_temp"] = vd.Tires.FrontRight.InnerTemperature
-			row["fr_surface_temp"] = vd.Tires.FrontRight.SurfaceTemperature
-			row["fr_pressure"] = vd.Tires.FrontRight.Pressure
-			row["bl_brake_temp"] = vd.Tires.BackLeft.BrakeTemperature
-			row["bl_inner_temp"] = vd.Tires.BackLeft.InnerTemperature
-			row["bl_surface_temp"] = vd.Tires.BackLeft.SurfaceTemperature
-			row["bl_pressure"] = vd.Tires.BackLeft.Pressure
-			row["br_brake_temp"] = vd.Tires.BackRight.BrakeTemperature
-			row["br_inner_temp"] = vd.Tires.BackRight.InnerTemperature
-			row["br_surface_temp"] = vd.Tires.BackRight.SurfaceTemperature
-			row["br_pressure"] = vd.Tires.BackRight.Pressure
+			// Tire columns - include even if Tires is nil (nullable columns)
+			"fl_brake_temp":    vd.Tires.FrontLeft.BrakeTemperature,
+			"fl_inner_temp":    vd.Tires.FrontLeft.InnerTemperature,
+			"fl_surface_temp":  vd.Tires.FrontLeft.SurfaceTemperature,
+			"fl_pressure":      vd.Tires.FrontLeft.Pressure,
+			"fr_brake_temp":    vd.Tires.FrontRight.BrakeTemperature,
+			"fr_inner_temp":    vd.Tires.FrontRight.InnerTemperature,
+			"fr_surface_temp":  vd.Tires.FrontRight.SurfaceTemperature,
+			"fr_pressure":      vd.Tires.FrontRight.Pressure,
+			"bl_brake_temp":    vd.Tires.BackLeft.BrakeTemperature,
+			"bl_inner_temp":    vd.Tires.BackLeft.InnerTemperature,
+			"bl_surface_temp":  vd.Tires.BackLeft.SurfaceTemperature,
+			"bl_pressure":      vd.Tires.BackLeft.Pressure,
+			"br_brake_temp":    vd.Tires.BackRight.BrakeTemperature,
+			"br_inner_temp":    vd.Tires.BackRight.InnerTemperature,
+			"br_surface_temp":  vd.Tires.BackRight.SurfaceTemperature,
+			"br_pressure":      vd.Tires.BackRight.Pressure,
 		}
 
 		return row
@@ -165,8 +164,8 @@ func (b *TableBatcher) flush() {
 
 // writeBatch writes rows to the database using pgx.CopyFrom.
 func (b *TableBatcher) writeBatch(rows []map[string]any) error {
-	// Build column order from first row keys
-	keys := rowKeys(rows[0])
+	// Build column order from first row keys using fixed column order
+	keys := rowKeys(rows[0], b.tableName)
 
 	// Build pgx.CopyFromSource with properly typed values
 	sourceRows := make([][]any, len(rows))
@@ -222,18 +221,53 @@ func (c *copyFromSource) Values() ([]any, error) {
 	return values, nil
 }
 
-// rowKeys extracts column keys from a row map in a stable order.
-func rowKeys(row map[string]any) []string {
-	if len(row) == 0 {
-		return nil
+// columnOrder maps column name to its position in the database schema
+// This ensures consistent column ordering across all batch writes
+var vehicleDataColumnOrder = []string{
+	"time", "session_id", "user_id", "title", "speed", "rpm", "throttle",
+	"brake", "steering", "gear", "engine_temperature",
+	"fl_brake_temp", "fl_inner_temp", "fl_surface_temp", "fl_pressure",
+	"fr_brake_temp", "fr_inner_temp", "fr_surface_temp", "fr_pressure",
+	"bl_brake_temp", "bl_inner_temp", "bl_surface_temp", "bl_pressure",
+	"br_brake_temp", "br_inner_temp", "br_surface_temp", "br_pressure",
+}
+
+var motionDataColumnOrder = []string{
+	"time", "session_id", "user_id", "title",
+	"position_x", "position_y", "position_z",
+	"velocity_x", "velocity_y", "velocity_z",
+	"gforce_lateral", "gforce_longitudinal", "gforce_vertical",
+	"yaw", "pitch", "roll",
+}
+
+// rowKeys extracts column keys from a row map in database schema order.
+func rowKeys(row map[string]any, tableName string) []string {
+	if tableName == "vehicle_data" {
+		// Return columns in fixed database order, filtering to only columns present in row
+		keys := make([]string, 0, len(vehicleDataColumnOrder))
+		for _, col := range vehicleDataColumnOrder {
+			if _, ok := row[col]; ok {
+				keys = append(keys, col)
+			}
+		}
+		return keys
 	}
 
+	if tableName == "motion_data" {
+		keys := make([]string, 0, len(motionDataColumnOrder))
+		for _, col := range motionDataColumnOrder {
+			if _, ok := row[col]; ok {
+				keys = append(keys, col)
+			}
+		}
+		return keys
+	}
+
+	// Fallback: use alphabetically sorted keys
 	keys := make([]string, 0, len(row))
 	for k := range row {
 		keys = append(keys, k)
 	}
-
-	// For consistent ordering, sort keys
 	sortStrings(keys)
 	return keys
 }
