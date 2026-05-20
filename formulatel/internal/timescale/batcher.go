@@ -368,6 +368,8 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 		close(motionChan)
 	}()
 
+	// TODO: we create N batchers, 1 per table, meaning the BatchRouter actually has N*batchSize capacity
+	//	Maybe this is fine, but it makes the signature of this function misleading
 	vehicleBatcher := NewTableBatcher(ctx, conn, "vehicle_data", vehicleChan, batchSize, flushInterval)
 	motionBatcher := NewTableBatcher(ctx, conn, "motion_data", motionChan, batchSize, flushInterval)
 
