@@ -1552,7 +1552,7 @@
     "timezone": "browser",
     "to": "now"
   },
-  "title": "live without dashboard sources",
+  "title": "live dash",
   "variables": [
     {
       "kind": "IntervalVariable",

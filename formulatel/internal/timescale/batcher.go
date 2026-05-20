@@ -2,19 +2,21 @@ package timescale
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TableBatcher batches messages and flushes to TimescaleDB using pgx.CopyFrom.
 type TableBatcher struct {
 	ctx           context.Context
 	tableName     string
-	conn          *pgx.Conn
+	conn          *pgxpool.Pool
 	msgChan       chan *pb.GameTelemetry
 	batchSize     int
 	flushInterval time.Duration
@@ -46,22 +48,22 @@ func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
 			"gear":               vd.Gear,
 			"engine_temperature": vd.EngineTemperature,
 			// Tire columns - include even if Tires is nil (nullable columns)
-			"fl_brake_temp":    vd.Tires.FrontLeft.BrakeTemperature,
-			"fl_inner_temp":    vd.Tires.FrontLeft.InnerTemperature,
-			"fl_surface_temp":  vd.Tires.FrontLeft.SurfaceTemperature,
-			"fl_pressure":      vd.Tires.FrontLeft.Pressure,
-			"fr_brake_temp":    vd.Tires.FrontRight.BrakeTemperature,
-			"fr_inner_temp":    vd.Tires.FrontRight.InnerTemperature,
-			"fr_surface_temp":  vd.Tires.FrontRight.SurfaceTemperature,
-			"fr_pressure":      vd.Tires.FrontRight.Pressure,
-			"bl_brake_temp":    vd.Tires.BackLeft.BrakeTemperature,
-			"bl_inner_temp":    vd.Tires.BackLeft.InnerTemperature,
-			"bl_surface_temp":  vd.Tires.BackLeft.SurfaceTemperature,
-			"bl_pressure":      vd.Tires.BackLeft.Pressure,
-			"br_brake_temp":    vd.Tires.BackRight.BrakeTemperature,
-			"br_inner_temp":    vd.Tires.BackRight.InnerTemperature,
-			"br_surface_temp":  vd.Tires.BackRight.SurfaceTemperature,
-			"br_pressure":      vd.Tires.BackRight.Pressure,
+			"fl_brake_temp":   vd.Tires.FrontLeft.BrakeTemperature,
+			"fl_inner_temp":   vd.Tires.FrontLeft.InnerTemperature,
+			"fl_surface_temp": vd.Tires.FrontLeft.SurfaceTemperature,
+			"fl_pressure":     vd.Tires.FrontLeft.Pressure,
+			"fr_brake_temp":   vd.Tires.FrontRight.BrakeTemperature,
+			"fr_inner_temp":   vd.Tires.FrontRight.InnerTemperature,
+			"fr_surface_temp": vd.Tires.FrontRight.SurfaceTemperature,
+			"fr_pressure":     vd.Tires.FrontRight.Pressure,
+			"bl_brake_temp":   vd.Tires.BackLeft.BrakeTemperature,
+			"bl_inner_temp":   vd.Tires.BackLeft.InnerTemperature,
+			"bl_surface_temp": vd.Tires.BackLeft.SurfaceTemperature,
+			"bl_pressure":     vd.Tires.BackLeft.Pressure,
+			"br_brake_temp":   vd.Tires.BackRight.BrakeTemperature,
+			"br_inner_temp":   vd.Tires.BackRight.InnerTemperature,
+			"br_surface_temp": vd.Tires.BackRight.SurfaceTemperature,
+			"br_pressure":     vd.Tires.BackRight.Pressure,
 		}
 
 		return row
@@ -93,8 +95,68 @@ func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
 	}
 }
 
+func buildMotionDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
+	if motionData := msg.GetMotionData(); motionData != nil {
+		return map[string]any{
+			"time":                msg.Timestamp.AsTime(),
+			"session_id":          msg.SessionId,
+			"user_id":             msg.UserId,
+			"title":               msg.Title,
+			"position_x":          motionData.PositionX,
+			"position_y":          motionData.PositionY,
+			"position_z":          motionData.PositionZ,
+			"velocity_x":          motionData.VelocityX,
+			"velocity_y":          motionData.VelocityY,
+			"velocity_z":          motionData.VelocityZ,
+			"gforce_lateral":      motionData.GForceLateral,
+			"gforce_longitudinal": motionData.GForceLongitudinal,
+			"gforce_vertical":     motionData.GForceVertical,
+			"yaw":                 motionData.Yaw,
+			"pitch":               motionData.Pitch,
+			"roll":                motionData.Roll,
+		}, nil
+	}
+	return nil, errors.New("did not write motion telemetry: no motion data found")
+}
+
+func buildVehicleDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
+	if vd := msg.GetVehicleData(); vd != nil {
+		return map[string]any{
+			"time":               msg.Timestamp.AsTime(),
+			"session_id":         msg.SessionId,
+			"user_id":            msg.UserId,
+			"title":              msg.Title,
+			"speed":              vd.Speed,
+			"rpm":                vd.Rpm,
+			"throttle":           vd.Throttle,
+			"brake":              vd.Brake,
+			"steering":           vd.Steering,
+			"gear":               vd.Gear,
+			"engine_temperature": vd.EngineTemperature,
+			// Tire columns - include even if Tires is nil (nullable columns)
+			"fl_brake_temp":   vd.Tires.FrontLeft.BrakeTemperature,
+			"fl_inner_temp":   vd.Tires.FrontLeft.InnerTemperature,
+			"fl_surface_temp": vd.Tires.FrontLeft.SurfaceTemperature,
+			"fl_pressure":     vd.Tires.FrontLeft.Pressure,
+			"fr_brake_temp":   vd.Tires.FrontRight.BrakeTemperature,
+			"fr_inner_temp":   vd.Tires.FrontRight.InnerTemperature,
+			"fr_surface_temp": vd.Tires.FrontRight.SurfaceTemperature,
+			"fr_pressure":     vd.Tires.FrontRight.Pressure,
+			"bl_brake_temp":   vd.Tires.BackLeft.BrakeTemperature,
+			"bl_inner_temp":   vd.Tires.BackLeft.InnerTemperature,
+			"bl_surface_temp": vd.Tires.BackLeft.SurfaceTemperature,
+			"bl_pressure":     vd.Tires.BackLeft.Pressure,
+			"br_brake_temp":   vd.Tires.BackRight.BrakeTemperature,
+			"br_inner_temp":   vd.Tires.BackRight.InnerTemperature,
+			"br_surface_temp": vd.Tires.BackRight.SurfaceTemperature,
+			"br_pressure":     vd.Tires.BackRight.Pressure,
+		}, nil
+	}
+	return nil, errors.New("did not write vehicle telemetry: no vehicle data found")
+}
+
 // NewTableBatcher creates a new TableBatcher.
-func NewTableBatcher(ctx context.Context, conn *pgx.Conn, tableName string, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) *TableBatcher {
+func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) *TableBatcher {
 	return &TableBatcher{
 		ctx:           ctx,
 		tableName:     tableName,
@@ -288,7 +350,7 @@ type BatchRouter struct {
 }
 
 // NewBatchRouter creates a new BatchRouter that routes to vehicle and motion batchers.
-func NewBatchRouter(ctx context.Context, conn *pgx.Conn, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) (*BatchRouter, error) {
+func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) (*BatchRouter, error) {
 	vehicleChan := make(chan *pb.GameTelemetry, 100)
 	motionChan := make(chan *pb.GameTelemetry, 100)
 
