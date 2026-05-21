@@ -33,20 +33,3 @@ datasources:
           postgresVersion: 1800
           timescaledb: true
 
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - name: 'formulatel'
-        orgId: 1
-        folder: ''
-        type: file
-        disableDeletion: false
-        editable: true
-        options:
-          path: /var/lib/grafana/dashboards/formulatel
-
-dashboards:
-  formulatel:
-    live:
-      json: "" # TODO: this is a bit of a hack. Have we tried using the Grafana k8s resource type?

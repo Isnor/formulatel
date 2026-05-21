@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: persist
-          image: persist:latest
+          image: formulatel/persist:latest
           imagePullPolicy: IfNotPresent
           env:
           - name: TIMESCALE_DSN
