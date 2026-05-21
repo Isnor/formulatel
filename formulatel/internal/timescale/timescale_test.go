@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"strings"
 	"sync"
 	"testing"
@@ -81,6 +82,59 @@ func (pt *PostgresTest) Run(t *testing.T) {
 func TestMain(m *testing.M) {
 	m.Run()
 	mustPostgresContainer().Terminate(context.Background(), testcontainers.StopTimeout(time.Second))
+}
+
+func pseudoRandomVehicleTelemetry() *pb.GameTelemetry {
+	return &pb.GameTelemetry{
+		Title:     pb.GameTitle_GAME_TITLE_UNKNOWN,
+		SessionId: "testing",
+		UserId:    "testuser",
+		Timestamp: timestamppb.Now(),
+		Data: &pb.GameTelemetry_VehicleData{
+			VehicleData: &pb.VehicleData{
+				Speed:             rand.Uint32N(400),
+				Rpm:               rand.Uint32N(14000),
+				Throttle:          rand.Float32(),
+				Brake:             rand.Float32(),
+				Steering:          rand.Float32(),
+				Gear:              rand.Int32N(8),
+				EngineTemperature: rand.Uint32N(1000),
+				Tires: &pb.VehicleData_Tires{
+					FrontLeft:  &pb.TireData{BrakeTemperature: rand.Uint32N(1000), InnerTemperature: rand.Uint32N(1000), SurfaceTemperature: rand.Uint32N(1000), Pressure: rand.Uint32N(1000)},
+					FrontRight: &pb.TireData{BrakeTemperature: rand.Uint32N(1000), InnerTemperature: rand.Uint32N(1000), SurfaceTemperature: rand.Uint32N(1000), Pressure: rand.Uint32N(1000)},
+					BackLeft:   &pb.TireData{BrakeTemperature: rand.Uint32N(1000), InnerTemperature: rand.Uint32N(1000), SurfaceTemperature: rand.Uint32N(1000), Pressure: rand.Uint32N(1000)},
+					BackRight:  &pb.TireData{BrakeTemperature: rand.Uint32N(1000), InnerTemperature: rand.Uint32N(1000), SurfaceTemperature: rand.Uint32N(1000), Pressure: rand.Uint32N(1000)},
+				},
+			},
+		},
+	}
+}
+
+func pseudoRandomMotionTelemetry() *pb.GameTelemetry {
+
+	return &pb.GameTelemetry{
+		Title:     pb.GameTitle_GAME_TITLE_UNKNOWN,
+		SessionId: "testing",
+		UserId:    "testuser",
+		Timestamp: timestamppb.Now(),
+		Data: &pb.GameTelemetry_MotionData{
+			MotionData: &pb.MotionData{
+				PositionX:          rand.Float32() * 500,
+				PositionY:          rand.Float32() * 500,
+				PositionZ:          rand.Float32() * 500,
+				VelocityX:          rand.Float32() * 400,
+				VelocityY:          rand.Float32() * 400,
+				VelocityZ:          rand.Float32() * 400,
+				GForceLateral:      rand.Float32() * 10,
+				GForceLongitudinal: rand.Float32() * 10,
+				GForceVertical:     rand.Float32() * 10,
+				Yaw:                rand.Float32(),
+				Pitch:              rand.Float32(),
+				Roll:               rand.Float32(),
+			},
+		},
+	}
+
 }
 
 func TestSimpleDBWrites(t *testing.T) {
@@ -250,57 +304,4 @@ func TestBatchRouter(t *testing.T) {
 			},
 		},
 	}.Run(t)
-}
-
-func pseudoRandomVehicleTelemetry() *pb.GameTelemetry {
-	return &pb.GameTelemetry{
-		Title:     pb.GameTitle_GAME_TITLE_UNKNOWN,
-		SessionId: "testing",
-		UserId:    "testuser",
-		Timestamp: timestamppb.Now(),
-		Data: &pb.GameTelemetry_VehicleData{
-			VehicleData: &pb.VehicleData{
-				Speed:             120,
-				Rpm:               7000,
-				Throttle:          0.6,
-				Brake:             0.1,
-				Steering:          0.2,
-				Gear:              4,
-				EngineTemperature: 95,
-				Tires: &pb.VehicleData_Tires{
-					FrontLeft:  &pb.TireData{BrakeTemperature: 200, InnerTemperature: 60, SurfaceTemperature: 150, Pressure: 28},
-					FrontRight: &pb.TireData{BrakeTemperature: 210, InnerTemperature: 62, SurfaceTemperature: 155, Pressure: 29},
-					BackLeft:   &pb.TireData{BrakeTemperature: 180, InnerTemperature: 58, SurfaceTemperature: 145, Pressure: 27},
-					BackRight:  &pb.TireData{BrakeTemperature: 190, InnerTemperature: 61, SurfaceTemperature: 152, Pressure: 28},
-				},
-			},
-		},
-	}
-}
-
-func pseudoRandomMotionTelemetry() *pb.GameTelemetry {
-
-	return &pb.GameTelemetry{
-		Title:     pb.GameTitle_GAME_TITLE_UNKNOWN,
-		SessionId: "testing",
-		UserId:    "testuser",
-		Timestamp: timestamppb.Now(),
-		Data: &pb.GameTelemetry_MotionData{
-			MotionData: &pb.MotionData{
-				PositionX:          200.5,
-				PositionY:          300.5,
-				PositionZ:          10.0,
-				VelocityX:          55.0,
-				VelocityY:          35.0,
-				VelocityZ:          0.0,
-				GForceLateral:      1.5,
-				GForceLongitudinal: 2.0,
-				GForceVertical:     1.0,
-				Yaw:                0.5,
-				Pitch:              0.1,
-				Roll:               0.05,
-			},
-		},
-	}
-
 }

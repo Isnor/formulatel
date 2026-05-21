@@ -3,7 +3,9 @@ package timescale
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,73 +28,26 @@ type TableBatcher struct {
 }
 
 // buildRow converts a GameTelemetry to a row map for the specified table.
-// Returns a complete row with all columns, using zero values for missing data.
-func buildRow(msg *pb.GameTelemetry, tableName string) map[string]any {
+func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
+	// vehicle data
 	if tableName == "vehicle_data" {
-		vd := msg.GetVehicleData()
-		if vd == nil {
-			return nil
+		row, err := buildVehicleDataRow(msg)
+		if err != nil {
+			return nil, err
 		}
-
-		// Always include all columns, even if tire data is missing
-		row := map[string]any{
-			"time":               msg.Timestamp.AsTime(),
-			"session_id":         msg.SessionId,
-			"user_id":            msg.UserId,
-			"title":              msg.Title,
-			"speed":              vd.Speed,
-			"rpm":                vd.Rpm,
-			"throttle":           vd.Throttle,
-			"brake":              vd.Brake,
-			"steering":           vd.Steering,
-			"gear":               vd.Gear,
-			"engine_temperature": vd.EngineTemperature,
-			// Tire columns - include even if Tires is nil (nullable columns)
-			"fl_brake_temp":   vd.Tires.FrontLeft.BrakeTemperature,
-			"fl_inner_temp":   vd.Tires.FrontLeft.InnerTemperature,
-			"fl_surface_temp": vd.Tires.FrontLeft.SurfaceTemperature,
-			"fl_pressure":     vd.Tires.FrontLeft.Pressure,
-			"fr_brake_temp":   vd.Tires.FrontRight.BrakeTemperature,
-			"fr_inner_temp":   vd.Tires.FrontRight.InnerTemperature,
-			"fr_surface_temp": vd.Tires.FrontRight.SurfaceTemperature,
-			"fr_pressure":     vd.Tires.FrontRight.Pressure,
-			"bl_brake_temp":   vd.Tires.BackLeft.BrakeTemperature,
-			"bl_inner_temp":   vd.Tires.BackLeft.InnerTemperature,
-			"bl_surface_temp": vd.Tires.BackLeft.SurfaceTemperature,
-			"bl_pressure":     vd.Tires.BackLeft.Pressure,
-			"br_brake_temp":   vd.Tires.BackRight.BrakeTemperature,
-			"br_inner_temp":   vd.Tires.BackRight.InnerTemperature,
-			"br_surface_temp": vd.Tires.BackRight.SurfaceTemperature,
-			"br_pressure":     vd.Tires.BackRight.Pressure,
-		}
-
-		return row
+		return row, nil
 	}
 
 	// motion_data
-	md := msg.GetMotionData()
-	if md == nil {
-		return nil
+	if tableName == "motion_data" {
+		row, err := buildMotionDataRow(msg)
+		if err != nil {
+			return nil, err
+		}
+		return row, nil
 	}
 
-	return map[string]any{
-		"time":                msg.Timestamp.AsTime(),
-		"session_id":          msg.SessionId,
-		"user_id":             msg.UserId,
-		"title":               msg.Title,
-		"position_x":          md.PositionX,
-		"position_y":          md.PositionY,
-		"position_z":          md.PositionZ,
-		"velocity_x":          md.VelocityX,
-		"velocity_y":          md.VelocityY,
-		"velocity_z":          md.VelocityZ,
-		"gforce_lateral":      md.GForceLateral,
-		"gforce_longitudinal": md.GForceLongitudinal,
-		"gforce_vertical":     md.GForceVertical,
-		"yaw":                 md.Yaw,
-		"pitch":               md.Pitch,
-		"roll":                md.Roll,
-	}
+	return nil, fmt.Errorf("unknown table name %s", tableName)
 }
 
 func buildMotionDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
@@ -192,7 +147,10 @@ func (b *TableBatcher) flusherWorker(ctx context.Context) {
 				return
 			}
 			b.bufferMu.Lock()
-			row := buildRow(msg, b.tableName)
+			row, err := buildRow(msg, b.tableName)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed building row", "table_name", b.tableName, "reason", err.Error())
+			}
 			if row != nil {
 				b.buffer = append(b.buffer, row)
 			}
@@ -330,17 +288,8 @@ func rowKeys(row map[string]any, tableName string) []string {
 	for k := range row {
 		keys = append(keys, k)
 	}
-	sortStrings(keys)
+	slices.Sort(keys)
 	return keys
-}
-
-// sortStrings sorts a string slice in place using simple insertion sort.
-func sortStrings(s []string) {
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j-1] > s[j]; j-- {
-			s[j-1], s[j] = s[j], s[j-1]
-		}
-	}
 }
 
 // BatchRouter routes messages to the appropriate TableBatcher.
@@ -349,6 +298,7 @@ type BatchRouter struct {
 	motionBatcher  *TableBatcher
 }
 
+// TODO: I hate everything about this
 // NewBatchRouter creates a new BatchRouter that routes to vehicle and motion batchers.
 func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) (*BatchRouter, error) {
 	vehicleChan := make(chan *pb.GameTelemetry, 100)
