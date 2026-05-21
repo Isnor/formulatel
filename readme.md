@@ -72,6 +72,15 @@ Run the migrations with
 
 `make migrate`
 
+### Grafana Dashboards
+
+There is currently a bug with provisioning dashboards using the V2 Resource format. To work around this, the `formulatel` dashboards can be imported into a locally running Grafana using the Makefile:
+
+`make live-dashboard`
+`make static-dashboard`
+
+This requires `curl`.
+
 ## Goals
 
 - [x] have fun!
