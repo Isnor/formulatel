@@ -39,20 +39,18 @@ func main() {
 	slog.InfoContext(ctx, "starting persist service", "timescale_dsn", cfg.TimescaleDSN, "mqtt_broker", cfg.MQTTBroker)
 
 	// Connect to TimescaleDB
-	conn, err := timescale.NewConnection(ctx, cfg.TimescaleDSN)
+	connPool, err := timescale.NewConnectionPool(ctx, cfg.TimescaleDSN)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to connect to timescaledb", "error", err)
 		os.Exit(1)
 	}
 	defer func() {
-		if cerr := conn.Close(ctx); cerr != nil {
-			slog.ErrorContext(ctx, "failed to close connection", "error", cerr)
-		}
+		connPool.Close()
 	}()
 
 	// Create batch router
 	msgChan := make(chan *pb.GameTelemetry, msgChanBufferSize)
-	router, err := timescale.NewBatchRouter(ctx, conn, msgChan, cfg.BatchSize, cfg.FlushInterval)
+	router, err := timescale.NewBatchRouter(ctx, connPool, msgChan, cfg.BatchSize, cfg.FlushInterval)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create batch router", "error", err)
 		os.Exit(1)

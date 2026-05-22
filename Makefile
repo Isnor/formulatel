@@ -13,3 +13,9 @@ k8s-cluster:
 
 migrate:
 	migrate -path ./migrations -database postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable up
+
+live-dashboard:
+	curl -v -H 'Content-Type: application/json' --data @kubernetes/config/dashboards/dashboard-live.json localhost:3000/api/dashboards/db
+
+static-dashboard:
+	curl -v -H 'Content-Type: application/json' --data @kubernetes/config/dashboards/dashboard-static.json localhost:3000/api/dashboards/db

@@ -1,0 +1,1694 @@
+{
+  "dashboard": {
+    "apiVersion": "dashboard.grafana.app/v2",
+    "kind": "Dashboard",
+    "metadata": {
+      "name": "gx2vh4",
+      "namespace": "default",
+      "uid": "a94e49d5-a6b6-4753-a2f8-ef8337437648",
+      "resourceVersion": "1779409830519019",
+      "generation": 15,
+      "creationTimestamp": "2026-05-21T19:48:53Z",
+      "labels": {
+        "grafana.app/deprecatedInternalID": "3907778335281152"
+      },
+      "annotations": {
+        "grafana.app/createdBy": "anonymous:0",
+        "grafana.app/folder": "",
+        "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
+        "grafana.app/updatedBy": "anonymous:0",
+        "grafana.app/updatedTimestamp": "2026-05-22T00:30:30Z"
+      }
+    },
+    "spec": {
+      "annotations": [
+        {
+          "kind": "AnnotationQuery",
+          "spec": {
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana",
+              "version": "v0",
+              "spec": {}
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "builtIn": true
+          }
+        }
+      ],
+      "cursorSync": "Off",
+      "editable": true,
+      "elements": {
+        "panel-1": {
+          "kind": "Panel",
+          "spec": {
+            "id": 1,
+            "title": "speed",
+            "description": "vehicle speed over time",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "builder",
+                          "format": "time_series",
+                          "rawSql": "SELECT \"time\", speed FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "speed",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "9b9889a9-cdef-4012-b456-719e4cf065d0",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "vehicle_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "velocitykmh",
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        },
+                        {
+                          "value": 80,
+                          "color": "red"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-2": {
+          "kind": "Panel",
+          "spec": {
+            "id": 2,
+            "title": "RPM",
+            "description": "vehicle RPM over time",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "builder",
+                          "format": "time_series",
+                          "rawSql": "SELECT \"time\", rpm FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "rpm",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "89ba9bab-4567-489a-bcde-f19e4cf17037",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "vehicle_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "rotrpm",
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        },
+                        {
+                          "value": 80,
+                          "color": "red"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-3": {
+          "kind": "Panel",
+          "spec": {
+            "id": 3,
+            "title": "acceleration",
+            "description": "",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "builder",
+                          "format": "time_series",
+                          "rawSql": "SELECT \"time\", gforce_lateral, gforce_longitudinal, gforce_vertical FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "gforce_lateral",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "gforce_longitudinal",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "gforce_vertical",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "ba89898a-cdef-4012-b456-719e4cf38ec2",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "motion_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "accG",
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        },
+                        {
+                          "value": 80,
+                          "color": "red"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-4": {
+          "kind": "Panel",
+          "spec": {
+            "id": 4,
+            "title": "velocity",
+            "description": "",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "builder",
+                          "format": "time_series",
+                          "rawSql": "SELECT \"time\", velocity_x, velocity_y, velocity_z FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "velocity_x",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "velocity_y",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "velocity_z",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "ba89898a-cdef-4012-b456-719e4cf38ec2",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "motion_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "velocityms",
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-5": {
+          "kind": "Panel",
+          "spec": {
+            "id": 5,
+            "title": "brake/throttle",
+            "description": "brake and throttle as a percentage of pedal depressed",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "code",
+                          "format": "time_series",
+                          "rawQuery": true,
+                          "rawSql": "SELECT \"time\", throttle, -brake as brake FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "throttle",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "brake",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "89ba9bab-4567-489a-bcde-f19e4cf17037",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "vehicle_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "percentunit",
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic",
+                      "seriesBy": "last"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": true,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "hue",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "stepBefore",
+                      "lineStyle": {
+                        "fill": "solid"
+                      },
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-6": {
+          "kind": "Panel",
+          "spec": {
+            "id": 6,
+            "title": "brake temps",
+            "description": "vehicle RPM over time",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "builder",
+                          "format": "time_series",
+                          "rawSql": "SELECT \"time\", fl_brake_temp AS \"front left\", fr_brake_temp AS \"front right\", bl_brake_temp AS \"back left\", br_brake_temp AS \"back right\" FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "alias": "\"front left\"",
+                                "parameters": [
+                                  {
+                                    "name": "fl_brake_temp",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "alias": "\"front right\"",
+                                "parameters": [
+                                  {
+                                    "name": "fr_brake_temp",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "alias": "\"back left\"",
+                                "parameters": [
+                                  {
+                                    "name": "bl_brake_temp",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "alias": "\"back right\"",
+                                "parameters": [
+                                  {
+                                    "name": "br_brake_temp",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "89ba9bab-4567-489a-bcde-f19e4cf17037",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "vehicle_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "celsius",
+                    "thresholds": {
+                      "mode": "percentage",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic",
+                      "seriesBy": "max"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-7": {
+          "kind": "Panel",
+          "spec": {
+            "id": 7,
+            "title": "yaw",
+            "description": "",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "builder",
+                          "format": "table",
+                          "rawSql": "SELECT \"time\", yaw FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "\"time\"",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              },
+                              {
+                                "parameters": [
+                                  {
+                                    "name": "yaw",
+                                    "type": "functionParameter"
+                                  }
+                                ],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 3000,
+                            "orderBy": {
+                              "property": {
+                                "name": "\"time\"",
+                                "type": "string"
+                              },
+                              "type": "property"
+                            },
+                            "orderByDirection": "DESC",
+                            "whereJsonTree": {
+                              "children1": [
+                                {
+                                  "id": "aaabab89-4567-489a-bcde-f19e4d130a4c",
+                                  "properties": {
+                                    "field": "session_id",
+                                    "fieldSrc": "field",
+                                    "operator": "equal",
+                                    "value": [
+                                      "$session_id"
+                                    ],
+                                    "valueError": [
+                                      null
+                                    ],
+                                    "valueSrc": [
+                                      "value"
+                                    ],
+                                    "valueType": [
+                                      "text"
+                                    ]
+                                  },
+                                  "type": "rule"
+                                }
+                              ],
+                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "type": "group"
+                            },
+                            "whereString": "session_id = '$session_id'"
+                          },
+                          "table": "motion_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "timeseries",
+              "version": "13.0.1+security-01",
+              "spec": {
+                "options": {
+                  "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                  },
+                  "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "hideZeros": false,
+                    "mode": "single",
+                    "sort": "none"
+                  }
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "radian",
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        },
+                        {
+                          "value": 80,
+                          "color": "red"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "mode": "palette-classic"
+                    },
+                    "custom": {
+                      "axisBorderShow": false,
+                      "axisCenteredZero": false,
+                      "axisColorMode": "text",
+                      "axisLabel": "",
+                      "axisPlacement": "auto",
+                      "barAlignment": 0,
+                      "barWidthFactor": 0.6,
+                      "drawStyle": "line",
+                      "fillOpacity": 0,
+                      "gradientMode": "none",
+                      "hideFrom": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": false
+                      },
+                      "insertNulls": false,
+                      "lineInterpolation": "linear",
+                      "lineWidth": 1,
+                      "pointSize": 5,
+                      "scaleDistribution": {
+                        "type": "linear"
+                      },
+                      "showPoints": "auto",
+                      "showValues": false,
+                      "spanNulls": false,
+                      "stacking": {
+                        "group": "A",
+                        "mode": "none"
+                      },
+                      "thresholdsStyle": {
+                        "mode": "off"
+                      }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "layout": {
+        "kind": "TabsLayout",
+        "spec": {
+          "tabs": [
+            {
+              "kind": "TabsLayoutTab",
+              "spec": {
+                "title": "vehicle",
+                "layout": {
+                  "kind": "AutoGridLayout",
+                  "spec": {
+                    "maxColumnCount": 3,
+                    "columnWidthMode": "standard",
+                    "rowHeightMode": "standard",
+                    "items": [
+                      {
+                        "kind": "AutoGridLayoutItem",
+                        "spec": {
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-1"
+                          }
+                        }
+                      },
+                      {
+                        "kind": "AutoGridLayoutItem",
+                        "spec": {
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-2"
+                          }
+                        }
+                      },
+                      {
+                        "kind": "AutoGridLayoutItem",
+                        "spec": {
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-5"
+                          }
+                        }
+                      },
+                      {
+                        "kind": "AutoGridLayoutItem",
+                        "spec": {
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-6"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TabsLayoutTab",
+              "spec": {
+                "title": "motion",
+                "layout": {
+                  "kind": "GridLayout",
+                  "spec": {
+                    "items": [
+                      {
+                        "kind": "GridLayoutItem",
+                        "spec": {
+                          "x": 0,
+                          "y": 0,
+                          "width": 12,
+                          "height": 8,
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-3"
+                          }
+                        }
+                      },
+                      {
+                        "kind": "GridLayoutItem",
+                        "spec": {
+                          "x": 12,
+                          "y": 0,
+                          "width": 12,
+                          "height": 16,
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-7"
+                          }
+                        }
+                      },
+                      {
+                        "kind": "GridLayoutItem",
+                        "spec": {
+                          "x": 0,
+                          "y": 8,
+                          "width": 12,
+                          "height": 8,
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-4"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "links": [],
+      "liveNow": false,
+      "preload": false,
+      "tags": [],
+      "timeSettings": {
+        "timezone": "browser",
+        "from": "now-5m",
+        "to": "now",
+        "autoRefresh": "",
+        "autoRefreshIntervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "hideTimepicker": false,
+        "fiscalYearStartMonth": 0
+      },
+      "title": "Session Recap",
+      "variables": [
+        {
+          "kind": "QueryVariable",
+          "spec": {
+            "name": "session_id",
+            "current": {
+              "text": "",
+              "value": ""
+            },
+            "label": "Session ID",
+            "hide": "dontHide",
+            "refresh": "onDashboardLoad",
+            "skipUrlSync": false,
+            "description": "ID of the session, e.g. free practise, race, time-trial",
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana-postgresql-datasource",
+              "version": "v0",
+              "spec": {
+                "dataset": "postgres",
+                "editorMode": "builder",
+                "format": "table",
+                "meta": {
+                  "valueField": "session_id"
+                },
+                "query": "SELECT session_id FROM vehicle_data LIMIT 50 ",
+                "rawSql": "SELECT session_id FROM vehicle_data LIMIT 50 ",
+                "refId": "SQLVariableQueryEditor-VariableQuery",
+                "sql": {
+                  "columns": [
+                    {
+                      "parameters": [
+                        {
+                          "name": "session_id",
+                          "type": "functionParameter"
+                        }
+                      ],
+                      "type": "function"
+                    }
+                  ],
+                  "groupBy": [
+                    {
+                      "property": {
+                        "type": "string"
+                      },
+                      "type": "groupBy"
+                    }
+                  ],
+                  "limit": 50
+                },
+                "table": "vehicle_data"
+              }
+            },
+            "regex": "",
+            "regexApplyTo": "value",
+            "sort": "disabled",
+            "definition": "SELECT session_id FROM vehicle_data LIMIT 50 ",
+            "options": [],
+            "multi": false,
+            "includeAll": false,
+            "allowCustomValue": true
+          }
+        },
+        {
+          "kind": "QueryVariable",
+          "spec": {
+            "name": "driver_ID",
+            "current": {
+              "text": "",
+              "value": ""
+            },
+            "label": "Driver ID",
+            "hide": "dontHide",
+            "refresh": "onDashboardLoad",
+            "skipUrlSync": false,
+            "description": "ID of the driver whose telemetry will be shown.",
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana-postgresql-datasource",
+              "version": "v0",
+              "spec": {
+                "dataset": "postgres",
+                "editorMode": "code",
+                "format": "table",
+                "meta": {},
+                "query": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+                "rawSql": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+                "refId": "SQLVariableQueryEditor-VariableQuery",
+                "sql": {
+                  "columns": [
+                    {
+                      "parameters": [
+                        {
+                          "name": "user_id",
+                          "type": "functionParameter"
+                        }
+                      ],
+                      "type": "function"
+                    }
+                  ],
+                  "groupBy": [],
+                  "limit": 50,
+                  "whereJsonTree": {
+                    "children1": [],
+                    "id": "bb989a99-0123-4456-b89a-b19e2dbc9a51",
+                    "type": "group"
+                  }
+                },
+                "table": "vehicle_data"
+              }
+            },
+            "regex": "",
+            "regexApplyTo": "value",
+            "sort": "disabled",
+            "definition": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+            "options": [],
+            "multi": false,
+            "includeAll": false,
+            "allowCustomValue": true
+          }
+        }
+      ],
+      "preferences": {
+        "layout": {
+          "kind": "GridLayout",
+          "spec": {
+            "items": []
+          }
+        }
+      }
+    }
+  },
+  "overwrite": true
+}

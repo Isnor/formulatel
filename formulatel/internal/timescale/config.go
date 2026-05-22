@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Config holds configuration for the TimescaleDB persistence service.
@@ -18,12 +18,12 @@ type Config struct {
 	FlushInterval time.Duration `split_words:"true" default:"10s"`
 }
 
-// NewConnection creates a new pgx connection pool.
-func NewConnection(ctx context.Context, dsn string) (*pgx.Conn, error) {
+// NewConnectionPool creates a new pgx connection pool.
+func NewConnectionPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	conn, err := pgx.Connect(ctx, dsn)
+	conn, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}

@@ -21,9 +21,11 @@ type StartPublisherConfig struct {
 // StartMQTTv3Publisher reads data from `data` and publishes it to an MQTT topic
 func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 	// these options are required to make sure our 0-value fields aren't dropped when marshaling to JSON
+	// EmitDefaultValues: true ensures we get zero values for all fields (important for live dashboard)
+	// EmitUnpopulated: false avoids null bytes (0x00) which cause UTF8 encoding errors in PostgreSQL
 	marshalOpts := protojson.MarshalOptions{
 		EmitDefaultValues: true,
-		EmitUnpopulated:   true,
+		EmitUnpopulated:   false,
 	}
 	for {
 		select {
