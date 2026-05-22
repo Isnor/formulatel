@@ -1,21 +1,23 @@
 {
   "dashboard": {
-    "kind": "Dashboard",
     "apiVersion": "dashboard.grafana.app/v2",
+    "kind": "Dashboard",
     "metadata": {
       "name": "g88p27",
       "namespace": "default",
-      "uid": "c00f7f24-2272-4b1f-97ee-add002b4216b",
-      "resourceVersion": "1779388838727991",
-      "generation": 1,
-      "creationTimestamp": "2026-05-21T18:40:38Z",
+      "uid": "547febe7-d326-4559-883b-dccf672e41ff",
+      "resourceVersion": "1779410140642985",
+      "generation": 2,
+      "creationTimestamp": "2026-05-22T00:31:58Z",
       "labels": {
-        "grafana.app/deprecatedInternalID": "3890604201025536"
+        "grafana.app/deprecatedInternalID": "3979018795216896"
       },
       "annotations": {
         "grafana.app/createdBy": "anonymous:0",
         "grafana.app/folder": "",
-        "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)"
+        "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
+        "grafana.app/updatedBy": "anonymous:0",
+        "grafana.app/updatedTimestamp": "2026-05-22T00:35:40Z"
       }
     },
     "spec": {
@@ -35,13 +37,12 @@
             "enable": true,
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations \u0026 Alerts",
+            "name": "Annotations & Alerts",
             "builtIn": true
           }
         }
       ],
       "cursorSync": "Off",
-      "description": "",
       "editable": true,
       "elements": {
         "panel-10": {
@@ -1555,7 +1556,7 @@
       "tags": [],
       "timeSettings": {
         "timezone": "browser",
-        "from": "now-6h",
+        "from": "now-10s",
         "to": "now",
         "autoRefresh": "",
         "autoRefreshIntervals": [
@@ -1610,8 +1611,7 @@
           }
         }
       ]
-    },
-    "status": {}
+    }
   },
   "overwrite": true
 }
