@@ -1,0 +1,20 @@
+# these values are passed to the opentelemetry-ebpf-instrumentation chart to setup otel auto instrumentation
+config:
+  create: true
+  data:
+    routes:
+      unmatched: heuristic
+    log_level: debug
+    network:
+      enable: true
+k8sCache:
+  replicas: 1
+env:
+  OTEL_EBPF_TRACE_PRINTER: "text"
+  # OTEL_EBPF_METRICS_FEATURES: "network,application,application_span_otel,application_service_graph,stats"
+
+ebpf:
+  log_enricher:
+    services:
+      - service:
+          - open_ports: '8380'

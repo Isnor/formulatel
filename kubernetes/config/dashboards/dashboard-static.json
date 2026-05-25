@@ -5,19 +5,19 @@
     "metadata": {
       "name": "gx2vh4",
       "namespace": "default",
-      "uid": "a94e49d5-a6b6-4753-a2f8-ef8337437648",
-      "resourceVersion": "1779409830519019",
-      "generation": 15,
-      "creationTimestamp": "2026-05-21T19:48:53Z",
+      "uid": "ce58fb7b-87af-4dd7-b163-97511fd186eb",
+      "resourceVersion": "1779496398080009",
+      "generation": 2,
+      "creationTimestamp": "2026-05-23T00:02:37Z",
       "labels": {
-        "grafana.app/deprecatedInternalID": "3907778335281152"
+        "grafana.app/deprecatedInternalID": "4334022708289536"
       },
       "annotations": {
         "grafana.app/createdBy": "anonymous:0",
         "grafana.app/folder": "",
         "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
         "grafana.app/updatedBy": "anonymous:0",
-        "grafana.app/updatedTimestamp": "2026-05-22T00:30:30Z"
+        "grafana.app/updatedTimestamp": "2026-05-23T00:33:18Z"
       }
     },
     "spec": {
@@ -1584,7 +1584,7 @@
                   "valueField": "session_id"
                 },
                 "query": "SELECT session_id FROM vehicle_data LIMIT 50 ",
-                "rawSql": "SELECT session_id FROM vehicle_data LIMIT 50 ",
+                "rawSql": "SELECT session_id FROM vehicle_data GROUP BY session_id LIMIT 50 ",
                 "refId": "SQLVariableQueryEditor-VariableQuery",
                 "sql": {
                   "columns": [
@@ -1601,6 +1601,7 @@
                   "groupBy": [
                     {
                       "property": {
+                        "name": "session_id",
                         "type": "string"
                       },
                       "type": "groupBy"

@@ -12,6 +12,9 @@ import (
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TableBatcher batches messages and flushes to TimescaleDB using pgx.CopyFrom.
@@ -25,6 +28,7 @@ type TableBatcher struct {
 	ticker        *time.Ticker
 	buffer        []map[string]any
 	bufferMu      sync.Mutex
+	tracer        trace.Tracer
 }
 
 // buildRow converts a GameTelemetry to a row map for the specified table.
@@ -49,6 +53,9 @@ func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
 
 	return nil, fmt.Errorf("unknown table name %s", tableName)
 }
+
+// TODO: I'm not overly fond of these functions; the reason it's written this way is to try to take advantage
+//	of the postgres COPY protocol. Take a look at the writeBatch function for more on that implementation.
 
 func buildMotionDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 	if motionData := msg.GetMotionData(); motionData != nil {
@@ -122,6 +129,7 @@ func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, 
 		batchSize:     batchSize,
 		flushInterval: flushInterval,
 		ticker:        time.NewTicker(flushInterval),
+		tracer:        otel.Tracer(fmt.Sprintf("formulatel/persist/%s", tableName)),
 	}
 }
 
@@ -175,7 +183,13 @@ func (b *TableBatcher) flush() {
 	b.buffer = nil
 	b.bufferMu.Unlock()
 
+	// Start a manual span
+	_, span := b.tracer.Start(b.ctx, "datastore-write")
+	defer span.End()
+
 	if err := b.writeBatch(rows); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed writing batch to datastore")
 		slog.ErrorContext(b.ctx, "failed to write batch to timescaledb", "table", b.tableName, "error", err)
 	} else {
 		slog.DebugContext(b.ctx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
@@ -298,13 +312,19 @@ type BatchRouter struct {
 	motionBatcher  *TableBatcher
 }
 
-// TODO: I hate everything about this
+// TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
+//
+//	or just pass the Config object in
+//
 // NewBatchRouter creates a new BatchRouter that routes to vehicle and motion batchers.
 func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) (*BatchRouter, error) {
+	// TODO: why 100? should be configurable at least.
 	vehicleChan := make(chan *pb.GameTelemetry, 100)
 	motionChan := make(chan *pb.GameTelemetry, 100)
 
 	// Route messages to appropriate channels
+	// TODO: the relationship between this routine and the Add function are confusing. Why do we need Add if we have this?
+	// 	Why isn't Add simply stuffing everything into `msgChan` and letting this routine do the routing?
 	go func() {
 		for msg := range msgChan {
 			if msg.GetVehicleData() != nil {
