@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -135,29 +136,29 @@ func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, 
 
 // Start begins listening to the message channel and flushes batches.
 func (b *TableBatcher) Start() {
-	go b.flusherWorker(b.ctx)
+	go b.flusherWorker()
 }
 
 // flusherWorker runs the dual-trigger flush worker.
-func (b *TableBatcher) flusherWorker(ctx context.Context) {
+func (b *TableBatcher) flusherWorker() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-b.ctx.Done():
 			b.flush()
 			b.ticker.Stop()
-			slog.InfoContext(ctx, "table batcher stopped", "reason", "context finished")
+			slog.InfoContext(b.ctx, "table batcher stopped", "reason", "context finished")
 			return
 		case msg, ok := <-b.msgChan:
 			if !ok {
 				b.flush()
 				b.ticker.Stop()
-				slog.InfoContext(ctx, "table batcher stopped", "reason", "channel closed")
+				slog.InfoContext(b.ctx, "table batcher stopped", "reason", "channel closed")
 				return
 			}
 			b.bufferMu.Lock()
 			row, err := buildRow(msg, b.tableName)
 			if err != nil {
-				slog.ErrorContext(ctx, "failed building row", "table_name", b.tableName, "reason", err.Error())
+				slog.ErrorContext(b.ctx, "failed building row", "table_name", b.tableName, "reason", err.Error())
 			}
 			if row != nil {
 				b.buffer = append(b.buffer, row)
@@ -183,21 +184,26 @@ func (b *TableBatcher) flush() {
 	b.buffer = nil
 	b.bufferMu.Unlock()
 
-	// Start a manual span
-	_, span := b.tracer.Start(b.ctx, "datastore-write")
-	defer span.End()
+	// TODO: this is a manual span created for testing, probably remove it when we get OBI working properly
+	ctx, span := b.tracer.Start(b.ctx, "datastore.write", trace.WithAttributes(
+		attribute.Float64("batch_size", float64(len(rows))),
+	))
+	defer func() {
+		slog.DebugContext(ctx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
+		span.End()
+	}()
 
-	if err := b.writeBatch(rows); err != nil {
+	if err := b.writeBatch(ctx, rows); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed writing batch to datastore")
-		slog.ErrorContext(b.ctx, "failed to write batch to timescaledb", "table", b.tableName, "error", err)
+		slog.ErrorContext(ctx, "failed to write batch to timescaledb", "table", b.tableName, "error", err)
 	} else {
-		slog.DebugContext(b.ctx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
+		slog.DebugContext(ctx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
 	}
 }
 
 // writeBatch writes rows to the database using pgx.CopyFrom.
-func (b *TableBatcher) writeBatch(rows []map[string]any) error {
+func (b *TableBatcher) writeBatch(ctx context.Context, rows []map[string]any) error {
 	// Build column order from first row keys using fixed column order
 	keys := rowKeys(rows[0], b.tableName)
 
@@ -215,12 +221,12 @@ func (b *TableBatcher) writeBatch(rows []map[string]any) error {
 	sourceRowsType := &copyFromSource{
 		rows: sourceRows,
 	}
-	_, err := b.conn.CopyFrom(b.ctx, pgx.Identifier{b.tableName}, keys, sourceRowsType)
+	_, err := b.conn.CopyFrom(ctx, pgx.Identifier{b.tableName}, keys, sourceRowsType)
 	if err != nil {
 		return err
 	}
 
-	slog.DebugContext(b.ctx, "copy from result", "table", b.tableName, "rows", len(sourceRows))
+	slog.DebugContext(ctx, "copy from result", "table", b.tableName, "rows", len(sourceRows))
 	return nil
 }
 

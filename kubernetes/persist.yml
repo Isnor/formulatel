@@ -19,10 +19,21 @@ spec:
           image: formulatel/persist:latest
           imagePullPolicy: IfNotPresent
           env:
+          # TODO: eventually get rid of this connection string that has a password in it
           - name: TIMESCALE_DSN
             value: 'postgres://postgres:postgres@timescaledb:5432/postgres?sslmode=disable'
           - name: MQTT_BROKER
             value: 'tcp://mosquitto:1883'
+          - name: OTEL_TRACES_EXPORTER
+            value: 'otlp' # switch to console for debugging
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: 'http://otel-collector-opentelemetry-collector:4317'
+          - name: OTEL_EXPORTER_OTLP_INSECURE
+            value: "true"
+          - name: OTEL_EXPORTER_OTLP_PROTOCOL
+            value: "grpc"
+          # - name: OTEL_SERVICE_NAME
+          #   value: 'formulatel-persist'
           resources:
             requests:
               cpu: 250m

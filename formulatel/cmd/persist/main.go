@@ -14,6 +14,12 @@ import (
 	"github.com/isnor/formulatel/internal/mqttutil"
 	"github.com/isnor/formulatel/internal/timescale"
 	"github.com/kelseyhightower/envconfig"
+	"go.opentelemetry.io/otel"
+
+	"go.opentelemetry.io/contrib/exporters/autoexport"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -32,11 +38,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
 	})))
 
 	slog.InfoContext(ctx, "starting persist service", "timescale_dsn", cfg.TimescaleDSN, "mqtt_broker", cfg.MQTTBroker)
+
+	// TODO: we shouldn't need this once we get OBI + auto working, but I've been having trouble and just want to see my traces.p
+	exporter, err := autoexport.NewSpanExporter(ctx)
+	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName("formulatel-persist"))),
+	)
+	otel.SetTracerProvider(tracerProvider)
 
 	// Connect to TimescaleDB
 	connPool, err := timescale.NewConnectionPool(ctx, cfg.TimescaleDSN)
@@ -72,7 +86,10 @@ func main() {
 
 	// Subscribe to wildcard topic: formulatel/+/f123
 	subTopic := cfg.MQTTPrefix + "/+/f123"
+	tracer := otel.Tracer("formulatel/persist")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
+		ctx, span := tracer.Start(ctx, "mqtt.receive")
+		defer span.End()
 		slog.DebugContext(ctx, "received message on topic", "topic", msg.Topic())
 
 		// Reconstruct the protobuf from JSON
