@@ -44,7 +44,7 @@ func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 			if token := req.mqttClient.Publish(req.topic, 1, false, protoBytes); !token.Wait() || token.Error() != nil {
 				slog.ErrorContext(ctx, "failed publishing to mqtt topic", "error", token.Error())
 			}
-			slog.DebugContext(ctx, "published vehicle data to mqtt topic")
+			slog.DebugContext(ctx, "published data to mqtt topic")
 		}
 	}
 }

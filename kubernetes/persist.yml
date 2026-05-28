@@ -32,8 +32,8 @@ spec:
             value: "true"
           - name: OTEL_EXPORTER_OTLP_PROTOCOL
             value: "grpc"
-          # - name: OTEL_SERVICE_NAME
-          #   value: 'formulatel-persist'
+          - name: OTEL_SERVICE_NAME
+            value: 'formulatel-persist'
           resources:
             requests:
               cpu: 250m

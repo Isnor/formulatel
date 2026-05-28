@@ -188,10 +188,7 @@ func (b *TableBatcher) flush() {
 	ctx, span := b.tracer.Start(b.ctx, "datastore.write", trace.WithAttributes(
 		attribute.Float64("batch_size", float64(len(rows))),
 	))
-	defer func() {
-		slog.DebugContext(ctx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
-		span.End()
-	}()
+	defer span.End()
 
 	if err := b.writeBatch(ctx, rows); err != nil {
 		span.RecordError(err)

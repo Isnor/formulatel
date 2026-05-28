@@ -44,7 +44,7 @@ func main() {
 
 	slog.InfoContext(ctx, "starting persist service", "timescale_dsn", cfg.TimescaleDSN, "mqtt_broker", cfg.MQTTBroker)
 
-	// TODO: we shouldn't need this once we get OBI + auto working, but I've been having trouble and just want to see my traces.p
+	// TODO: we shouldn't need this once we get OBI + auto working, but I've been having trouble and just want to see my traces
 	exporter, err := autoexport.NewSpanExporter(ctx)
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
@@ -88,19 +88,24 @@ func main() {
 	subTopic := cfg.MQTTPrefix + "/+/f123"
 	tracer := otel.Tracer("formulatel/persist")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		ctx, span := tracer.Start(ctx, "mqtt.receive")
+		// TODO: `msgCtx` is kind of the "root context for persist", i.e. it's the first span
+		// 	that persist makes. We need to be able to propagate `msgCtx` through the rest of
+		//	the message processing flow and to do that, we will need to refactor the `Add` method.
+		msgCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		msgCtx, span := tracer.Start(msgCtx, "mqtt.receive")
 		defer span.End()
-		slog.DebugContext(ctx, "received message on topic", "topic", msg.Topic())
+		slog.DebugContext(msgCtx, "received message on topic", "topic", msg.Topic())
 
 		// Reconstruct the protobuf from JSON
 		// TODO: see notes on transport in the readme
 		var telemetry pb.GameTelemetry
 		if err := protojson.Unmarshal(msg.Payload(), &telemetry); err != nil {
-			slog.ErrorContext(ctx, "failed to unmarshal mqtt message", "error", err)
+			slog.ErrorContext(msgCtx, "failed to unmarshal mqtt message", "error", err)
 			return
 		}
 
-		slog.DebugContext(ctx, "received telemetry", "session_id", telemetry.SessionId, "title", telemetry.Title)
+		slog.DebugContext(msgCtx, "received telemetry", "session_id", telemetry.SessionId, "title", telemetry.Title)
 		router.Add(&telemetry)
 	})
 

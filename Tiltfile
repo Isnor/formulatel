@@ -18,7 +18,7 @@ k8s_resource("timescaledb", port_forwards="5432", labels=["infra"])
 # database migrations
 docker_build("formulatel/migrate", context=".", dockerfile="migrations.Dockerfile")
 k8s_yaml("kubernetes/migrate-job.yml")
-k8s_resource("db-migrations", labels=["infra"])
+k8s_resource("db-migrations", resource_deps=["timescaledb"], labels=["infra"])
 
 # build, run, and reload ingest (outside of the k8s cluster)
 local_resource(
