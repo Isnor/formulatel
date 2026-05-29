@@ -7,7 +7,7 @@ k8s_yaml("kubernetes/namespace.yml")
 
 helm_resource("grafana", chart="oci://ghcr.io/grafana-community/helm-charts/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000", labels=["infra"])
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
-# helm_resource("otel-obi", chart="open-telemetry/opentelemetry-ebpf-instrumentation", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-obi-values.yml"], labels=["infra"])
+helm_resource("otel-obi", chart="open-telemetry/opentelemetry-ebpf-instrumentation", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-obi-values.yml"], labels=["infra"])
 helm_resource("otel-collector", chart="open-telemetry/opentelemetry-collector", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-collector-values.yml"], labels=["infra"])
 helm_resource("jaeger", chart="jaegertracing/jaeger", namespace="formulatel", labels=["infra"])
 

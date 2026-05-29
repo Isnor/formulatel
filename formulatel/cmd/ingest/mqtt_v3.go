@@ -9,6 +9,7 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -27,6 +28,10 @@ func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 		EmitDefaultValues: true,
 		EmitUnpopulated:   false,
 	}
+
+	// Get tracer for this service
+	tracer := otel.Tracer("formulatel/ingest")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -40,10 +45,17 @@ func StartMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 				slog.ErrorContext(ctx, "mqtt ingest failed serializing a message")
 				continue
 			}
+
+			// Create span for the publish operation
+			ctx, span := tracer.Start(ctx, "mqtt.publish")
+
 			slog.DebugContext(ctx, "mqtt ingest read a packet")
+			// Publish message
 			if token := req.mqttClient.Publish(req.topic, 1, false, protoBytes); !token.Wait() || token.Error() != nil {
+				span.RecordError(token.Error())
 				slog.ErrorContext(ctx, "failed publishing to mqtt topic", "error", token.Error())
 			}
+			span.End()
 			slog.DebugContext(ctx, "published data to mqtt topic")
 		}
 	}

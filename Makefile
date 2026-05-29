@@ -7,6 +7,7 @@ proto:
 	@ which protoc protoc-gen-go || (echo "protoc and protoc-gen-go are required" && false)
 	protoc -I=./protobuf --go_out=./formulatel ./protobuf/*.proto
 
+# TODO: we have a cluster.yml now, need to reconcile this with that file
 k8s-cluster:
 	@ which ctlptl || (echo "cattle patrol needed: https://github.com/tilt-dev/ctlptl" && false)
 	ctlptl create cluster kind --name=kind-formulatel --registry=ctl-formulatel

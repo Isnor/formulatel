@@ -47,6 +47,7 @@ func main() {
 	// TODO: we shouldn't need this once we get OBI + auto working, but I've been having trouble and just want to see my traces
 	exporter, err := autoexport.NewSpanExporter(ctx)
 	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(.1))),
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName("formulatel-persist"))),
 	)
@@ -74,7 +75,7 @@ func main() {
 	mqttOptions := mqtt.NewClientOptions().AddBroker(cfg.MQTTBroker)
 	// TODO: should this be configurable?
 	mqttOptions.ClientID = "formulatel_persist"
-	mqttOptions.SetOrderMatters(true)
+	mqttOptions.SetOrderMatters(false)
 	mqttOptions.ConnectRetry = true
 	mqttOptions.AutoReconnect = true
 
@@ -86,14 +87,9 @@ func main() {
 
 	// Subscribe to wildcard topic: formulatel/+/f123
 	subTopic := cfg.MQTTPrefix + "/+/f123"
-	tracer := otel.Tracer("formulatel/persist")
+	tracer := otel.Tracer("formulatel/persist/mqtt")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		// TODO: `msgCtx` is kind of the "root context for persist", i.e. it's the first span
-		// 	that persist makes. We need to be able to propagate `msgCtx` through the rest of
-		//	the message processing flow and to do that, we will need to refactor the `Add` method.
-		msgCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		msgCtx, span := tracer.Start(msgCtx, "mqtt.receive")
+		msgCtx, span := tracer.Start(ctx, "mqtt.receive")
 		defer span.End()
 		slog.DebugContext(msgCtx, "received message on topic", "topic", msg.Topic())
 
@@ -106,7 +102,8 @@ func main() {
 		}
 
 		slog.DebugContext(msgCtx, "received telemetry", "session_id", telemetry.SessionId, "title", telemetry.Title)
-		router.Add(&telemetry)
+		// Pass msgCtx and topic for trace propagation
+		router.Add(msgCtx, &telemetry)
 	})
 
 	// Wait for disconnect or errors
