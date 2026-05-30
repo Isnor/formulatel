@@ -165,7 +165,7 @@ func TestSimpleDBWrites(t *testing.T) {
 
 				assert.NoError(t, migrator.Up())
 				// Create a batcher for vehicle_data
-				msgChan := make(chan *pb.GameTelemetry, 10)
+				msgChan := make(chan GameTelemetryWithContext, 10)
 				batcher := NewTableBatcher(t.Context(), p, "vehicle_data", msgChan, 5, 50*time.Millisecond)
 				batcher.Start()
 
@@ -195,7 +195,7 @@ func TestSimpleDBWrites(t *testing.T) {
 				}
 
 				// Send message directly to the batcher channel
-				batcher.msgChan <- msg
+				batcher.msgChan <- GameTelemetryWithContext{ctx: t.Context(), msg: msg}
 
 				// Wait for flush
 				time.Sleep(100 * time.Millisecond)
@@ -222,7 +222,7 @@ func TestSimpleDBWrites(t *testing.T) {
 
 				assert.NoError(t, migrator.Up())
 				// Create a batcher for motion_data
-				msgChan := make(chan *pb.GameTelemetry, 10)
+				msgChan := make(chan GameTelemetryWithContext, 10)
 				batcher := NewTableBatcher(t.Context(), p, "motion_data", msgChan, 5, 50*time.Millisecond)
 				batcher.Start()
 
@@ -251,7 +251,7 @@ func TestSimpleDBWrites(t *testing.T) {
 				}
 
 				// Send message directly to the batcher channel
-				batcher.msgChan <- msg
+				batcher.msgChan <- GameTelemetryWithContext{ctx: t.Context(), msg: msg}
 
 				// Wait for flush
 				time.Sleep(100 * time.Millisecond)
@@ -288,8 +288,8 @@ func TestBatchRouter(t *testing.T) {
 				vehicleTelemetryWritten := pseudoRandomVehicleTelemetry()
 
 				// since the batch size is only two, the router should write these immediately
-				router.Add(motionTelemetryWritten)
-				router.Add(vehicleTelemetryWritten)
+				router.Add(t.Context(), motionTelemetryWritten)
+				router.Add(t.Context(), vehicleTelemetryWritten)
 
 				time.Sleep(10 * time.Millisecond)
 

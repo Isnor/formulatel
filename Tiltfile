@@ -1,17 +1,15 @@
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 # this repo gives us an easy way to start an MQTT broker, mosquitto
 helm_repo("k8s-at-home", resource_name="k8s-at-home_helm_repo", url="https://k8s-at-home.com/charts/", labels=["helm"])
-
-# TODO: probably remove this and use `tilt up --namespace=`. namespace will need to be created before tilt is run
+helm_repo("open-telemetry", resource_name="otel_helm_repo", url="https://open-telemetry.github.io/opentelemetry-helm-charts", labels=["helm"])
+helm_repo("jaegertracing", resource_name="jager_helm_repo", url="https://jaegertracing.github.io/helm-charts", labels=["helm"])
 k8s_yaml("kubernetes/namespace.yml")
 
-# Load Grafana with dashboards via --set-file to pass JSON content directly to Helm
 helm_resource("grafana", chart="oci://ghcr.io/grafana-community/helm-charts/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000", labels=["infra"])
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
-
-# configmap storing the dashboard.json. it doesn't work, of course
-# k8s_yaml("kubernetes/configmap-dashboard-live.yaml")
-# k8s_resource(objects=["dashboard-live"], new_name="dashboard-live-configmap", labels=["infra"])
+helm_resource("otel-obi", chart="open-telemetry/opentelemetry-ebpf-instrumentation", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-obi-values.yml"], labels=["infra"])
+helm_resource("otel-collector", chart="open-telemetry/opentelemetry-collector", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-collector-values.yml"], labels=["infra"])
+helm_resource("jaeger", chart="jaegertracing/jaeger", namespace="formulatel", labels=["infra"])
 
 # set up a postgres instance with timescaleDB
 k8s_yaml("kubernetes/datastore.yml")
@@ -20,7 +18,7 @@ k8s_resource("timescaledb", port_forwards="5432", labels=["infra"])
 # database migrations
 docker_build("formulatel/migrate", context=".", dockerfile="migrations.Dockerfile")
 k8s_yaml("kubernetes/migrate-job.yml")
-k8s_resource("db-migrations", labels=["infra"])
+k8s_resource("db-migrations", resource_deps=["timescaledb"], labels=["infra"])
 
 # build, run, and reload ingest (outside of the k8s cluster)
 local_resource(

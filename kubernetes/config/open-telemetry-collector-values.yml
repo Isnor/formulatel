@@ -1,0 +1,33 @@
+# these values are passed to the opentelemetry-collector chart
+mode: deployment
+image:
+  repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s
+
+# presets:
+#   logsCollection:
+#     enabled: true
+# config:
+#   receivers:
+#     filelog:
+#       include:
+#         - /var/log/pods/formulatel_*/*/*.log
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+  exporters:
+    otlp:
+      endpoint: http://jaeger:4317
+      tls:
+        insecure: true
+  service:
+    pipelines:
+      traces:
+        receivers:
+          - otlp
+        exporters:
+          - debug
+          - otlp

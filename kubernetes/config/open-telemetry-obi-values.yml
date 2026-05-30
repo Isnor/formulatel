@@ -1,0 +1,45 @@
+# these values are passed to the opentelemetry-ebpf-instrumentation chart to setup otel auto instrumentation
+config:
+  create: true
+  data:
+    cluster_name: 'kind-formulatel'
+    routes:
+      unmatched: heuristic
+    log_level: info
+    # network:
+    #   enable: true
+    otel_traces_export:
+      endpoint: http://otel-collector-opentelemetry-collector:4317
+      protocol: grpc
+      instrumentations: ["grpc", "sql", "mqtt"]
+      tls:
+        insecure: true
+    # protocols:
+    #   - sql
+    #   - grpc
+    #   - mqtt
+k8sCache:
+  replicas: 1
+env:
+  OTEL_EBPF_TRACE_PRINTER: "text"
+  OTEL_EBPF_KUBE_CLUSTER_NAME: "kind-formulatel"
+  OTEL_GO_AUTO_TARGET_EXE: "/persist"
+  OTEL_INSTRUMENTATION_COMMON_DEFAULT_ENABLED: "true"
+  OTEL_INSTRUMENTATION_POSTGRES_ENABLED: "true"
+  OTEL_INSTRUMENTATION_MQTT_ENABLED: "true"
+  OTEL_GO_AUTO_MAX_POSTGRES_MESSAGE_SIZE: "256000"
+  BPF_RINGBUF_SIZE: "1048576"
+  # OTEL_EBPF_METRICS_FEATURES: "network,application,application_span_otel,application_service_graph,stats"
+
+# this extra volume is to let our OBI daemonset mount the host bpf maps because of how `kind` uses containers.
+# I don't think we actually need this, but OBI was logging a warning on startup without it.
+volumes:
+  - name: bpffs
+    hostPath:
+      path: /sys/fs/bpf
+      type: Directory
+
+volumeMounts:
+  - name: bpffs
+    mountPath: /sys/fs/bpf
+    mountPropagation: Bidirectional

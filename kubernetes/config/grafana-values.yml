@@ -32,4 +32,7 @@ datasources:
           connMaxLifetime: 14400
           postgresVersion: 1800
           timescaledb: true
+      - name: formulatel_jaeger
+        type: jaeger
+        url: http://jaeger:16686
 

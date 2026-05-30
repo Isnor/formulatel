@@ -20,6 +20,7 @@ type Config struct {
 
 // NewConnectionPool creates a new pgx connection pool.
 func NewConnectionPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+	// TODO: connection timeout should be configurable; honestly this whole function belongs in `main`
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 

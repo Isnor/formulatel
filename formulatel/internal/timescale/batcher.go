@@ -12,19 +12,31 @@ import (
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// GameTelemetryWithContext wraps a GameTelemetry message with its context.
+// This allows trace context to be propagated from MQTT receive through to database writes.
+type GameTelemetryWithContext struct {
+	ctx context.Context
+	msg *pb.GameTelemetry
+}
 
 // TableBatcher batches messages and flushes to TimescaleDB using pgx.CopyFrom.
 type TableBatcher struct {
 	ctx           context.Context
 	tableName     string
 	conn          *pgxpool.Pool
-	msgChan       chan *pb.GameTelemetry
+	msgChan       chan GameTelemetryWithContext
 	batchSize     int
 	flushInterval time.Duration
 	ticker        *time.Ticker
 	buffer        []map[string]any
 	bufferMu      sync.Mutex
+	tracer        trace.Tracer
 }
 
 // buildRow converts a GameTelemetry to a row map for the specified table.
@@ -49,6 +61,9 @@ func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
 
 	return nil, fmt.Errorf("unknown table name %s", tableName)
 }
+
+// TODO: I'm not overly fond of these functions; the reason it's written this way is to try to take advantage
+//	of the postgres COPY protocol. Take a look at the writeBatch function for more on that implementation.
 
 func buildMotionDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 	if motionData := msg.GetMotionData(); motionData != nil {
@@ -111,7 +126,7 @@ func buildVehicleDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 }
 
 // NewTableBatcher creates a new TableBatcher.
-func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) *TableBatcher {
+func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, msgChan chan GameTelemetryWithContext, batchSize int, flushInterval time.Duration) *TableBatcher {
 	return &TableBatcher{
 		ctx:           ctx,
 		tableName:     tableName,
@@ -122,68 +137,96 @@ func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, 
 		batchSize:     batchSize,
 		flushInterval: flushInterval,
 		ticker:        time.NewTicker(flushInterval),
+		tracer:        otel.Tracer(fmt.Sprintf("formulatel/persist/%s", tableName)),
 	}
 }
 
 // Start begins listening to the message channel and flushes batches.
 func (b *TableBatcher) Start() {
-	go b.flusherWorker(b.ctx)
+	go b.flusherWorker()
 }
 
 // flusherWorker runs the dual-trigger flush worker.
-func (b *TableBatcher) flusherWorker(ctx context.Context) {
+func (b *TableBatcher) flusherWorker() {
+	// TODO: test for edge cases on this, it might not be a good idea. It's written this way to try to
+	// have a new context for each batch written that somehow links to the receive context of a message.
+	traceCtx, span := b.tracer.Start(b.ctx, "table.batch")
 	for {
 		select {
-		case <-ctx.Done():
-			b.flush()
+		case <-b.ctx.Done():
+			b.flush(b.ctx)
 			b.ticker.Stop()
-			slog.InfoContext(ctx, "table batcher stopped", "reason", "context finished")
+			slog.InfoContext(b.ctx, "table batcher stopped", "reason", "context finished")
 			return
 		case msg, ok := <-b.msgChan:
 			if !ok {
-				b.flush()
+				b.flush(b.ctx)
 				b.ticker.Stop()
-				slog.InfoContext(ctx, "table batcher stopped", "reason", "channel closed")
+				slog.InfoContext(b.ctx, "table batcher stopped", "reason", "channel closed")
 				return
 			}
+			// Use the per-message context for logging (for trace correlation)
 			b.bufferMu.Lock()
-			row, err := buildRow(msg, b.tableName)
+			// Extract telemetry data from wrapped message
+			row, err := buildRow(msg.msg, b.tableName)
 			if err != nil {
-				slog.ErrorContext(ctx, "failed building row", "table_name", b.tableName, "reason", err.Error())
+				slog.ErrorContext(msg.ctx, "failed building row", "table_name", b.tableName, "reason", err.Error())
 			}
+			span.AddLink(trace.LinkFromContext(msg.ctx))
 			if row != nil {
 				b.buffer = append(b.buffer, row)
 			}
 			b.bufferMu.Unlock()
 			if len(b.buffer) >= b.batchSize {
-				b.flush()
+				b.flush(traceCtx)
+				span.AddEvent("flushed batch")
+				span.End()
+				traceCtx, span = b.tracer.Start(b.ctx, "table.batch")
 			}
 		case <-b.ticker.C:
-			b.flush()
+			b.flush(traceCtx)
+			span.AddEvent("flushed batch")
+			span.End()
+			traceCtx, span = b.tracer.Start(b.ctx, "table.batch")
 		}
 	}
 }
 
 // flush writes the buffered rows to TimescaleDB.
-func (b *TableBatcher) flush() {
+func (b *TableBatcher) flush(ctx context.Context) {
 	b.bufferMu.Lock()
 	if len(b.buffer) == 0 {
 		b.bufferMu.Unlock()
 		return
 	}
+
+	// in the buffer (we only buffer row maps). The trace context is already propagated
+	// to the flusherWorker via the message context before building rows.
+	// TODO: consider storing context alongside rows for better trace correlation.
 	rows := b.buffer
 	b.buffer = nil
 	b.bufferMu.Unlock()
 
-	if err := b.writeBatch(rows); err != nil {
-		slog.ErrorContext(b.ctx, "failed to write batch to timescaledb", "table", b.tableName, "error", err)
+	// TODO: this is a manual span created for testing, probably remove it when we get OBI working properly
+	// Use b.ctx for now - per-message context was lost when building row maps
+	// In a future improvement, we could store the first message's context in the buffer
+	writeCtx, span := b.tracer.Start(ctx, "datastore.write", trace.WithAttributes(
+		attribute.Float64("batch_size", float64(len(rows))),
+		attribute.String("table", b.tableName),
+	))
+	defer span.End()
+
+	if err := b.writeBatch(writeCtx, rows); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed writing batch to datastore")
+		slog.ErrorContext(writeCtx, "failed to write batch to timescaledb", "table", b.tableName, "error", err)
 	} else {
-		slog.DebugContext(b.ctx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
+		slog.DebugContext(writeCtx, "flushed batch to timescaledb", "table", b.tableName, "rows", len(rows))
 	}
 }
 
 // writeBatch writes rows to the database using pgx.CopyFrom.
-func (b *TableBatcher) writeBatch(rows []map[string]any) error {
+func (b *TableBatcher) writeBatch(ctx context.Context, rows []map[string]any) error {
 	// Build column order from first row keys using fixed column order
 	keys := rowKeys(rows[0], b.tableName)
 
@@ -201,12 +244,12 @@ func (b *TableBatcher) writeBatch(rows []map[string]any) error {
 	sourceRowsType := &copyFromSource{
 		rows: sourceRows,
 	}
-	_, err := b.conn.CopyFrom(b.ctx, pgx.Identifier{b.tableName}, keys, sourceRowsType)
+	_, err := b.conn.CopyFrom(ctx, pgx.Identifier{b.tableName}, keys, sourceRowsType)
 	if err != nil {
 		return err
 	}
 
-	slog.DebugContext(b.ctx, "copy from result", "table", b.tableName, "rows", len(sourceRows))
+	slog.DebugContext(ctx, "copy from result", "table", b.tableName, "rows", len(sourceRows))
 	return nil
 }
 
@@ -298,22 +341,19 @@ type BatchRouter struct {
 	motionBatcher  *TableBatcher
 }
 
-// TODO: I hate everything about this
+// TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
+//
+//	or just pass the Config object in
+//
 // NewBatchRouter creates a new BatchRouter that routes to vehicle and motion batchers.
 func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) (*BatchRouter, error) {
-	vehicleChan := make(chan *pb.GameTelemetry, 100)
-	motionChan := make(chan *pb.GameTelemetry, 100)
+	// TODO: why 100? should be configurable at least.
+	vehicleChan := make(chan GameTelemetryWithContext, 100)
+	motionChan := make(chan GameTelemetryWithContext, 100)
 
-	// Route messages to appropriate channels
+	// TODO: probably don't need this
 	go func() {
-		for msg := range msgChan {
-			if msg.GetVehicleData() != nil {
-				vehicleChan <- msg
-			}
-			if msg.GetMotionData() != nil {
-				motionChan <- msg
-			}
-		}
+		<-ctx.Done()
 		close(vehicleChan)
 		close(motionChan)
 	}()
@@ -334,22 +374,22 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 }
 
 // Add routes a message to both batchers (it will be processed by each appropriately).
-func (b *BatchRouter) Add(msg *pb.GameTelemetry) {
-	// Vehicle data takes priority
-	if msg.GetVehicleData() != nil {
-		select {
-		case b.vehicleBatcher.msgChan <- msg:
-		default:
-			// Channel full, skip to avoid blocking
-		}
+func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
+	// Wrap the message with context for trace propagation
+	wrapped := GameTelemetryWithContext{
+		ctx: ctx,
+		msg: msg,
 	}
 
-	// Motion data
-	if msg.GetMotionData() != nil {
-		select {
-		case b.motionBatcher.msgChan <- msg:
-		default:
-			// Channel full, skip to avoid blocking
+	go func() {
+		// Vehicle data
+		if msg.GetVehicleData() != nil {
+			b.vehicleBatcher.msgChan <- wrapped
 		}
-	}
+
+		// Motion data
+		if msg.GetMotionData() != nil {
+			b.motionBatcher.msgChan <- wrapped
+		}
+	}()
 }
