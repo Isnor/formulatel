@@ -1,0 +1,106 @@
+name: Run Formulatel Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - beta
+  push:
+    branches:
+      - main
+    paths:
+      - 'formulatel/**'
+      - 'migrations/**'
+
+env:
+  TESTCONTAINERS_RYUK_DISABLED: true
+  DOCKER_BUILDKIT: 1
+  TESTCONTAINERS_RYUK_DOCKER_HOST_OVERRIDE: unix:///var/run/docker.sock
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx with DIND
+        uses: docker/setup-buildx-action@v4
+        with:
+          install: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Start Docker daemon for dind
+        run: |
+          # Copy host Docker socket to container filesystem
+          mkdir -p /var/run
+          cp /var/run/docker.sock /var/run/docker.sock
+          # Start dockerd in background
+          dockerd &
+          DOCKER_PID=$!
+          # Wait for Docker daemon to be ready
+          for i in {1..30}; do
+            if docker info >/dev/null 2>&1; then
+              echo "Docker daemon is ready"
+              break
+            fi
+            sleep 1
+          done
+          echo $DOCKER_PID > /tmp/docker.pid
+          # Ensure socket is accessible
+          chmod 666 /var/run/docker.sock
+
+      - name: Cache Go build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            /tmp/go
+            ~/go
+          key: ${{ runner.os }}-go-build-${{ hashFiles('formulatel/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+
+      - name: Install test dependencies
+        run: |
+          cd formulatel
+          go clean -testcache
+          go get github.com/Isnor/testtable@latest
+          go mod download
+
+      - name: Run tests with Docker containers
+        run: |
+          cd formulatel
+          # Run tests - the timescale tests will create and use Docker containers
+          go test -v -race -count=1 \
+            -timeout=5m \
+            -parallel=4 \
+            ./internal/timescale/...
+
+      - name: Archive coverage
+        run: |
+          cd formulatel
+          go test -coverprofile=coverage.out -covermode=atomic ./internal/timescale/...
+        continue-on-error: true
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: formulatel/coverage.out
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            formulatel/**/*_test.log
+            formulatel/**/*_test.go
