@@ -1,5 +1,8 @@
 captured_packets/
 .vscode/
+.claude/*
+# maybe I should include the memory files as well, not sure
+!.claude/agents/
 out/
 
 *.out

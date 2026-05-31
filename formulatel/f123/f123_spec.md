@@ -239,10 +239,8 @@ struct LapData
     uint8    m_sector2TimeMinutes;        // Sector 2 whole minute part
     uint16   m_deltaToCarInFrontInMS;     // Time delta to car in front in milliseconds
     uint16   m_deltaToRaceLeaderInMS;     // Time delta to race leader in milliseconds
-    float    m_lapDistance;		 // Distance vehicle is around current lap in metres – could
-					 // be negative if line hasn’t been crossed yet
-    float    m_totalDistance;		 // Total distance travelled in session in metres – could
-					 // be negative if line hasn’t been crossed yet
+    float    m_lapDistance;		 // Distance vehicle is around current lap in metres – could be negative if line hasn’t been crossed yet
+    float    m_totalDistance;		 // Total distance travelled in session in metres – could be negative if line hasn’t been crossed yet
     float    m_safetyCarDelta;            // Delta in seconds for safety car
     uint8    m_carPosition;   	         // Car race position
     uint8    m_currentLapNum;		 // Current lap number
@@ -270,9 +268,7 @@ struct LapData
 struct PacketLapData
 {
     PacketHeader    m_header;              // Header
-
     LapData         m_lapData[22];         // Lap data for all cars on track
-
     uint8	m_timeTrialPBCarIdx; 	// Index of Personal Best car in time trial (255 if invalid)
     uint8	m_timeTrialRivalCarIdx; 	// Index of Rival car in time trial (255 if invalid)
 };
