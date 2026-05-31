@@ -62,6 +62,14 @@ jobs:
           go test -coverprofile=coverage.out -covermode=atomic ./...
         continue-on-error: true
 
+      - name: Upload coverage to Coveralls
+        if: always()
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: formulatel/coverage.out
+          flag-name: coverage-${{ github.sha }}
+
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         if: always()
