@@ -287,11 +287,13 @@ func TestBatchRouter(t *testing.T) {
 				motionTelemetryWritten := pseudoRandomMotionTelemetry()
 				vehicleTelemetryWritten := pseudoRandomVehicleTelemetry()
 
-				// since the batch size is only two, the router should write these immediately
+				// since the batch size is 1, the router should write these immediately
 				router.Add(t.Context(), motionTelemetryWritten)
 				router.Add(t.Context(), vehicleTelemetryWritten)
 
-				time.Sleep(10 * time.Millisecond)
+				// Wait for the batcher to complete the flush. The batcher uses a ticker-based flush
+				// with a 10ms interval, so we wait for at least one flush cycle plus some buffer.
+				time.Sleep(50 * time.Millisecond)
 
 				motionTelemetryRead := &pb.MotionData{}
 				vehicleTelemetryRead := &pb.VehicleData{}
