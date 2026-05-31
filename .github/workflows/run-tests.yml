@@ -27,9 +27,9 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Set up Docker Buildx with DIND
         uses: docker/setup-buildx-action@v4
@@ -51,7 +51,7 @@ jobs:
           # Install govulncheck for vulnerability scanning
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - name: Run tests with Docker containers
+      - name: Run tests
         run: |
           cd formulatel
           # Clean test cache and run all tests
@@ -91,7 +91,7 @@ jobs:
           echo "Vulnerability check complete."
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results
