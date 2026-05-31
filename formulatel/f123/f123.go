@@ -83,6 +83,7 @@ type F123PacketTransformer struct {
 	Packets            <-chan []byte
 	VehicleDataChannel chan<- *pb.GameTelemetry // a channel for the vehicle data
 	MotionDataChannel  chan<- *pb.GameTelemetry // a channel for motion data
+	LapTimesChannel    chan<- *pb.GameTelemetry // a channel for lap time data
 	capture            bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
 }
 
@@ -221,6 +222,45 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			},
 		}
 		f.MotionDataChannel <- motionProto
+	case LapDataPacket:
+		// LapDataPacket is 22 bytes, read into LapData array
+		lapArray := ReadBin[[22]LapData](data)
+		playerLapData := lapArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a lap data packet")
+
+		// Note: sector3_time is derived from sector1+sector2 for simplicity
+		// In a full implementation, this would be calculated from total_distance or sector3 time
+		lapTimesData := &pb.LapTimesData{
+			LapTime:             uint32(playerLapData.LastLapTimeInMS),
+			CurrentLapTime:      uint32(playerLapData.CurrentLapTimeInMS),
+			Sector1Time:         uint32(playerLapData.Sector1TimeInMS),
+			Sector2Time:         uint32(playerLapData.Sector2TimeInMS),
+			Sector3Time:         0, // Derived value - would calculate from sector3 time if available
+			DeltaToCarInFront:   uint32(playerLapData.DeltaToCarInFrontInMS),
+			DeltaToRaceLeader:   uint32(playerLapData.DeltaToRaceLeaderInMS),
+			LapDistance:         playerLapData.LapDistance,
+			TotalDistance:       playerLapData.TotalDistance,
+			CarPosition:         uint32(playerLapData.CarPosition),
+			CurrentLapNum:       uint32(playerLapData.CurrentLapNum),
+			GridPosition:        uint32(playerLapData.GridPosition),
+			DriverStatus:        uint32(playerLapData.DriverStatus),
+			ResultStatus:        uint32(playerLapData.ResultStatus),
+			PitStatus:           uint32(playerLapData.PitStatus),
+			NumPitStops:         uint32(playerLapData.NumPitStops),
+			PitLaneTimerActive:  uint32(playerLapData.PitLaneTimerActive),
+			PitLaneTime:         float32(playerLapData.PitLaneTimeInLaneInMS),
+		}
+
+		lapProto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_LapTimesData{
+				LapTimesData: lapTimesData,
+			},
+		}
+		f.LapTimesChannel <- lapProto
 	}
 
 	return nil
