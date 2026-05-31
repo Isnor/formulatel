@@ -30,7 +30,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Cache Go build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/go-build
@@ -39,6 +39,12 @@ jobs:
           key: ${{ runner.os }}-go-build-${{ hashFiles('formulatel/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-build-
+
+      - name: Install Go tools
+        run: |
+          cd formulatel
+          # Install govulncheck for vulnerability scanning
+          go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run tests with Docker containers
         run: |
@@ -62,6 +68,14 @@ jobs:
         with:
           name: coverage-report
           path: formulatel/coverage.out
+
+      - name: Check for vulnerabilities
+        run: |
+          cd formulatel
+          echo "Checking for known Go vulnerabilities..."
+          # Run govulncheck with suggestions for updating vulnerable dependencies
+          govulncheck ./... 2>&1 || true
+          echo "Vulnerability check complete."
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
