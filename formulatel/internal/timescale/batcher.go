@@ -41,25 +41,30 @@ type TableBatcher struct {
 
 // buildRow converts a GameTelemetry to a row map for the specified table.
 func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
-	// vehicle data
-	if tableName == "vehicle_data" {
+	// TODO: is there a less terrible way of implementing this? I don't like that we need to map each data type
+	//	to its respective table, it feels clunky.
+	switch tableName {
+	case "vehicle_data":
 		row, err := buildVehicleDataRow(msg)
 		if err != nil {
 			return nil, err
 		}
 		return row, nil
-	}
-
-	// motion_data
-	if tableName == "motion_data" {
+	case "motion_data":
 		row, err := buildMotionDataRow(msg)
 		if err != nil {
 			return nil, err
 		}
 		return row, nil
+	case "lap_times":
+		row, err := buildLapTimesDataRow(msg)
+		if err != nil {
+			return nil, err
+		}
+		return row, nil
+	default:
+		return nil, fmt.Errorf("unknown table name %s", tableName)
 	}
-
-	return nil, fmt.Errorf("unknown table name %s", tableName)
 }
 
 // TODO: I'm not overly fond of these functions; the reason it's written this way is to try to take advantage
@@ -128,28 +133,28 @@ func buildVehicleDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 func buildLapTimesDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 	if lapTimes := msg.GetLapTimesData(); lapTimes != nil {
 		return map[string]any{
-			"time":              msg.Timestamp.AsTime(),
-			"session_id":        msg.SessionId,
-			"user_id":           msg.UserId,
-			"title":             msg.Title,
-			"lap_time":          lapTimes.LapTime,
-			"current_lap_time":  lapTimes.CurrentLapTime,
-			"sector1_time":      lapTimes.Sector1Time,
-			"sector2_time":      lapTimes.Sector2Time,
-			"sector3_time":      lapTimes.Sector3Time,
+			"time":                  msg.Timestamp.AsTime(),
+			"session_id":            msg.SessionId,
+			"user_id":               msg.UserId,
+			"title":                 msg.Title,
+			"lap_time":              lapTimes.LapTime,
+			"current_lap_time":      lapTimes.CurrentLapTime,
+			"sector1_time":          lapTimes.Sector1Time,
+			"sector2_time":          lapTimes.Sector2Time,
+			"sector3_time":          lapTimes.Sector3Time,
 			"delta_to_car_in_front": lapTimes.DeltaToCarInFront,
-			"delta_to_race_leader": lapTimes.DeltaToRaceLeader,
-			"lap_distance":      lapTimes.LapDistance,
-			"total_distance":    lapTimes.TotalDistance,
-			"car_position":      lapTimes.CarPosition,
-			"current_lap_num":   lapTimes.CurrentLapNum,
-			"pit_status":        lapTimes.PitStatus,
-			"num_pit_stops":     lapTimes.NumPitStops,
-			"grid_position":     lapTimes.GridPosition,
-			"driver_status":     lapTimes.DriverStatus,
-			"result_status":     lapTimes.ResultStatus,
+			"delta_to_race_leader":  lapTimes.DeltaToRaceLeader,
+			"lap_distance":          lapTimes.LapDistance,
+			"total_distance":        lapTimes.TotalDistance,
+			"car_position":          lapTimes.CarPosition,
+			"current_lap_num":       lapTimes.CurrentLapNum,
+			"pit_status":            lapTimes.PitStatus,
+			"num_pit_stops":         lapTimes.NumPitStops,
+			"grid_position":         lapTimes.GridPosition,
+			"driver_status":         lapTimes.DriverStatus,
+			"result_status":         lapTimes.ResultStatus,
 			"pit_lane_timer_active": lapTimes.PitLaneTimerActive,
-			"pit_lane_time":     lapTimes.PitLaneTime,
+			"pit_lane_time":         lapTimes.PitLaneTime,
 		}, nil
 	}
 	return nil, errors.New("did not write lap times telemetry: no lap times data found")
@@ -389,8 +394,8 @@ func rowKeys(row map[string]any, tableName string) []string {
 
 // BatchRouter routes messages to the appropriate TableBatcher.
 type BatchRouter struct {
-	vehicleBatcher *TableBatcher
-	motionBatcher  *TableBatcher
+	vehicleBatcher  *TableBatcher
+	motionBatcher   *TableBatcher
 	lapTimesBatcher *TableBatcher
 }
 
@@ -425,8 +430,8 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 	lapTimesBatcher.Start()
 
 	return &BatchRouter{
-		vehicleBatcher: vehicleBatcher,
-		motionBatcher:  motionBatcher,
+		vehicleBatcher:  vehicleBatcher,
+		motionBatcher:   motionBatcher,
 		lapTimesBatcher: lapTimesBatcher,
 	}, nil
 }
