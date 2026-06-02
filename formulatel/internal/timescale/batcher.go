@@ -41,25 +41,30 @@ type TableBatcher struct {
 
 // buildRow converts a GameTelemetry to a row map for the specified table.
 func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
-	// vehicle data
-	if tableName == "vehicle_data" {
+	// TODO: is there a less terrible way of implementing this? I don't like that we need to map each data type
+	//	to its respective table, it feels clunky.
+	switch tableName {
+	case "vehicle_data":
 		row, err := buildVehicleDataRow(msg)
 		if err != nil {
 			return nil, err
 		}
 		return row, nil
-	}
-
-	// motion_data
-	if tableName == "motion_data" {
+	case "motion_data":
 		row, err := buildMotionDataRow(msg)
 		if err != nil {
 			return nil, err
 		}
 		return row, nil
+	case "lap_times":
+		row, err := buildLapTimesDataRow(msg)
+		if err != nil {
+			return nil, err
+		}
+		return row, nil
+	default:
+		return nil, fmt.Errorf("unknown table name %s", tableName)
 	}
-
-	return nil, fmt.Errorf("unknown table name %s", tableName)
 }
 
 // TODO: I'm not overly fond of these functions; the reason it's written this way is to try to take advantage
@@ -123,6 +128,36 @@ func buildVehicleDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 		}, nil
 	}
 	return nil, errors.New("did not write vehicle telemetry: no vehicle data found")
+}
+
+func buildLapTimesDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
+	if lapTimes := msg.GetLapTimesData(); lapTimes != nil {
+		return map[string]any{
+			"time":                  msg.Timestamp.AsTime(),
+			"session_id":            msg.SessionId,
+			"user_id":               msg.UserId,
+			"title":                 msg.Title,
+			"lap_time":              lapTimes.LapTime,
+			"current_lap_time":      lapTimes.CurrentLapTime,
+			"sector1_time":          lapTimes.Sector1Time,
+			"sector2_time":          lapTimes.Sector2Time,
+			"sector3_time":          lapTimes.Sector3Time,
+			"delta_to_car_in_front": lapTimes.DeltaToCarInFront,
+			"delta_to_race_leader":  lapTimes.DeltaToRaceLeader,
+			"lap_distance":          lapTimes.LapDistance,
+			"total_distance":        lapTimes.TotalDistance,
+			"car_position":          lapTimes.CarPosition,
+			"current_lap_num":       lapTimes.CurrentLapNum,
+			"pit_status":            lapTimes.PitStatus,
+			"num_pit_stops":         lapTimes.NumPitStops,
+			"grid_position":         lapTimes.GridPosition,
+			"driver_status":         lapTimes.DriverStatus,
+			"result_status":         lapTimes.ResultStatus,
+			"pit_lane_timer_active": lapTimes.PitLaneTimerActive,
+			"pit_lane_time":         lapTimes.PitLaneTime,
+		}, nil
+	}
+	return nil, errors.New("did not write lap times telemetry: no lap times data found")
 }
 
 // NewTableBatcher creates a new TableBatcher.
@@ -303,6 +338,18 @@ var motionDataColumnOrder = []string{
 	"yaw", "pitch", "roll",
 }
 
+var lapTimesColumnOrder = []string{
+	"time", "session_id", "user_id", "title",
+	"lap_time", "current_lap_time",
+	"sector1_time", "sector2_time", "sector3_time",
+	"delta_to_car_in_front", "delta_to_race_leader",
+	"lap_distance", "total_distance",
+	"car_position", "current_lap_num",
+	"pit_status", "num_pit_stops", "grid_position",
+	"driver_status", "result_status",
+	"pit_lane_timer_active", "pit_lane_time",
+}
+
 // rowKeys extracts column keys from a row map in database schema order.
 func rowKeys(row map[string]any, tableName string) []string {
 	if tableName == "vehicle_data" {
@@ -326,6 +373,16 @@ func rowKeys(row map[string]any, tableName string) []string {
 		return keys
 	}
 
+	if tableName == "lap_times" {
+		keys := make([]string, 0, len(lapTimesColumnOrder))
+		for _, col := range lapTimesColumnOrder {
+			if _, ok := row[col]; ok {
+				keys = append(keys, col)
+			}
+		}
+		return keys
+	}
+
 	// Fallback: use alphabetically sorted keys
 	keys := make([]string, 0, len(row))
 	for k := range row {
@@ -337,8 +394,9 @@ func rowKeys(row map[string]any, tableName string) []string {
 
 // BatchRouter routes messages to the appropriate TableBatcher.
 type BatchRouter struct {
-	vehicleBatcher *TableBatcher
-	motionBatcher  *TableBatcher
+	vehicleBatcher  *TableBatcher
+	motionBatcher   *TableBatcher
+	lapTimesBatcher *TableBatcher
 }
 
 // TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
@@ -350,30 +408,35 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 	// TODO: why 100? should be configurable at least.
 	vehicleChan := make(chan GameTelemetryWithContext, 100)
 	motionChan := make(chan GameTelemetryWithContext, 100)
+	lapTimesChan := make(chan GameTelemetryWithContext, 100)
 
 	// TODO: probably don't need this
 	go func() {
 		<-ctx.Done()
 		close(vehicleChan)
 		close(motionChan)
+		close(lapTimesChan)
 	}()
 
 	// TODO: we create N batchers, 1 per table, meaning the BatchRouter actually has N*batchSize capacity
 	//	Maybe this is fine, but it makes the signature of this function misleading
 	vehicleBatcher := NewTableBatcher(ctx, conn, "vehicle_data", vehicleChan, batchSize, flushInterval)
 	motionBatcher := NewTableBatcher(ctx, conn, "motion_data", motionChan, batchSize, flushInterval)
+	lapTimesBatcher := NewTableBatcher(ctx, conn, "lap_times", lapTimesChan, batchSize, flushInterval)
 
-	// Start both batchers
+	// Start all batchers
 	vehicleBatcher.Start()
 	motionBatcher.Start()
+	lapTimesBatcher.Start()
 
 	return &BatchRouter{
-		vehicleBatcher: vehicleBatcher,
-		motionBatcher:  motionBatcher,
+		vehicleBatcher:  vehicleBatcher,
+		motionBatcher:   motionBatcher,
+		lapTimesBatcher: lapTimesBatcher,
 	}, nil
 }
 
-// Add routes a message to both batchers (it will be processed by each appropriately).
+// Add routes a message to all batchers (it will be processed by each appropriately).
 func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
 	// Wrap the message with context for trace propagation
 	wrapped := GameTelemetryWithContext{
@@ -390,6 +453,11 @@ func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
 		// Motion data
 		if msg.GetMotionData() != nil {
 			b.motionBatcher.msgChan <- wrapped
+		}
+
+		// Lap times data
+		if msg.GetLapTimesData() != nil {
+			b.lapTimesBatcher.msgChan <- wrapped
 		}
 	}()
 }

@@ -31,6 +31,7 @@ message GameTelemetry {
   oneof data {
     VehicleData vehicle_data = 11;
     MotionData motion_data = 12;
+    LapTimesData lap_times_data = 13;
     // SessionData, etc.
   }
 }
@@ -88,6 +89,28 @@ message MotionData {
   float roll = 12;
 
   // TODO: add direction? it seems like we have that already with rotation
+}
+
+// this message describes lap time and race state data for all cars in a session
+message LapTimesData {
+  uint32 lap_time = 1;
+  uint32 current_lap_time = 2;
+  uint32 sector1_time = 3;
+  uint32 sector2_time = 4;
+  uint32 sector3_time = 5;
+  uint32 delta_to_car_in_front = 6;
+  uint32 delta_to_race_leader = 7;
+  float lap_distance = 8;
+  float total_distance = 9;
+  uint32 car_position = 10;
+  uint32 current_lap_num = 11;
+  uint32 grid_position = 12;
+  uint32 pit_status = 13;
+  uint32 num_pit_stops = 14;
+  uint32 driver_status = 15;
+  uint32 result_status = 16;
+  uint32 pit_lane_timer_active = 17;
+  float pit_lane_time = 18;
 }
 
 enum GameTitle {
