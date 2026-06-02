@@ -62,10 +62,10 @@ func main() {
 
 	// transform packets into our telemetry type
 	transformer := &f123.F123PacketTransformer{
-		Packets:            buffer,           // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel: vehicleData,      // write vehicle packets as their protobuf representation here
-		MotionDataChannel:  motionData,       // write motion packets as their protobuf representation here
-		LapTimesChannel:    lapTimesData,     // write lap times packets as their protobuf representation here
+		Packets:            buffer,       // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel: vehicleData,  // write vehicle packets as their protobuf representation here
+		MotionDataChannel:  motionData,   // write motion packets as their protobuf representation here
+		LapTimesChannel:    lapTimesData, // write lap times packets as their protobuf representation here
 	}
 
 	wg.Go(func() {

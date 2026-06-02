@@ -231,24 +231,24 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 		// Note: sector3_time is derived from sector1+sector2 for simplicity
 		// In a full implementation, this would be calculated from total_distance or sector3 time
 		lapTimesData := &pb.LapTimesData{
-			LapTime:             uint32(playerLapData.LastLapTimeInMS),
-			CurrentLapTime:      uint32(playerLapData.CurrentLapTimeInMS),
-			Sector1Time:         uint32(playerLapData.Sector1TimeInMS),
-			Sector2Time:         uint32(playerLapData.Sector2TimeInMS),
-			Sector3Time:         0, // Derived value - would calculate from sector3 time if available
-			DeltaToCarInFront:   uint32(playerLapData.DeltaToCarInFrontInMS),
-			DeltaToRaceLeader:   uint32(playerLapData.DeltaToRaceLeaderInMS),
-			LapDistance:         playerLapData.LapDistance,
-			TotalDistance:       playerLapData.TotalDistance,
-			CarPosition:         uint32(playerLapData.CarPosition),
-			CurrentLapNum:       uint32(playerLapData.CurrentLapNum),
-			GridPosition:        uint32(playerLapData.GridPosition),
-			DriverStatus:        uint32(playerLapData.DriverStatus),
-			ResultStatus:        uint32(playerLapData.ResultStatus),
-			PitStatus:           uint32(playerLapData.PitStatus),
-			NumPitStops:         uint32(playerLapData.NumPitStops),
-			PitLaneTimerActive:  uint32(playerLapData.PitLaneTimerActive),
-			PitLaneTime:         float32(playerLapData.PitLaneTimeInLaneInMS),
+			LapTime:            uint32(playerLapData.LastLapTimeInMS),
+			CurrentLapTime:     uint32(playerLapData.CurrentLapTimeInMS),
+			Sector1Time:        uint32(playerLapData.Sector1TimeInMS),
+			Sector2Time:        uint32(playerLapData.Sector2TimeInMS),
+			Sector3Time:        0, // Derived value - would calculate from sector3 time if available
+			DeltaToCarInFront:  uint32(playerLapData.DeltaToCarInFrontInMS),
+			DeltaToRaceLeader:  uint32(playerLapData.DeltaToRaceLeaderInMS),
+			LapDistance:        playerLapData.LapDistance,
+			TotalDistance:      playerLapData.TotalDistance,
+			CarPosition:        uint32(playerLapData.CarPosition),
+			CurrentLapNum:      uint32(playerLapData.CurrentLapNum),
+			GridPosition:       uint32(playerLapData.GridPosition),
+			DriverStatus:       uint32(playerLapData.DriverStatus),
+			ResultStatus:       uint32(playerLapData.ResultStatus),
+			PitStatus:          uint32(playerLapData.PitStatus),
+			NumPitStops:        uint32(playerLapData.NumPitStops),
+			PitLaneTimerActive: uint32(playerLapData.PitLaneTimerActive),
+			PitLaneTime:        float32(playerLapData.PitLaneTimeInLaneInMS),
 		}
 
 		lapProto := &pb.GameTelemetry{
