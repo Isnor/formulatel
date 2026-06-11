@@ -32,9 +32,10 @@ local_resource(
     "./formulatel/internal/mqttutil",
     "./protobuf",
   ],
-  env={
-    "LOG_LEVEL": "info",
-  },
+  # ingest does not listen to log_level
+  # env={
+  #   "LOG_LEVEL": "debug",
+  # },
   labels=["formulatel"]
 )
 

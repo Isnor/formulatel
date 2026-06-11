@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS motion_data (
     yaw                   REAL NOT NULL, pitch REAL NOT NULL, roll REAL NOT NULL
 ) WITH (
     timescaledb.hypertable,
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'session_id, user_id',
+    timescaledb.compress_orderby = 'time DESC',
     timescaledb.chunk_interval = '1 day'
 );
 

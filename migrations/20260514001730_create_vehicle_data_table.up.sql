@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS vehicle_data (
     br_surface_temp      INTEGER, br_pressure   INTEGER
 ) WITH (
     timescaledb.hypertable,
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'session_id, user_id',
+    timescaledb.compress_orderby = 'time DESC',
     timescaledb.chunk_interval = '1 day'
 );
 

@@ -36,16 +36,17 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
-
-	// TODO: make this configurable
-	vehicleData := make(chan *pb.GameTelemetry, 100)
-	motionData := make(chan *pb.GameTelemetry, 100)
-	lapTimesData := make(chan *pb.GameTelemetry, 100)
-	buffer := make(chan []byte, BufferSize)
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	})))
-	var wg sync.WaitGroup
+
+	// TODO: make this configurable; all of this should be in f123 and ingest should have a flag in the CLI
+	//	that determines which packets it is ingesting
+	vehicleData := make(chan *pb.GameTelemetry, 100)
+	motionData := make(chan *pb.GameTelemetry, 100)
+	currentLapData := make(chan *pb.GameTelemetry, 100)
+	lapTimesData := make(chan *pb.GameTelemetry, 100)
+	buffer := make(chan []byte, BufferSize)
 
 	// start reading packets
 	f123Ingestion := &f123.F123PacketReader{
@@ -53,6 +54,7 @@ func main() {
 		PacketBuffer: buffer, // send all packets here
 	}
 
+	var wg sync.WaitGroup
 	wg.Go(func() {
 		if err := f123Ingestion.Run(serverContext); err != nil {
 			slog.ErrorContext(serverContext, "error reading packets. stopping.", "error", err.Error())
@@ -62,10 +64,12 @@ func main() {
 
 	// transform packets into our telemetry type
 	transformer := &f123.F123PacketTransformer{
-		Packets:            buffer,       // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel: vehicleData,  // write vehicle packets as their protobuf representation here
-		MotionDataChannel:  motionData,   // write motion packets as their protobuf representation here
-		LapTimesChannel:    lapTimesData, // write lap times packets as their protobuf representation here
+		Packets:               buffer,         // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel:    vehicleData,    // write vehicle packets as their protobuf representation here
+		MotionDataChannel:     motionData,     // write motion packets as their protobuf representation here
+		CurrentLapDataChannel: currentLapData, // write current lap times packets as their protobuf representation here
+		LapTimesDataChannel:   lapTimesData,   // write historic lap data packets as their protobuf representation here
+		LatestLaps:            f123.NewLatestLapData(),
 	}
 
 	wg.Go(func() {
@@ -78,6 +82,9 @@ func main() {
 		transformer.Consume(serverContext)
 	})
 
+	// the rest of this is setting up MQTT publishers that listen to channels of GameTelemetry
+	// and publish them to an MQTT topic. If we're going to support other kinds of ingestion, e.g.
+	// kafka or gRPC, then we should factor this out and configure it with the CLI flags
 	mqttPublisherCtx, cancel := context.WithCancel(serverContext)
 	defer cancel()
 
@@ -101,35 +108,54 @@ func main() {
 	}
 
 	wg.Go(func() {
+		ctx, cancel := context.WithCancel(mqttPublisherCtx)
+		defer cancel()
 		// start a routine to read f123-specific [VehicleData] into a hard-coded topic `formulatel/vehicledata/f123`
-		if err := StartMQTTv3Publisher(mqttPublisherCtx, StartPublisherConfig{
+		if err := StartMQTTv3Publisher(ctx, StartPublisherConfig{
 			mqttClient: mqttClient,
 			data:       vehicleData,
 			topic:      "formulatel/vehicledata/f123",
 		}); err != nil {
-			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
+			slog.ErrorContext(ctx, "mqtt publisher failed", "error", err.Error())
 		}
 	})
 
 	wg.Go(func() {
+		ctx, cancel := context.WithCancel(mqttPublisherCtx)
+		defer cancel()
 		// start a routine to read f123-specific [MotionData] into a hard-coded topic `formulatel/motiondata/f123`
-		if err := StartMQTTv3Publisher(mqttPublisherCtx, StartPublisherConfig{
+		if err := StartMQTTv3Publisher(ctx, StartPublisherConfig{
 			mqttClient: mqttClient,
 			data:       motionData,
 			topic:      "formulatel/motiondata/f123",
 		}); err != nil {
-			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
+			slog.ErrorContext(ctx, "mqtt publisher failed", "error", err.Error())
 		}
 	})
 
 	wg.Go(func() {
-		// start a routine to read f123-specific [LapTimesData] into a hard-coded topic `formulatel/laptimesdata/f123`
-		if err := StartMQTTv3Publisher(mqttPublisherCtx, StartPublisherConfig{
+		ctx, cancel := context.WithCancel(mqttPublisherCtx)
+		defer cancel()
+		// start a routine to read f123-specific [LapTimesData] into a hard-coded topic `formulatel/currentlapdata/f123`
+		if err := StartMQTTv3Publisher(ctx, StartPublisherConfig{
+			mqttClient: mqttClient,
+			data:       currentLapData,
+			topic:      "formulatel/currentlapdata/f123",
+		}); err != nil {
+			slog.ErrorContext(ctx, "mqtt publisher failed", "error", err.Error())
+		}
+	})
+
+	wg.Go(func() {
+		ctx, cancel := context.WithCancel(mqttPublisherCtx)
+		defer cancel()
+		// start a routine to read f123-specific [SessionHistory] into a hard-coded topic `formulatel/laptimesdata/f123`
+		if err := StartMQTTv3Publisher(ctx, StartPublisherConfig{
 			mqttClient: mqttClient,
 			data:       lapTimesData,
 			topic:      "formulatel/laptimesdata/f123",
 		}); err != nil {
-			slog.ErrorContext(mqttPublisherCtx, "mqtt publisher failed", "error", err.Error())
+			slog.ErrorContext(ctx, "mqtt publisher failed", "error", err.Error())
 		}
 	})
 

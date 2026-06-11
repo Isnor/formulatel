@@ -5,19 +5,19 @@
     "metadata": {
       "name": "gx2vh4",
       "namespace": "default",
-      "uid": "451bc511-873b-404f-8f31-b9e91452a8ea",
-      "resourceVersion": "1780418636406004",
+      "uid": "49783f2a-7c9c-485f-a6a8-9760bb06f7a1",
+      "resourceVersion": "1781192463459983",
       "generation": 2,
-      "creationTimestamp": "2026-06-02T15:36:48Z",
+      "creationTimestamp": "2026-06-11T15:17:18Z",
       "labels": {
-        "grafana.app/deprecatedInternalID": "3689396289748992"
+        "grafana.app/deprecatedInternalID": "2442376946790400"
       },
       "annotations": {
         "grafana.app/createdBy": "anonymous:0",
         "grafana.app/folder": "",
         "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
         "grafana.app/updatedBy": "anonymous:0",
-        "grafana.app/updatedTimestamp": "2026-06-02T16:43:56Z"
+        "grafana.app/updatedTimestamp": "2026-06-11T15:41:03Z"
       }
     },
     "spec": {
@@ -36,62 +36,6 @@
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
             "builtIn": true
-          }
-        },
-        {
-          "kind": "AnnotationQuery",
-          "spec": {
-            "query": {
-              "kind": "DataQuery",
-              "group": "grafana-postgresql-datasource",
-              "version": "v0",
-              "datasource": {
-                "name": "P7651987DC94FAF0B"
-              },
-              "spec": {
-                "dataset": "postgres",
-                "editorMode": "code",
-                "format": "table",
-                "rawQuery": true,
-                "rawSql": "SELECT\n  distinct lap_time, max(time) as time,\n  'Lap ' || current_lap_num - 1 || ' (' || lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM lap_times\nWHERE $__timeFilter(time) AND lap_time > 0\ngroup by lap_time, current_lap_num\nORDER BY time ASC;",
-                "refId": "Anno",
-                "sql": {
-                  "columns": [
-                    {
-                      "parameters": [],
-                      "type": "function"
-                    }
-                  ],
-                  "groupBy": [
-                    {
-                      "property": {
-                        "type": "string"
-                      },
-                      "type": "groupBy"
-                    }
-                  ],
-                  "limit": 50
-                }
-              }
-            },
-            "enable": true,
-            "hide": false,
-            "iconColor": "yellow",
-            "name": "laps",
-            "mappings": {
-              "tags": {
-                "source": "field",
-                "value": "tags"
-              },
-              "text": {
-                "source": "field",
-                "value": "text"
-              },
-              "time": {
-                "source": "field",
-                "value": "time"
-              }
-            }
           }
         }
       ],

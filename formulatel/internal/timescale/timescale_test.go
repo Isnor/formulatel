@@ -15,11 +15,13 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -46,35 +48,52 @@ var mustPostgresContainer = sync.OnceValue(func() *postgres.PostgresContainer {
 	return postgresContainer
 })
 
-// PostgresTest is a test that uses a postgres instance.
-type PostgresTest struct {
-	Name         string
+// WithMigrationsTest is a test that uses a postgres instance that has some or all migrations
+// applied to it.
+type WithMigrationsTest struct {
+	Name string
+	// which migration number to migrate up to
+	MigrationNum uint
 	Expectations func(*testing.T, *pgxpool.Pool, error)
 }
 
-func (pt *PostgresTest) Run(t *testing.T) {
+// Run orchestrates a test that uses a set of database migrations.
+//  1. Connects to the test postgres container - halts if there is an error
+//  2. Creates a database to run migrations against that will be used for the test - halts if there is an error
+//  3. Runs some or all of the migrations - halts if there is an error
+//  4. Runs the expectations / assertions
+//  5. Runs the down migrations - halts if there is an error
+func (mt *WithMigrationsTest) Run(t *testing.T) {
 
-	t.Run(pt.Name, func(t *testing.T) {
+	t.Run(mt.Name, func(t *testing.T) {
 		t.Parallel()
 		pgContainer := mustPostgresContainer()
 
 		// create a test database for this test to have a "sandbox" to run in
 		connPool, err := pgxpool.New(t.Context(), pgContainer.MustConnectionString(t.Context(), "sslmode=disable"))
 		require.NoError(t, err, "could not connect to postgres container %v", err)
-		dbName := strings.ReplaceAll(strings.ToLower(pt.Name), " ", "_")
+		dbName := strings.ReplaceAll(strings.ToLower(mt.Name), " ", "_")
 		_, err = connPool.Exec(t.Context(), fmt.Sprintf("CREATE DATABASE %s", dbName))
 		require.NoError(t, err, "could not create new database")
 
-		// This is just getting the connection string to the newly created database so we can run migrations per-test.
-		// Some tests might want to run N migrations instead of all of them, some may want to run the `down` migrations, etc.
 		port, err := pgContainer.MappedPort(t.Context(), "5432")
 		require.NoError(t, err)
 		connectionString := fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", testDBUser, testDBPassword, port.Port(), dbName)
 		testDB, err := pgxpool.New(t.Context(), connectionString)
 		require.NoError(t, err, "could not connect to new DB %s", dbName)
 
+		migrations, err := migrate.New(migrationsPath, connectionString)
+		require.NoError(t, err)
+		defer migrations.Close()
+
+		if mt.MigrationNum == 0 {
+			require.NoError(t, migrations.Up())
+		} else {
+			require.NoError(t, migrations.Migrate(mt.MigrationNum))
+		}
 		// now we can run the assertions
-		pt.Expectations(t, testDB, err)
+		mt.Expectations(t, testDB, err)
+		require.NoError(t, migrations.Down())
 	})
 }
 
@@ -137,33 +156,42 @@ func pseudoRandomMotionTelemetry() *pb.GameTelemetry {
 
 }
 
-func TestSimpleDBWrites(t *testing.T) {
-	testtable.TestTable{
-		&PostgresTest{
-			Name: "migrate up and down",
-			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
-
-				connStr := p.Config().ConnString()
-
-				migrations, err := migrate.New(migrationsPath, connStr)
-				require.NoError(t, err)
-				defer migrations.Close()
-
-				assert.NoError(t, migrations.Up())
-				assert.NoError(t, migrations.Down())
+func pseudoRandomLapTelemetry() *pb.GameTelemetry {
+	sector1Valid, sector2Valid, sector3Valid := rand.IntN(2) == 0, rand.IntN(2) == 0, rand.IntN(2) == 0
+	lapValid := sector1Valid && sector2Valid && sector3Valid
+	lapTimeMillis := rand.Uint32N(180000)
+	return &pb.GameTelemetry{
+		Title:     pb.GameTitle_GAME_TITLE_F123,
+		SessionId: "testing",
+		UserId:    "testuser",
+		Timestamp: timestamppb.Now(),
+		Data: &pb.GameTelemetry_LapTimesData{
+			LapTimesData: &pb.HistoricLapData{
+				LapNum:       rand.Uint32N(1000000),
+				LapTime:      durationpb.New(time.Duration(lapTimeMillis) * time.Millisecond),
+				Sector1Time:  durationpb.New(time.Duration(lapTimeMillis/3) * time.Millisecond),
+				Sector2Time:  durationpb.New(time.Duration(lapTimeMillis/3) * time.Millisecond),
+				Sector3Time:  durationpb.New(time.Duration(lapTimeMillis/3) * time.Millisecond),
+				LapValid:     lapValid,
+				Sector1Valid: sector1Valid,
+				Sector2Valid: sector1Valid,
+				Sector3Valid: sector1Valid,
 			},
 		},
-		&PostgresTest{
+	}
+}
+
+func TestSimpleDBWrites(t *testing.T) {
+	t.Parallel()
+	testtable.TestTable{
+		&WithMigrationsTest{
+			Name:         "migrate up and down",
+			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {},
+		},
+		&WithMigrationsTest{
 			Name: "insert vehicle data",
 			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
 
-				// TODO: extract this part as a "PostgresMigrationsTest" or something
-				connStr := p.Config().ConnString()
-				migrator, err := migrate.New(migrationsPath, connStr)
-				require.NoError(t, err)
-				defer migrator.Close()
-
-				assert.NoError(t, migrator.Up())
 				// Create a batcher for vehicle_data
 				msgChan := make(chan GameTelemetryWithContext, 10)
 				batcher := NewTableBatcher(t.Context(), p, "vehicle_data", msgChan, 5, 50*time.Millisecond)
@@ -210,17 +238,9 @@ func TestSimpleDBWrites(t *testing.T) {
 				assert.EqualValues(t, 150, speed)
 			},
 		},
-		&PostgresTest{
+		&WithMigrationsTest{
 			Name: "insert motion data",
 			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
-
-				connStr := p.Config().ConnString()
-
-				migrator, err := migrate.New(migrationsPath, connStr)
-				require.NoError(t, err)
-				defer migrator.Close()
-
-				assert.NoError(t, migrator.Up())
 				// Create a batcher for motion_data
 				msgChan := make(chan GameTelemetryWithContext, 10)
 				batcher := NewTableBatcher(t.Context(), p, "motion_data", msgChan, 5, 50*time.Millisecond)
@@ -270,15 +290,11 @@ func TestSimpleDBWrites(t *testing.T) {
 }
 
 func TestBatchRouter(t *testing.T) {
+	t.Parallel()
 	testtable.TestTable{
-		&PostgresTest{
+		&WithMigrationsTest{
 			Name: "batching router",
 			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
-				connStr := p.Config().ConnString()
-				migrator, err := migrate.New(migrationsPath, connStr)
-				require.NoError(t, err)
-				defer migrator.Close()
-				require.NoError(t, migrator.Up())
 
 				msgChan := make(chan *pb.GameTelemetry)
 				router, err := NewBatchRouter(t.Context(), p, msgChan, 1, 10*time.Millisecond)
@@ -286,10 +302,12 @@ func TestBatchRouter(t *testing.T) {
 				// create a motion telemetry and vehicle telemetry
 				motionTelemetryWritten := pseudoRandomMotionTelemetry()
 				vehicleTelemetryWritten := pseudoRandomVehicleTelemetry()
+				lapDataTelemetryWritten := pseudoRandomLapTelemetry()
 
 				// since the batch size is 1, the router should write these immediately
 				router.Add(t.Context(), motionTelemetryWritten)
 				router.Add(t.Context(), vehicleTelemetryWritten)
+				router.Add(t.Context(), lapDataTelemetryWritten)
 
 				// Wait for the batcher to complete the flush. The batcher uses a ticker-based flush
 				// with a 10ms interval, so we wait for at least one flush cycle plus some buffer.
@@ -297,12 +315,68 @@ func TestBatchRouter(t *testing.T) {
 
 				motionTelemetryRead := &pb.MotionData{}
 				vehicleTelemetryRead := &pb.VehicleData{}
+				lapTelemetryRead := &pb.HistoricLapData{}
 				p.QueryRow(t.Context(), "select position_z from motion_data limit 1").Scan(&motionTelemetryRead.PositionZ)
 				p.QueryRow(t.Context(), "select speed, rpm from vehicle_data limit 1").Scan(&vehicleTelemetryRead.Speed, &vehicleTelemetryRead.Rpm)
+				p.QueryRow(t.Context(), "select lap_num from lap_times").Scan(&lapTelemetryRead.LapNum)
 
 				assert.EqualValues(t, motionTelemetryWritten.GetMotionData().GetPositionZ(), motionTelemetryRead.GetPositionZ())
 				assert.EqualValues(t, vehicleTelemetryWritten.GetVehicleData().GetSpeed(), vehicleTelemetryRead.GetSpeed())
 				assert.EqualValues(t, vehicleTelemetryWritten.GetVehicleData().GetRpm(), vehicleTelemetryRead.GetRpm())
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().GetLapNum(), lapTelemetryRead.GetLapNum())
+			},
+		},
+	}.Run(t)
+}
+
+func TestDuplicateLapTimes(t *testing.T) {
+	t.Parallel()
+	testtable.TestTable{
+		&WithMigrationsTest{
+			Name: "duplicate_lap_times",
+			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
+				msgChan := make(chan GameTelemetryWithContext, 10)
+				batcher := NewTableBatcher(t.Context(), p, "lap_times", msgChan, 5, 10*time.Millisecond)
+				batcher.Start()
+
+				lapDataTelemetryWritten := &pb.GameTelemetry{
+					Title:     pb.GameTitle_GAME_TITLE_F123,
+					SessionId: "testing",
+					UserId:    "testuser",
+					Timestamp: timestamppb.Now(),
+					Data: &pb.GameTelemetry_LapTimesData{
+						LapTimesData: &pb.HistoricLapData{
+							LapNum:       1,
+							LapTime:      durationpb.New(2 * time.Minute),
+							Sector1Time:  durationpb.New(30 * time.Second),
+							Sector2Time:  durationpb.New(time.Minute),
+							Sector3Time:  durationpb.New(30 * time.Second),
+							LapValid:     true,
+							Sector1Valid: true,
+							Sector2Valid: true,
+							Sector3Valid: true,
+						},
+					},
+				}
+				for range 3 {
+					assert.NoError(t, batcher.WriteLapRow(t.Context(), lapDataTelemetryWritten), "should not get error when inserting duplicate row")
+				}
+				rows, err := p.Query(t.Context(), "select lap_num, lap_time from lap_times")
+				assert.NoError(t, err, "did not get rows from lap_times")
+				lapTelemetryRead, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (*pb.HistoricLapData, error) {
+					result := pb.HistoricLapData{}
+					var lapTime time.Duration
+					err := row.Scan(&result.LapNum, &lapTime)
+					result.LapTime = durationpb.New(lapTime)
+					return &result, err
+					// this is neat, but the struct fields need to match the column names or have `db` tags, neither
+					// of which are true for our protobufs
+					// tel, err := pgx.RowToStructByName[pb.HistoricLapData](row)
+					// return &tel, err
+				})
+				require.NoError(t, err, "expected a single lap to have been recorded")
+				require.NotNil(t, lapTelemetryRead)
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapNum, lapTelemetryRead.LapNum)
 			},
 		},
 	}.Run(t)

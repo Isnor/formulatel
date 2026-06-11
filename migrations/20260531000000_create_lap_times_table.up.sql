@@ -1,31 +1,20 @@
 begin;
 
 CREATE TABLE IF NOT EXISTS lap_times (
-    time                 TIMESTAMPTZ NOT NULL,
-    session_id           TEXT        NOT NULL,
-    user_id              TEXT        NOT NULL,
-    title                INTEGER     NOT NULL,
-    lap_time             INTEGER     NOT NULL,
-    current_lap_time     INTEGER     NOT NULL,
-    sector1_time         INTEGER,
-    sector2_time         INTEGER,
-    sector3_time         INTEGER,
-    delta_to_car_in_front INTEGER,
-    delta_to_race_leader INTEGER,
-    lap_distance         REAL,
-    total_distance       REAL,
-    car_position         INTEGER,
-    current_lap_num      INTEGER,
-    pit_status           INTEGER,
-    num_pit_stops        INTEGER,
-    grid_position        INTEGER,
-    driver_status        INTEGER,
-    result_status        INTEGER,
-    pit_lane_timer_active INTEGER,
-    pit_lane_time        INTEGER
-) WITH (
-    timescaledb.hypertable,
-    timescaledb.chunk_interval = '1 day'
+    session_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    title INTEGER NOT NULL,
+    lap_num INTEGER NOT NULL,
+    lap_time INTERVAL,
+    sector1_time INTERVAL,
+    sector2_time INTERVAL,
+    sector3_time INTERVAL,
+    lap_valid BOOL NOT NULL DEFAULT FALSE,
+    sector1_valid BOOL NOT NULL DEFAULT FALSE,
+    sector2_valid BOOL NOT NULL DEFAULT FALSE,
+    sector3_valid BOOL NOT NULL DEFAULT FALSE
 );
+
+ALTER TABLE lap_times ADD CONSTRAINT unique_lap UNIQUE (session_id, user_id, lap_num);
 
 end;
