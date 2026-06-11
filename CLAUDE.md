@@ -6,14 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Formula Telemetry is an open-source sim-racing telemetry system that collects, transforms, and visualizes racing sim data. It reads telemetry from games (currently F1 23), converts it to a title-agnostic format, and visualizes it in Grafana with live charting.
 
+## Agents & Memory
+
+Look at the project-level .claude directory for a README.md, `agents/` directory for agent definitions, a `memory/` directory for general-use memory files, and an `agent-memory/` directory for agent-specific memory files.
+
 ## Development Commands
 
-### Local Development (with Tilt)
-- `tilt up` - Start services in Kubernetes with live reload. Runs `ingest` locally (due to UDP forwarding issues) and deploys Grafana + MQTT broker to k8s.
-- `make k8s-cluster` - Create a local Kubernetes cluster using kind and ctlptl
+### Local Development
+- `make proto` - generate the protocol buffer code from protobuf/telemetry.proto. Must be run from the root of the repository
+- `go test -v ./...` - run the unit tests. Must be run from the `formulatel` directory.
 
 ### Building and Running
-- `make build` - Build binaries for `ingest`, `persist`, and `replay` to `./out/`
+- `make build` - Build binaries for `ingest`, `persist`, and `replay` to `./out/`. Must be run from the root of the repository.
 - `./out/ingest` - Run the ingest service locally (reads UDP telemetry from F1 23)
 - `./out/persist` - Run the persist service (writes to TimescaleDB)
 - `./out/replay` - Replay captured packets for development (capture must be enabled during ingest)
@@ -24,7 +28,6 @@ Formula Telemetry is an open-source sim-racing telemetry system that collects, t
   - `github.com/eclipse/paho.mqtt.golang v1.5.1` - MQTT client (v3 protocol)
   - `google.golang.org/protobuf v1.33.0` - Protocol buffers
   - `github.com/jackc/pgx/v5 v5.9.2` - PostgreSQL driver
-  - `github.com/kelseyhightower/envconfig v1.4.0` - Environment variable binding
 
 ## Architecture
 
@@ -66,11 +69,6 @@ The system is an ETL pipeline with three main components:
   - `BATCH_SIZE`: Max rows per batch (default: 500)
   - `FLUSH_INTERVAL`: Flush interval (default: 200ms in config, 10s in code - use 200ms for production)
 
-- **`schema.go`** - TimescaleDB hypertable DDL
-  - `VehicleDataSchema`: Vehicle telemetry with 16 tire sensor columns
-  - `MotionDataSchema`: Physics data (position, velocity, g-force, rotation)
-  - `EnsureSchema()`: Creates hypertables with `timescaledb.hypertable`
-
 - **`batcher.go`** - Batched writes with dual-trigger flush
   - `TableBatcher`: Owns channel, mutex-guarded buffer, ticker
   - `BatchRouter`: Routes messages to vehicle_data and motion_data batchers
@@ -104,36 +102,6 @@ The system is an ETL pipeline with three main components:
 - CarTelemetryData: ~159 KB/s at 120 Hz
 - CarMotionData: ~159 KB/s at 120 Hz
 - Total worst case: ~480 packets/s, over half MB per second
-
-### Field Mappings
-
-#### CarTelemetryData fields
-- `Speed`: Vehicle speed (km/h)
-- `Throttle`: 0.0-1.0
-- `Steer`: -1.0 to 1.0
-- `Brake`: 0.0-1.0
-- `Clutch`: 0-100
-- `Gear`: 1-8, N=0, R=-1
-- `EngineRPM`: Engine revolutions per minute
-- `DRS`: 0=off, 1=on
-- `RevLightsPercent`: LED percentage
-- `RevLightsBitValue`: LED bits (0-14)
-- `BrakesTemperature[4]`: FrontLeft, FrontRight, BackLeft, BackRight (celsius)
-- `TyresSurfaceTemperature[4]`: Surface temp (celsius)
-- `TyresInnerTemperature[4]`: Inner temp (celsius)
-- `EngineTemperature`: Engine temp (celsius)
-- `TyresPressure[4]`: Tire pressure (PSI)
-- `SurfaceType[4]`: Driving surface type
-
-#### CarMotionData fields
-- `WorldPosition[XYZ]`: World space position (metres)
-- `WorldVelocity[XYZ]`: World space velocity (m/s)
-- `WorldForwardDir[XYZ]`: Forward direction (normalized)
-- `WorldRightDir[XYZ]`: Right direction (normalized)
-- `GForceLateral`: Lateral g-force
-- `GForceLongitudinal`: Longitudinal g-force
-- `GForceVertical`: Vertical g-force
-- `Yaw`, `Pitch`, `Roll`: Rotation angles (radians)
 
 ## Data Flow
 
@@ -169,19 +137,8 @@ Grafana (live via MQTT, historical via PostgreSQL)
 
 ## MQTT Topics
 
-Data is published to MQTT topics by telemetry type. The Grafana datasource connects to `tcp://mosquitto:1883`.
-
-**Publish topics** (from `ingest`):
-- `formulatel/vehicledata/f123` - Vehicle telemetry (speed, throttle, steering, brake, RPM, gear, etc.)
-- `formulatel/motiondata/f123` - Motion/physics data (position, velocity, g-force, angles, etc.)
-
-**Subscribe topic** (by `persist` and `grafana_plugin`):
-- `formulatel/+/f123` - Wild-card subscription for all telemetry types
-
-Data is published as JSON using protojson marshaling with `EmitDefaultValues: true` and `EmitUnpopulated: false`.
-- `EmitDefaultValues: true` ensures zero values are included (critical for live dashboard to display all metrics)
-- `EmitUnpopulated: false` prevents null bytes (0x00) that cause PostgreSQL UTF8 encoding errors
-
+Data is published to MQTT topics by telemetry type. Each data type has its own topic.
+The Grafana datasource connects to `tcp://mosquitto:1883`.
 ## Database Schema
 
 ### vehicle_data (hypertable) - 27 columns
@@ -214,14 +171,34 @@ Data is published as JSON using protojson marshaling with `EmitDefaultValues: tr
 For development, `ingest` has a `capture` flag that can write packets to `captured_packets/` directory for later replay with `./out/replay`.
 **Note:** Packet capture is currently disabled by default. Enable by setting `capture: true` in the `F123PacketTransformer`.
 
+## Adding New Data Types
+
+To add support for new data types, follow these steps:
+
+### 1. Define the protocol buffer
+Add the new message type to `protobuf/telemetry.proto`.
+
+### 2. Model the data in ingest
+Create a model package under `formulatel/<datatype>/` that:
+- Defines packet structures matching the source format
+- Implements `PacketReader` (or use the provided concrete type like `F123PacketReader`)
+- Implements `PacketTransformer` with:
+  - `Consume()` method to read packets from a buffered channel
+  - `Route()` method to handle different packet types and normalize to `GameTelemetry`
+
+### 3. Push to MQTT topic
+The transformer publishes to a topic like `formulatel/<datatype>/<title>` for Grafana and persist to consume.
+
+### 4. Create database migration
+Add migration files in `migrations/` directory to create a new hypertable for the data type.
+
+### 5. Update persist service
+Configure `persist` to write to the new database table via `BatchRouter`.
+
 ## Migration Files
 
-Migrations are stored in `migrations/` directory using [golang-migrate](https://github.com/golang-migrate/migrate).
-
-- `20260514001730_create_vehicle_data_table.up.sql` - Creates vehicle_data hypertable (27 columns)
-- `20260514001855_create_motion_data_table.up.sql` - Creates motion_data hypertable (17 columns)
-
-Run migrations with `make migrate`.
+Migrations are stored in `migrations/` directory using golang-migrate.
+Run with `make migrate`.
 
 ## Kubernetes Manifests
 
@@ -236,58 +213,13 @@ Located in `kubernetes/` directory:
 
 ## Grafana Dashboard
 
-The live dashboard is configured in `kubernetes/config/live_dash_v2.json` and includes:
-
-- **Vehicle Data Panels** (MQTT):
-  - Throttle (gradient bargauge)
-  - Steering (gradient bargauge)
-  - Brake (gradient bargauge)
-  - Speed (gauge with unit: velocitykmh)
-  - Engine Temp (timeseries: celsius)
-  - RPM (gauge: rotrpm)
-  - Gear (stat: short)
-
-- **Motion Data Panels** (MQTT):
-  - Position (xychart: vehicle trajectory)
-  - Pitch Angle (gradient bargauge: radian)
-  - Roll Angle (gradient bargauge: radian)
-  - g-force (xychart: lateral vs longitudinal)
+Dashboards are defined in `kubernetes/config/dashboards`. There is one for live data and one for historic data. Create them with `make`.
 
 ## Adding Support for a New Title
 
 The system uses a **package-per-title** design pattern. Each racing sim has its own package that handles title-specific parsing and normalization.
 
-### Steps to Add a New Title
-
-1. Create a new package: `formulatel/<titlename>/`
-2. Define the title's packet structures in `model.go`
-3. Implement packet types enum matching the game's packet types
-4. Implement `TitlePacketReader` to read UDP packets
-5. Implement `TitlePacketTransformer` with:
-   - `Consume()` method to process packets
-   - `Route()` method to handle different packet types
-   - Normalization logic mapping title fields to `pb.VehicleData` and `pb.MotionData`
-6. Add a new `GameTitle` enum value in `protobuf/telemetry.proto`
-7. Update `ingest/main.go` to use the new transformer
-8. Publish to a title-specific MQTT topic (e.g., `formulatel/vehicledata/<titlename>`)
-9. Add migration files for the new title's schema
-
-### Package Structure Example
-
-```
-formulatel/<titlename>/
-  model.go       - Packet structures and packet type enum
-  <title>.go     - PacketReader, PacketTransformer, Route() implementation
-```
-
-### Normalization Pattern
-
-The transformer performs two key operations:
-
-1. **Parsing**: Reads the title's binary format using `ReadBin[[N]PacketType](file:///path/to/model.go#LXX-LYY)`
-2. **Normalization**: Maps to standard protobuf schema (e.g., `Speed: uint32(parsed.Speed)`)
-
-This happens in the `Route()` method. Only implemented packet types are handled.
+See ["Adding New Data Types"](#adding-new-data-types) for detailed steps.
 
 ### Key Design Decisions
 
