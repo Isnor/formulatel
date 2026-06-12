@@ -140,131 +140,6 @@ func (f *F123PacketTransformer) Consume(ctx context.Context) {
 	}
 }
 
-// handlePacket reads a packet header and calls Route on the remaining bytes
-func (f *F123PacketTransformer) handlePacket(ctx context.Context, packet []byte) {
-	var clone []byte
-	if f.capture {
-		clone = bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
-	}
-	buf := bytes.NewBuffer(packet)
-	header := ReadBin[PacketHeader](buf)
-	if f.capture {
-		packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
-		if err != nil {
-			fmt.Println("failed writing capture ", err.Error())
-		}
-		defer packetCapture.Close()
-		packetCapture.Write(clone)
-	}
-	f.Route(ctx, header, buf)
-}
-
-// normalizeVehicleData maps F1 23 CarTelemetryData to protobuf VehicleData
-func (f *F123PacketTransformer) normalizeVehicleData(
-	header *PacketHeader,
-	telemetry *CarTelemetryData,
-) *pb.VehicleData {
-	tires := &pb.VehicleData_Tires{
-		FrontLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]), // FL
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[2]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[2]),
-			Pressure:           uint32(telemetry.TyresPressure[2]),
-		},
-		FrontRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]), // FR
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[3]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[3]),
-			Pressure:           uint32(telemetry.TyresPressure[3]),
-		},
-		BackLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]), // RL
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[0]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[0]),
-			Pressure:           uint32(telemetry.TyresPressure[0]),
-		},
-		BackRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]), // RR
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[1]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[1]),
-			Pressure:           uint32(telemetry.TyresPressure[1]),
-		},
-	}
-
-	return &pb.VehicleData{
-		Speed:             uint32(telemetry.Speed),
-		Rpm:               uint32(telemetry.EngineRPM),
-		Throttle:          telemetry.Throttle,
-		Brake:             telemetry.Brake,
-		Steering:          telemetry.Steer,
-		Gear:              int32(telemetry.Gear),
-		EngineTemperature: uint32(telemetry.EngineTemperature),
-		Tires:             tires,
-	}
-}
-
-// normalizeMotionData maps F1 23 CarMotionData to protobuf MotionData
-func (f *F123PacketTransformer) normalizeMotionData(
-	header *PacketHeader,
-	motion *CarMotionData,
-) *pb.MotionData {
-	return &pb.MotionData{
-		PositionX:          motion.WorldPositionX,
-		PositionY:          motion.WorldPositionY,
-		PositionZ:          motion.WorldPositionZ,
-		VelocityX:          motion.WorldVelocityX,
-		VelocityY:          motion.WorldVelocityY,
-		VelocityZ:          motion.WorldVelocityZ,
-		GForceLateral:      motion.GForceLateral,
-		GForceLongitudinal: motion.GForceLongitudinal,
-		GForceVertical:     motion.GForceVertical,
-		Yaw:                motion.Yaw,
-		Pitch:              motion.Pitch,
-		Roll:               motion.Roll,
-	}
-}
-
-// normalizeSessionHistoryData unpacks the lap data from the SessionHistoryData field
-func (f *F123PacketTransformer) normalizeSessionHistoryData(
-	header *PacketHeader,
-	sessionHistory *SessionHistoryData,
-) []*pb.HistoricLapData {
-	// this data comes with the current incomplete lap which we do not want for this channel.
-	// Presumably it will always be the last entry, so we'll remove that from the list of laps
-	// we're sending
-	maxLapIndex := int(sessionHistory.NumLaps) - 1
-	if maxLapIndex <= 0 {
-		slog.Info("f123 packet transformer not sending current incomplete lap as historic lap", "laps", sessionHistory.LapHistoryData)
-		return nil
-	}
-	laps := make([]*pb.HistoricLapData, maxLapIndex)
-	incomingLaps := sessionHistory.LapHistoryData
-	// get latest index for this session, car
-	sessionID, userID := fmt.Sprintf("%d", header.SessionUID), fmt.Sprintf("%d", header.PlayerCarIndex)
-	latest := f.LatestLaps.Get(sessionID, userID)
-	if latest >= maxLapIndex {
-		slog.Info("f123 packet transformer not sending already-recorded historic lap", "latest_recorded", latest, "max_received", maxLapIndex)
-		return nil
-	}
-	f.LatestLaps.Set(sessionID, userID, maxLapIndex)
-	for i := latest; i < maxLapIndex; i++ {
-		lap := incomingLaps[i]
-
-		laps = append(laps, &pb.HistoricLapData{
-			LapNum:       uint32(i),
-			LapTime:      durationpb.New(time.Millisecond * time.Duration(lap.LapTimeInMS)),
-			Sector1Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector1TimeInMS)),
-			Sector2Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector2TimeInMS)),
-			Sector3Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector3TimeInMS)),
-			LapValid:     lap.LapValidBitFlags&0x01 == 0,
-			Sector1Valid: lap.LapValidBitFlags&0x02 == 0,
-			Sector2Valid: lap.LapValidBitFlags&0x04 == 0,
-			Sector3Valid: lap.LapValidBitFlags&0x08 == 0,
-		})
-	}
-	return laps
-}
-
 // Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
 // TODO: consider the signature here, it was hacked together initially
 func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader, data *bytes.Buffer) error {
@@ -363,4 +238,168 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 	}
 
 	return nil
+}
+
+// handlePacket reads a packet header and calls Route on the remaining bytes
+func (f *F123PacketTransformer) handlePacket(ctx context.Context, packet []byte) {
+	var clone []byte
+	if f.capture {
+		clone = bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
+	}
+	buf := bytes.NewBuffer(packet)
+	header := ReadBin[PacketHeader](buf)
+	if f.capture {
+		packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
+		if err != nil {
+			fmt.Println("failed writing capture ", err.Error())
+		}
+		defer packetCapture.Close()
+		packetCapture.Write(clone)
+	}
+	f.Route(ctx, header, buf)
+}
+
+// normalizeVehicleData maps F1 23 CarTelemetryData to protobuf VehicleData
+func (f *F123PacketTransformer) normalizeVehicleData(
+	header *PacketHeader,
+	telemetry *CarTelemetryData,
+) *pb.VehicleData {
+	tires := &pb.VehicleData_Tires{
+		FrontLeft: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]), // FL
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[2]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[2]),
+			Pressure:           uint32(telemetry.TyresPressure[2]),
+		},
+		FrontRight: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]), // FR
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[3]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[3]),
+			Pressure:           uint32(telemetry.TyresPressure[3]),
+		},
+		BackLeft: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]), // RL
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[0]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[0]),
+			Pressure:           uint32(telemetry.TyresPressure[0]),
+		},
+		BackRight: &pb.TireData{
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]), // RR
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[1]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[1]),
+			Pressure:           uint32(telemetry.TyresPressure[1]),
+		},
+	}
+
+	return &pb.VehicleData{
+		Speed:             uint32(telemetry.Speed),
+		Rpm:               uint32(telemetry.EngineRPM),
+		Throttle:          telemetry.Throttle,
+		Brake:             telemetry.Brake,
+		Steering:          telemetry.Steer,
+		Gear:              int32(telemetry.Gear),
+		EngineTemperature: uint32(telemetry.EngineTemperature),
+		Tires:             tires,
+	}
+}
+
+// normalizeMotionData maps F1 23 CarMotionData to protobuf MotionData
+func (f *F123PacketTransformer) normalizeMotionData(
+	header *PacketHeader,
+	motion *CarMotionData,
+) *pb.MotionData {
+	return &pb.MotionData{
+		PositionX:          motion.WorldPositionX,
+		PositionY:          motion.WorldPositionY,
+		PositionZ:          motion.WorldPositionZ,
+		VelocityX:          motion.WorldVelocityX,
+		VelocityY:          motion.WorldVelocityY,
+		VelocityZ:          motion.WorldVelocityZ,
+		GForceLateral:      motion.GForceLateral,
+		GForceLongitudinal: motion.GForceLongitudinal,
+		GForceVertical:     motion.GForceVertical,
+		Yaw:                motion.Yaw,
+		Pitch:              motion.Pitch,
+		Roll:               motion.Roll,
+	}
+}
+
+// normalizeSessionHistoryData unpacks the lap data from the SessionHistoryData field
+func (f *F123PacketTransformer) normalizeSessionHistoryData(
+	header *PacketHeader,
+	sessionHistory *SessionHistoryData,
+) []*pb.HistoricLapData {
+	// this data comes with the current incomplete lap which we do not want for this channel.
+	// Presumably it will always be the last entry, so we'll remove that from the list of laps
+	// we're sending
+	maxLapIndex := int(sessionHistory.NumLaps) - 1
+	if maxLapIndex <= 0 {
+		slog.Debug("f123 packet transformer not sending current incomplete lap as historic lap", "laps", sessionHistory.LapHistoryData)
+		return nil
+	}
+	laps := make([]*pb.HistoricLapData, maxLapIndex)
+	incomingLaps := sessionHistory.LapHistoryData
+	// get latest index for this session, car
+	sessionID, userID := fmt.Sprintf("%d", header.SessionUID), fmt.Sprintf("%d", header.PlayerCarIndex)
+	latest := f.LatestLaps.Get(sessionID, userID)
+	if latest >= maxLapIndex {
+		slog.Debug("f123 packet transformer not sending already-recorded historic lap", "latest_recorded", latest, "max_received", maxLapIndex)
+		return nil
+	}
+	f.LatestLaps.Set(sessionID, userID, maxLapIndex)
+	for i := latest; i < maxLapIndex; i++ {
+		lap := incomingLaps[i]
+
+		laps = append(laps, &pb.HistoricLapData{
+			LapNum:       uint32(i),
+			LapTime:      durationpb.New(time.Millisecond * time.Duration(lap.LapTimeInMS)),
+			Sector1Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector1TimeInMS)),
+			Sector2Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector2TimeInMS)),
+			Sector3Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector3TimeInMS)),
+			LapValid:     lap.LapValidBitFlags&0x01 == 0,
+			Sector1Valid: lap.LapValidBitFlags&0x02 == 0,
+			Sector2Valid: lap.LapValidBitFlags&0x04 == 0,
+			Sector3Valid: lap.LapValidBitFlags&0x08 == 0,
+		})
+	}
+	return laps
+}
+
+// F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer
+type F123IngestConfig struct {
+	MaxPacketsBuffered uint `default:"1000"` // size of the buffered channel of packets
+
+	VehicleDataChannel    chan *pb.GameTelemetry
+	MotionDataChannel     chan *pb.GameTelemetry
+	CurrentLapDataChannel chan *pb.GameTelemetry
+	LapTimesDataChannel   chan *pb.GameTelemetry
+}
+
+type F123Ingest struct {
+	*F123PacketReader
+	*F123PacketTransformer
+}
+
+// NewF123Ingest is a convenience function that uses `cfg` to setup a PacketReader and PacketTransformer
+func NewF123Ingest(
+	cfg F123IngestConfig,
+	conn net.PacketConn,
+) *F123Ingest {
+	buffer := make(chan []byte, cfg.MaxPacketsBuffered)
+	packetReader := &F123PacketReader{
+		Server:       conn,
+		PacketBuffer: buffer, // send all packets here
+	}
+	transformer := &F123PacketTransformer{
+		Packets:               buffer,                    // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel:    cfg.VehicleDataChannel,    // write vehicle packets as their protobuf representation here
+		MotionDataChannel:     cfg.MotionDataChannel,     // write motion packets as their protobuf representation here
+		CurrentLapDataChannel: cfg.CurrentLapDataChannel, // write current lap times packets as their protobuf representation here
+		LapTimesDataChannel:   cfg.LapTimesDataChannel,   // write historic lap data packets as their protobuf representation here
+		LatestLaps:            NewLatestLapData(),
+	}
+	return &F123Ingest{
+		F123PacketReader:      packetReader,
+		F123PacketTransformer: transformer,
+	}
 }

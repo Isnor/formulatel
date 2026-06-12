@@ -377,6 +377,7 @@ func TestDuplicateLapTimes(t *testing.T) {
 				require.NoError(t, err, "expected a single lap to have been recorded")
 				require.NotNil(t, lapTelemetryRead)
 				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapNum, lapTelemetryRead.LapNum)
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapTime, lapTelemetryRead.LapTime)
 			},
 		},
 	}.Run(t)
