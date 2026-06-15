@@ -95,25 +95,16 @@ message MotionData {
 // this message describes current lap time and race state data
 message CurrentLapData {
   // uint32 lap_time = 1;
-  uint32 lap_num = 1;
-  uint32 lap_time = 2;
+  uint32 lap_num = 1; // number of the current lap
+  uint32 lap_time = 2; // time since the beginning of current lap
   uint32 sector = 3; // 1, 2, or 3; 0 if the track does not have sectors
   uint32 sector1_time = 4;
   uint32 sector2_time = 5;
   // sector3_time is always current_lap_time - sector1_time - sector2_time
-  // uint32 sector3_time = 5;
   uint32 delta_to_car_in_front = 6;
   uint32 delta_to_race_leader = 7;
   float lap_distance = 8;
   float total_distance = 9;
-  uint32 car_position = 10;
-  uint32 grid_position = 12;
-  uint32 pit_status = 13;
-  uint32 num_pit_stops = 14;
-  // uint32 driver_status = 15;
-  // uint32 result_status = 16;
-  uint32 pit_lane_timer_active = 17;
-  float pit_lane_time = 18;
 }
 
 message HistoricLapData {

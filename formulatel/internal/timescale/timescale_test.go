@@ -190,21 +190,15 @@ func pseudoRandomLiveLapDataTelemetry() *pb.GameTelemetry {
 		Timestamp: timestamppb.Now(),
 		Data: &pb.GameTelemetry_CurrentLapData{
 			CurrentLapData: &pb.CurrentLapData{
-				LapNum:             rand.Uint32N(90),
-				LapTime:            lapTime,
-				Sector:             rand.Uint32N(3),
-				Sector1Time:        lapTime / 3,
-				Sector2Time:        lapTime / 3,
-				LapDistance:        rand.Float32() * float32(rand.Int32N(1000)),
-				PitStatus:          0,
-				DeltaToCarInFront:  rand.Uint32N(1000),
-				DeltaToRaceLeader:  rand.Uint32N(1000),
-				TotalDistance:      rand.Float32() * float32(rand.Int32N(100000)),
-				CarPosition:        rand.Uint32N(22),
-				GridPosition:       rand.Uint32N(22),
-				NumPitStops:        rand.Uint32N(5),
-				PitLaneTimerActive: rand.Uint32N(10),
-				PitLaneTime:        rand.Float32() * 10,
+				LapNum:            rand.Uint32N(90),
+				LapTime:           lapTime,
+				Sector:            rand.Uint32N(3),
+				Sector1Time:       lapTime / 3,
+				Sector2Time:       lapTime / 3,
+				LapDistance:       rand.Float32() * float32(rand.Int32N(1000)),
+				DeltaToCarInFront: rand.Uint32N(1000),
+				DeltaToRaceLeader: rand.Uint32N(1000),
+				TotalDistance:     rand.Float32() * float32(rand.Int32N(100000)),
 			},
 		},
 	}
@@ -342,7 +336,7 @@ func TestBatchRouter(t *testing.T) {
 
 				// Wait for the batcher to complete the flush. The batcher uses a ticker-based flush
 				// with a 10ms interval, so we wait for at least one flush cycle plus some buffer.
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond)
 
 				motionTelemetryRead := &pb.MotionData{}
 				vehicleTelemetryRead := &pb.VehicleData{}
@@ -351,12 +345,15 @@ func TestBatchRouter(t *testing.T) {
 				p.QueryRow(t.Context(), "select position_z from motion_data limit 1").Scan(&motionTelemetryRead.PositionZ)
 				p.QueryRow(t.Context(), "select speed, rpm from vehicle_data limit 1").Scan(&vehicleTelemetryRead.Speed, &vehicleTelemetryRead.Rpm)
 				p.QueryRow(t.Context(), "select lap_num from session_lap_data").Scan(&lapTelemetryRead.LapNum)
-				p.QueryRow(t.Context(), "select lap_time, sector1_time from live_lap_data").Scan(&currentLapTelemetryRead.LapTime, &currentLapTelemetryRead.Sector1Time)
+				p.QueryRow(t.Context(), "select current_lap_time, sector1_time from live_lap_data").Scan(&currentLapTelemetryRead.LapTime, &currentLapTelemetryRead.Sector1Time)
 
 				assert.EqualValues(t, motionTelemetryWritten.GetMotionData().GetPositionZ(), motionTelemetryRead.GetPositionZ())
+
 				assert.EqualValues(t, vehicleTelemetryWritten.GetVehicleData().GetSpeed(), vehicleTelemetryRead.GetSpeed())
 				assert.EqualValues(t, vehicleTelemetryWritten.GetVehicleData().GetRpm(), vehicleTelemetryRead.GetRpm())
+
 				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().GetLapNum(), lapTelemetryRead.GetLapNum())
+
 				assert.EqualValues(t, currentLapDataTelemetryWritten.GetCurrentLapData().GetLapTime(), currentLapTelemetryRead.GetLapTime())
 				assert.EqualValues(t, currentLapDataTelemetryWritten.GetCurrentLapData().GetSector1Time(), currentLapTelemetryRead.GetSector1Time())
 			},

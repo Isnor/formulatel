@@ -213,20 +213,16 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 
 		// Note: sector3_time is derived from sector1+sector2 for simplicity
 		// In a full implementation, this would be calculated from total_distance or sector3 time
-		lapTimesData := &pb.CurrentLapData{
-			LapTime:            uint32(playerLapData.LastLapTimeInMS),
-			Sector1Time:        uint32(playerLapData.Sector1TimeInMS),
-			Sector2Time:        uint32(playerLapData.Sector2TimeInMS),
-			DeltaToCarInFront:  uint32(playerLapData.DeltaToCarInFrontInMS),
-			DeltaToRaceLeader:  uint32(playerLapData.DeltaToRaceLeaderInMS),
-			LapDistance:        playerLapData.LapDistance,
-			TotalDistance:      playerLapData.TotalDistance,
-			CarPosition:        uint32(playerLapData.CarPosition),
-			GridPosition:       uint32(playerLapData.GridPosition),
-			PitStatus:          uint32(playerLapData.PitStatus),
-			NumPitStops:        uint32(playerLapData.NumPitStops),
-			PitLaneTimerActive: uint32(playerLapData.PitLaneTimerActive),
-			PitLaneTime:        float32(playerLapData.PitLaneTimeInLaneInMS),
+		currentLapData := &pb.CurrentLapData{
+			LapTime:           uint32(playerLapData.LastLapTimeInMS),
+			Sector1Time:       uint32(playerLapData.Sector1TimeInMS),
+			Sector2Time:       uint32(playerLapData.Sector2TimeInMS),
+			DeltaToCarInFront: uint32(playerLapData.DeltaToCarInFrontInMS),
+			DeltaToRaceLeader: uint32(playerLapData.DeltaToRaceLeaderInMS),
+			LapDistance:       playerLapData.LapDistance,
+			TotalDistance:     playerLapData.TotalDistance,
+			LapNum:            uint32(playerLapData.CurrentLapNum),
+			Sector:            uint32(playerLapData.Sector),
 		}
 
 		lapProto := &pb.GameTelemetry{
@@ -235,7 +231,7 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_CurrentLapData{
-				CurrentLapData: lapTimesData,
+				CurrentLapData: currentLapData,
 			},
 		}
 		f.CurrentLapDataChannel <- lapProto

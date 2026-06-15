@@ -56,7 +56,7 @@ func buildRowForCopy(msg *pb.GameTelemetry, tableName string) (map[string]any, e
 			return nil, err
 		}
 		return row, nil
-	case "live_lap_data": // TODO: not sure if we'll even create this table
+	case "live_lap_data":
 		row, err := buildCurrentLapDataRow(msg)
 		if err != nil {
 			return nil, err
@@ -137,19 +137,15 @@ func buildCurrentLapDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 			"session_id":            msg.SessionId,
 			"user_id":               msg.UserId,
 			"title":                 msg.Title,
-			"lap_time":              lapTimes.LapTime,
+			"lap_num":               lapTimes.LapNum,
+			"current_lap_time":      lapTimes.LapTime,
+			"sector":                lapTimes.Sector,
 			"sector1_time":          lapTimes.Sector1Time,
 			"sector2_time":          lapTimes.Sector2Time,
 			"delta_to_car_in_front": lapTimes.DeltaToCarInFront,
 			"delta_to_race_leader":  lapTimes.DeltaToRaceLeader,
 			"lap_distance":          lapTimes.LapDistance,
 			"total_distance":        lapTimes.TotalDistance,
-			"car_position":          lapTimes.CarPosition,
-			"pit_status":            lapTimes.PitStatus,
-			"num_pit_stops":         lapTimes.NumPitStops,
-			"grid_position":         lapTimes.GridPosition,
-			"pit_lane_timer_active": lapTimes.PitLaneTimerActive,
-			"pit_lane_time":         lapTimes.PitLaneTime,
 		}, nil
 	}
 	return nil, errors.New("did not write current lap data telemetry: no lap times data found")
@@ -201,7 +197,7 @@ func (b *TableBatcher) WriteLapRow(ctx context.Context, row *pb.GameTelemetry) e
 		if err != nil {
 			return fmt.Errorf("%w: failed writing lap time row", err)
 		}
-		slog.InfoContext(ctx, "wrote lap time", "session_id", row.SessionId, "user_id", row.UserId, "lap_num", lapTime.LapNum)
+		slog.DebugContext(ctx, "wrote lap time", "session_id", row.SessionId, "user_id", row.UserId, "lap_num", lapTime.LapNum)
 		return nil
 	}
 	slog.ErrorContext(ctx, "row did not have lap data", "row", row)
@@ -387,14 +383,10 @@ var motionDataColumnOrder = []string{
 
 var currentLapColumnOrder = []string{
 	"time", "session_id", "user_id", "title",
-	"lap_time", "current_lap_time",
-	"sector1_time", "sector2_time", "sector3_time",
+	"lap_num", "current_lap_time",
+	"sector", "sector1_time", "sector2_time",
 	"delta_to_car_in_front", "delta_to_race_leader",
 	"lap_distance", "total_distance",
-	"car_position", "current_lap_num",
-	"pit_status", "num_pit_stops", "grid_position",
-	"driver_status", "result_status",
-	"pit_lane_timer_active", "pit_lane_time",
 }
 
 // rowKeys extracts column keys from a row map in database schema order.
