@@ -88,12 +88,9 @@ func TestF123Ingest(t *testing.T) {
 			name:   "motion data",
 			config: config,
 			expectations: func(t *testing.T, conn net.PacketConn, packets map[PacketType][][]byte) {
-				// writeConn, err := net.Dial("udp", conn.LocalAddr().String())
-				// require.NoError(t, err)
-				// defer conn.Close()
+
 				for _, p := range packets[CarMotionPacket] {
 					n, err := conn.WriteTo(p, conn.LocalAddr())
-					// n, err := writeConn.Write(p)
 					assert.NoError(t, err)
 					assert.Equal(t, len(p), n)
 				}
@@ -106,11 +103,8 @@ func TestF123Ingest(t *testing.T) {
 			name:   "vehicle data",
 			config: config,
 			expectations: func(t *testing.T, conn net.PacketConn, packets map[PacketType][][]byte) {
-				// writeConn, err := net.Dial("udp", conn.LocalAddr().String())
-				// require.NoError(t, err)
-				// defer conn.Close()
+
 				for _, p := range packets[CarTelemetryPacket] {
-					// n, err := writeConn.Write(p)
 					n, err := conn.WriteTo(p, conn.LocalAddr())
 					assert.NoError(t, err)
 					assert.Equal(t, len(p), n)
@@ -124,12 +118,9 @@ func TestF123Ingest(t *testing.T) {
 			name:   "current lap data",
 			config: config,
 			expectations: func(t *testing.T, conn net.PacketConn, packets map[PacketType][][]byte) {
-				// writeConn, err := net.Dial("udp", conn.LocalAddr().String())
-				// require.NoError(t, err)
-				// defer conn.Close()
+
 				for _, p := range packets[LapDataPacket] {
 					n, err := conn.WriteTo(p, conn.LocalAddr())
-					// n, err := writeConn.Write(p)
 					assert.NoError(t, err)
 					assert.Equal(t, len(p), n)
 				}
