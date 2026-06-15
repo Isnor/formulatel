@@ -2,6 +2,8 @@
 
 [Agent Rules](./AGENTS.md)
 
+# Future Ideas
+
 ## Database Backup Strategy
 
 ### Retention and Backup Options
