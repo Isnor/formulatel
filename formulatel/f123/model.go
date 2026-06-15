@@ -179,16 +179,14 @@ type SessionHistoryData struct {
 
 // LapHistoryData represents a single lap entry in the session history.
 type LapHistoryData struct {
-	LapTimeInMS           uint32 // Lap time in milliseconds
-	Sector1TimeInMS       uint16 // Sector 1 time in milliseconds
-	Sector1TimeMinutes    uint8  // Sector 1 whole minute part
-	Sector2TimeInMS       uint16 // Sector 2 time in milliseconds
-	Sector2TimeMinutes    uint8  // Sector 2 whole minute part
-	Sector3TimeInMS       uint16 // Sector 3 time in milliseconds
-	Sector3TimeMinutes    uint8  // Sector 3 whole minute part
-	LapValidBitFlags      uint8  // Bit flags for validity: 0x01 lap valid, 0x02 sector 1 valid, 0x04 sector 2 valid, 0x08 sector 3 valid
-	DeltaToCarInFrontInMS uint16 // Time delta to car in front in milliseconds
-	DeltaToRaceLeaderInMS uint16 // Time delta to race leader in milliseconds
+	LapTimeInMS        uint32 // Lap time in milliseconds
+	Sector1TimeInMS    uint16 // Sector 1 time in milliseconds
+	Sector1TimeMinutes uint8  // Sector 1 whole minute part
+	Sector2TimeInMS    uint16 // Sector 2 time in milliseconds
+	Sector2TimeMinutes uint8  // Sector 2 whole minute part
+	Sector3TimeInMS    uint16 // Sector 3 time in milliseconds
+	Sector3TimeMinutes uint8  // Sector 3 whole minute part
+	LapValidBitFlags   uint8  // Bit flags for validity: 0x01 lap valid, 0x02 sector 1 valid, 0x04 sector 2 valid, 0x08 sector 3 valid
 }
 
 // TyreStintHistoryData represents a tyre stint entry.

@@ -4,5 +4,5 @@ captured_packets/
 # maybe I should include the memory files as well, not sure
 !.claude/agents/
 out/
-
+formulatel/cmd/decode/
 *.out

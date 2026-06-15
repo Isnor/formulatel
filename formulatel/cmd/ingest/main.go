@@ -29,7 +29,8 @@ func main() {
 	// TODO: if we want to have a flag to switch on which data we're reading, we'll need to parse
 	// flags before the environment variables. Shame.
 	var ingestConfig f123.F123IngestConfig
-	envconfig.Process("formulatel_f123", &ingestConfig)
+	envconfig.MustProcess("formulatel_f123", &ingestConfig)
+	slog.Info("starting ingest", "config", ingestConfig)
 	// flag.Parse()
 	serverContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
@@ -53,7 +54,7 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Go(func() {
-		if err := ingest.Run(serverContext); err != nil {
+		if err := ingest.Listen(serverContext); err != nil {
 			slog.ErrorContext(serverContext, "error reading packets. stopping.", "error", err.Error())
 			cancel()
 		}
@@ -72,15 +73,13 @@ func main() {
 	// the rest of this is setting up MQTT publishers that listen to channels of GameTelemetry
 	// and publish them to an MQTT topic. If we're going to support other kinds of ingestion, e.g.
 	// kafka or gRPC, then we should factor this out and configure it with the CLI flags
-	mqttPublisherCtx, cancel := context.WithCancel(serverContext)
-	defer cancel()
 
 	// Enable logging by uncommenting the below
 	mqtt.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
 	mqtt.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
 
-	// TODO: make broker configurable
-	connectionOptions := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")
+	// TODO: make mqtt options configurable
+	connectionOptions := mqttutil.GenerateMQTTv3Options().AddBroker("tcp://localhost:1883")
 	// TODO: this should be deterministic in some way
 	connectionOptions.ClientID = "formulatel_ingest"
 
@@ -89,31 +88,30 @@ func main() {
 	if err != nil {
 		slog.ErrorContext(serverContext, "could not connect to MQTT broker; stopping ingest", "error", err.Error())
 		cancel()
-		os.Exit(1)
-	}
+	} else {
 
-	// wire each telemetry channel with an mqtt topic
-	for topic, channel := range map[string]chan *pb.GameTelemetry{
-		"formulatel/vehicledata/f123":    ingestConfig.VehicleDataChannel,
-		"formulatel/motiondata/f123":     ingestConfig.MotionDataChannel,
-		"formulatel/currentlapdata/f123": ingestConfig.CurrentLapDataChannel,
-		"formulatel/laptimesdata/f123":   ingestConfig.LapTimesDataChannel,
-	} {
-		wg.Go(func() {
-			ctx, cancel := context.WithCancel(mqttPublisherCtx)
-			defer cancel()
-			if err := RunMQTTv3Publisher(ctx, StartPublisherConfig{
-				mqttClient: mqttClient,
-				data:       channel,
-				topic:      topic,
-			}); err != nil {
-				slog.ErrorContext(ctx, "mqtt publisher failed", "error", err.Error(), "topic", topic)
-			} else {
-				slog.InfoContext(ctx, "started mqtt publisher", "topic", topic)
-			}
-		})
+		// wire each telemetry channel with an mqtt topic
+		for topic, channel := range map[string]chan *pb.GameTelemetry{
+			"formulatel/vehicledata/f123":    ingestConfig.VehicleDataChannel,
+			"formulatel/motiondata/f123":     ingestConfig.MotionDataChannel,
+			"formulatel/currentlapdata/f123": ingestConfig.CurrentLapDataChannel,
+			"formulatel/laptimesdata/f123":   ingestConfig.LapTimesDataChannel,
+		} {
+			wg.Go(func() {
+				ctx, cancel := context.WithCancel(serverContext)
+				defer cancel()
+				if err := RunMQTTv3Publisher(ctx, StartPublisherConfig{
+					mqttClient: mqttClient,
+					data:       channel,
+					topic:      topic,
+				}); err != nil {
+					slog.ErrorContext(ctx, "mqtt publisher failed", "error", err.Error(), "topic", topic)
+				} else {
+					slog.InfoContext(ctx, "started mqtt publisher", "topic", topic)
+				}
+			})
+		}
 	}
-
 	wg.Wait()
 	slog.InfoContext(serverContext, "shut down successfully")
 }

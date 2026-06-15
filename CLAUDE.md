@@ -176,15 +176,13 @@ For development, `ingest` has a `capture` flag that can write packets to `captur
 To add support for new data types, follow these steps:
 
 ### 1. Define the protocol buffer
-Add the new message type to `protobuf/telemetry.proto`.
+Add the new message type to `protobuf/telemetry.proto`. The user needs to specify the structure of the data. If the user needs help defining the schema for the new data, use context7 to try to find documentation for existing racing telemetry data models.
 
-### 2. Model the data in ingest
-Create a model package under `formulatel/<datatype>/` that:
+### 2. Model the native data
+Update a model package under `formulatel/<title>/` that:
 - Defines packet structures matching the source format
-- Implements `PacketReader` (or use the provided concrete type like `F123PacketReader`)
-- Implements `PacketTransformer` with:
-  - `Consume()` method to read packets from a buffered channel
-  - `Route()` method to handle different packet types and normalize to `GameTelemetry`
+- Update `F123PacketTransformer` with:
+  - `Route()` method to handle the new data type types and normalize to `GameTelemetry`
 
 ### 3. Push to MQTT topic
 The transformer publishes to a topic like `formulatel/<datatype>/<title>` for Grafana and persist to consume.
@@ -217,7 +215,11 @@ Dashboards are defined in `kubernetes/config/dashboards`. There is one for live 
 
 ## Adding Support for a New Title
 
-The system uses a **package-per-title** design pattern. Each racing sim has its own package that handles title-specific parsing and normalization.
+The system uses a **package-per-title** design pattern. Each racing sim has its own package that handles title-specific parsing and normalization. Adding a new title involves:
+
+1) reading data from the title using whatever transport that title provides. For example, UDP packets or shared memory.
+2) modeling the data from the title's native format into structured data
+3) converting that structured data into the GameTelemetry format
 
 See ["Adding New Data Types"](#adding-new-data-types) for detailed steps.
 
@@ -229,26 +231,11 @@ See ["Adding New Data Types"](#adding-new-data-types) for detailed steps.
 
 ## Troubleshooting
 
-### Error: "row field count is X, expected Y"
-**Cause**: `buildRow()` function only added columns when `vd.Tires != nil`, resulting in mismatched column counts
-**Fix**: Always include all 27 columns for vehicle_data and 17 columns for motion_data, even if nullable fields are nil
-**Location**: `formulatel/internal/timescale/batcher.go:buildRow()`
-
-### Error: "invalid byte sequence for encoding UTF8: 0x00"
-**Cause**: `protojson.MarshalOptions{EmitUnpopulated: true}` was outputting null bytes (0x00) which are invalid in UTF8
-**Fix**: Changed to `EmitUnpopulated: false` while keeping `EmitDefaultValues: true` to preserve zero values
-**Location**: `formulatel/cmd/ingest/mqtt_v3.go:StartMQTTv3Publisher()`
-
-### Error: "unexpected EOF in COPY data"
-**Cause**: Result of the above two errors - pgx receives malformed rows and aborts the COPY operation
-**Fix**: Both fixes above resolve this error
-
 ### Persist Service
 - Verify TimescaleDB connection string
 - Check that schema migrations have run
 - Monitor batcher flush rates
 - Check PostgreSQL logs for encoding errors
-- Verify column counts match schema (27 for vehicle_data, 17 for motion_data)
 
 ### Grafana
 - Ensure MQTT datasource is configured
@@ -270,7 +257,7 @@ See ["Adding New Data Types"](#adding-new-data-types) for detailed steps.
 
 #### 1. TimescaleDB Automatic Retention (Simplest)
 ```sql
--- Set chunk retention policy to keep data for 7 days
+-- Set chunk retention policy to keep data for 7 days; e.g.:
 SELECT add_retention_policy('vehicle_data', INTERVAL 7 days);
 SELECT add_retention_policy('motion_data', INTERVAL 7 days);
 ```
@@ -342,7 +329,6 @@ Completed:
 - [x] MQTT v3 protocol support
 
 Future:
-- [ ] Generic racing telemetry <-> metric conversion
 - [ ] Build dashboard for interesting telemetry data
 - [ ] Insights: braking point detection, racing line optimization
 - [ ] Tire wear prediction
