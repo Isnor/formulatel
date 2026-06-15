@@ -37,7 +37,63 @@
             "name": "Annotations & Alerts",
             "builtIn": true
           }
-        }
+        },
+        {
+          "kind": "AnnotationQuery",
+          "spec": {
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana-postgresql-datasource",
+              "version": "v0",
+              "datasource": {
+                "name": "P7651987DC94FAF0B"
+              },
+              "spec": {
+                "dataset": "postgres",
+                "editorMode": "code",
+                "format": "table",
+                "rawQuery": true,
+                "rawSql": "SELECT\n  distinct lap_time, max(time) as time,\n  'Lap ' || current_lap_num - 1 || ' (' || lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM live_lap_data\nWHERE $__timeFilter(time) AND lap_time > 0\ngroup by lap_time, current_lap_num\nORDER BY time ASC;",
+                "refId": "Anno",
+                "sql": {
+                  "columns": [
+                    {
+                      "parameters": [],
+                      "type": "function"
+                    }
+                  ],
+                  "groupBy": [
+                    {
+                      "property": {
+                        "type": "string"
+                      },
+                      "type": "groupBy"
+                    }
+                  ],
+                  "limit": 50
+                }
+              }
+            },
+            "enable": true,
+            "hide": false,
+            "iconColor": "yellow",
+            "name": "laps",
+            "mappings": {
+              "tags": {
+                "source": "field",
+                "value": "tags"
+              },
+              "text": {
+                "source": "field",
+                "value": "text"
+              },
+              "time": {
+                "source": "field",
+                "value": "time"
+              }
+            }
+          }
+         }
       ],
       "cursorSync": "Off",
       "editable": true,

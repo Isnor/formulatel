@@ -176,12 +176,12 @@ func (b *TableBatcher) Start() {
 	go b.flusherWorker()
 }
 
-// WriteLapRow is a dumb function written by a dumb man that writes a single lap row
+// WriteLapRow writes a single LapTimesData row
 func (b *TableBatcher) WriteLapRow(ctx context.Context, row *pb.GameTelemetry) error {
 	if lapTime := row.GetLapTimesData(); lapTime != nil {
 		_, err := b.conn.Exec(
 			ctx,
-			`INSERT INTO lap_times
+			`INSERT INTO session_lap_data
 				(session_id, user_id, title, lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid)
 			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			ON CONFLICT DO NOTHING`,
@@ -441,9 +441,10 @@ func rowKeys(row map[string]any, tableName string) []string {
 
 // BatchRouter routes messages to the appropriate TableBatcher.
 type BatchRouter struct {
-	vehicleBatcher  *TableBatcher
-	motionBatcher   *TableBatcher
-	lapTimesBatcher *TableBatcher
+	vehicleBatcher        *TableBatcher
+	motionBatcher         *TableBatcher
+	sessionLapDataBatcher *TableBatcher
+	liveLapDataBatcher    *TableBatcher
 }
 
 // TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
@@ -455,31 +456,36 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 	// TODO: why 100? should be configurable at least.
 	vehicleChan := make(chan GameTelemetryWithContext, 100)
 	motionChan := make(chan GameTelemetryWithContext, 100)
-	lapTimesChan := make(chan GameTelemetryWithContext, 100)
+	sessionLapDataChan := make(chan GameTelemetryWithContext, 100)
+	liveLapDataChan := make(chan GameTelemetryWithContext, 100)
 
 	// TODO: probably don't need this
 	go func() {
 		<-ctx.Done()
 		close(vehicleChan)
 		close(motionChan)
-		close(lapTimesChan)
+		close(sessionLapDataChan)
+		close(liveLapDataChan)
 	}()
 
 	// TODO: we create N batchers, 1 per table, meaning the BatchRouter actually has N*batchSize capacity
 	//	Maybe this is fine, but it makes the signature of this function misleading
 	vehicleBatcher := NewTableBatcher(ctx, conn, "vehicle_data", vehicleChan, batchSize, flushInterval)
 	motionBatcher := NewTableBatcher(ctx, conn, "motion_data", motionChan, batchSize, flushInterval)
-	lapTimesBatcher := NewTableBatcher(ctx, conn, "lap_times", lapTimesChan, batchSize, flushInterval)
+	liveLapDataBatcher := NewTableBatcher(ctx, conn, "live_lap_data", liveLapDataChan, batchSize, flushInterval)
+	sessionLapDataBatcher := NewTableBatcher(ctx, conn, "session_lap_data", sessionLapDataChan, batchSize, flushInterval)
 
 	// Start all batchers
 	vehicleBatcher.Start()
 	motionBatcher.Start()
-	lapTimesBatcher.Start()
+	sessionLapDataBatcher.Start()
+	liveLapDataBatcher.Start()
 
 	return &BatchRouter{
-		vehicleBatcher:  vehicleBatcher,
-		motionBatcher:   motionBatcher,
-		lapTimesBatcher: lapTimesBatcher,
+		vehicleBatcher:        vehicleBatcher,
+		motionBatcher:         motionBatcher,
+		sessionLapDataBatcher: sessionLapDataBatcher,
+		liveLapDataBatcher:    liveLapDataBatcher,
 	}, nil
 }
 
@@ -502,10 +508,16 @@ func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
 			b.motionBatcher.msgChan <- wrapped
 		}
 
-		// Lap times data
+		// Session lap data
 		if msg.GetLapTimesData() != nil {
 			slog.DebugContext(ctx, "read lap data", "lap_time", msg.GetLapTimesData())
-			b.lapTimesBatcher.msgChan <- wrapped
+			b.sessionLapDataBatcher.msgChan <- wrapped
+		}
+
+		// current lap data
+		if msg.GetCurrentLapData() != nil {
+			slog.DebugContext(ctx, "read live lap data")
+			b.liveLapDataBatcher.msgChan <- wrapped
 		}
 	}()
 }

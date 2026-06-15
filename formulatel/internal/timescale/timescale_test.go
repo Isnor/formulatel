@@ -181,6 +181,35 @@ func pseudoRandomLapTelemetry() *pb.GameTelemetry {
 	}
 }
 
+func pseudoRandomLiveLapDataTelemetry() *pb.GameTelemetry {
+	lapTime := rand.Uint32N(45000) * 3 // 45 seconds
+	return &pb.GameTelemetry{
+		Title:     pb.GameTitle_GAME_TITLE_UNKNOWN,
+		SessionId: "testing",
+		UserId:    "testuser",
+		Timestamp: timestamppb.Now(),
+		Data: &pb.GameTelemetry_CurrentLapData{
+			CurrentLapData: &pb.CurrentLapData{
+				LapNum:             rand.Uint32N(90),
+				LapTime:            lapTime,
+				Sector:             rand.Uint32N(3),
+				Sector1Time:        lapTime / 3,
+				Sector2Time:        lapTime / 3,
+				LapDistance:        rand.Float32() * float32(rand.Int32N(1000)),
+				PitStatus:          0,
+				DeltaToCarInFront:  rand.Uint32N(1000),
+				DeltaToRaceLeader:  rand.Uint32N(1000),
+				TotalDistance:      rand.Float32() * float32(rand.Int32N(100000)),
+				CarPosition:        rand.Uint32N(22),
+				GridPosition:       rand.Uint32N(22),
+				NumPitStops:        rand.Uint32N(5),
+				PitLaneTimerActive: rand.Uint32N(10),
+				PitLaneTime:        rand.Float32() * 10,
+			},
+		},
+	}
+}
+
 func TestSimpleDBWrites(t *testing.T) {
 	t.Parallel()
 	testtable.TestTable{
@@ -303,11 +332,13 @@ func TestBatchRouter(t *testing.T) {
 				motionTelemetryWritten := pseudoRandomMotionTelemetry()
 				vehicleTelemetryWritten := pseudoRandomVehicleTelemetry()
 				lapDataTelemetryWritten := pseudoRandomLapTelemetry()
+				currentLapDataTelemetryWritten := pseudoRandomLiveLapDataTelemetry()
 
 				// since the batch size is 1, the router should write these immediately
 				router.Add(t.Context(), motionTelemetryWritten)
 				router.Add(t.Context(), vehicleTelemetryWritten)
 				router.Add(t.Context(), lapDataTelemetryWritten)
+				router.Add(t.Context(), currentLapDataTelemetryWritten)
 
 				// Wait for the batcher to complete the flush. The batcher uses a ticker-based flush
 				// with a 10ms interval, so we wait for at least one flush cycle plus some buffer.
@@ -316,14 +347,18 @@ func TestBatchRouter(t *testing.T) {
 				motionTelemetryRead := &pb.MotionData{}
 				vehicleTelemetryRead := &pb.VehicleData{}
 				lapTelemetryRead := &pb.HistoricLapData{}
+				currentLapTelemetryRead := &pb.CurrentLapData{}
 				p.QueryRow(t.Context(), "select position_z from motion_data limit 1").Scan(&motionTelemetryRead.PositionZ)
 				p.QueryRow(t.Context(), "select speed, rpm from vehicle_data limit 1").Scan(&vehicleTelemetryRead.Speed, &vehicleTelemetryRead.Rpm)
-				p.QueryRow(t.Context(), "select lap_num from lap_times").Scan(&lapTelemetryRead.LapNum)
+				p.QueryRow(t.Context(), "select lap_num from session_lap_data").Scan(&lapTelemetryRead.LapNum)
+				p.QueryRow(t.Context(), "select lap_time, sector1_time from live_lap_data").Scan(&currentLapTelemetryRead.LapTime, &currentLapTelemetryRead.Sector1Time)
 
 				assert.EqualValues(t, motionTelemetryWritten.GetMotionData().GetPositionZ(), motionTelemetryRead.GetPositionZ())
 				assert.EqualValues(t, vehicleTelemetryWritten.GetVehicleData().GetSpeed(), vehicleTelemetryRead.GetSpeed())
 				assert.EqualValues(t, vehicleTelemetryWritten.GetVehicleData().GetRpm(), vehicleTelemetryRead.GetRpm())
 				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().GetLapNum(), lapTelemetryRead.GetLapNum())
+				assert.EqualValues(t, currentLapDataTelemetryWritten.GetCurrentLapData().GetLapTime(), currentLapTelemetryRead.GetLapTime())
+				assert.EqualValues(t, currentLapDataTelemetryWritten.GetCurrentLapData().GetSector1Time(), currentLapTelemetryRead.GetSector1Time())
 			},
 		},
 	}.Run(t)
@@ -333,10 +368,10 @@ func TestDuplicateLapTimes(t *testing.T) {
 	t.Parallel()
 	testtable.TestTable{
 		&WithMigrationsTest{
-			Name: "duplicate_lap_times",
+			Name: "duplicate_session_lap_data",
 			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
 				msgChan := make(chan GameTelemetryWithContext, 10)
-				batcher := NewTableBatcher(t.Context(), p, "lap_times", msgChan, 5, 10*time.Millisecond)
+				batcher := NewTableBatcher(t.Context(), p, "session_lap_data", msgChan, 5, 10*time.Millisecond)
 				batcher.Start()
 
 				lapDataTelemetryWritten := &pb.GameTelemetry{
@@ -361,8 +396,8 @@ func TestDuplicateLapTimes(t *testing.T) {
 				for range 3 {
 					assert.NoError(t, batcher.WriteLapRow(t.Context(), lapDataTelemetryWritten), "should not get error when inserting duplicate row")
 				}
-				rows, err := p.Query(t.Context(), "select lap_num, lap_time from lap_times")
-				assert.NoError(t, err, "did not get rows from lap_times")
+				rows, err := p.Query(t.Context(), "select lap_num, lap_time from session_lap_data")
+				assert.NoError(t, err, "did not get rows from session_lap_data")
 				lapTelemetryRead, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (*pb.HistoricLapData, error) {
 					result := pb.HistoricLapData{}
 					var lapTime time.Duration
