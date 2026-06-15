@@ -5,19 +5,19 @@
     "metadata": {
       "name": "gx2vh4",
       "namespace": "default",
-      "uid": "49783f2a-7c9c-485f-a6a8-9760bb06f7a1",
-      "resourceVersion": "1781192463459983",
-      "generation": 2,
-      "creationTimestamp": "2026-06-11T15:17:18Z",
+      "uid": "dcf76a73-4e91-4d59-b70b-239a517a3852",
+      "resourceVersion": "1781555946106982",
+      "generation": 3,
+      "creationTimestamp": "2026-06-15T20:06:39Z",
       "labels": {
-        "grafana.app/deprecatedInternalID": "2442376946790400"
+        "grafana.app/deprecatedInternalID": "3964749040148480"
       },
       "annotations": {
         "grafana.app/createdBy": "anonymous:0",
         "grafana.app/folder": "",
-        "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
+        "grafana.app/saved-from-ui": "Grafana v13.0.2 (3fcdbc5a)",
         "grafana.app/updatedBy": "anonymous:0",
-        "grafana.app/updatedTimestamp": "2026-06-11T15:41:03Z"
+        "grafana.app/updatedTimestamp": "2026-06-15T20:39:06Z"
       }
     },
     "spec": {
@@ -53,7 +53,7 @@
                 "editorMode": "code",
                 "format": "table",
                 "rawQuery": true,
-                "rawSql": "SELECT\n  distinct lap_time, max(time) as time,\n  'Lap ' || current_lap_num - 1 || ' (' || lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM live_lap_data\nWHERE $__timeFilter(time) AND lap_time > 0\ngroup by lap_time, current_lap_num\nORDER BY time ASC;",
+                "rawSql": "SELECT\n  distinct current_lap_time, max(time) as time,\n  'Lap ' || lap_num - 1 || ' (' || current_lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM live_lap_data\nWHERE $__timeFilter(time) AND current_lap_time > 0\ngroup by current_lap_time, lap_num\nORDER BY time ASC;",
                 "refId": "Anno",
                 "sql": {
                   "columns": [
@@ -93,7 +93,7 @@
               }
             }
           }
-         }
+        }
       ],
       "cursorSync": "Off",
       "editable": true,
@@ -206,7 +206,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -389,7 +389,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -594,7 +594,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -799,7 +799,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -992,7 +992,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1210,7 +1210,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1394,7 +1394,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.0.2",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1465,6 +1465,103 @@
                       "thresholdsStyle": {
                         "mode": "off"
                       }
+                    }
+                  },
+                  "overrides": []
+                }
+              }
+            }
+          }
+        },
+        "panel-8": {
+          "kind": "Panel",
+          "spec": {
+            "id": 8,
+            "title": "Lap Record",
+            "description": "",
+            "links": [],
+            "data": {
+              "kind": "QueryGroup",
+              "spec": {
+                "queries": [
+                  {
+                    "kind": "PanelQuery",
+                    "spec": {
+                      "query": {
+                        "kind": "DataQuery",
+                        "group": "grafana-postgresql-datasource",
+                        "version": "v0",
+                        "datasource": {
+                          "name": "P7651987DC94FAF0B"
+                        },
+                        "spec": {
+                          "dataset": "postgres",
+                          "editorMode": "code",
+                          "format": "table",
+                          "rawQuery": true,
+                          "rawSql": "select lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid from session_lap_data \nwhere cast($session_id as VARCHAR) = session_id\nand cast($driver_ID as varchar) = user_id\norder by lap_num",
+                          "sql": {
+                            "columns": [
+                              {
+                                "parameters": [],
+                                "type": "function"
+                              }
+                            ],
+                            "groupBy": [
+                              {
+                                "property": {
+                                  "type": "string"
+                                },
+                                "type": "groupBy"
+                              }
+                            ],
+                            "limit": 50
+                          },
+                          "table": "session_lap_data"
+                        }
+                      },
+                      "refId": "A",
+                      "hidden": false
+                    }
+                  }
+                ],
+                "transformations": [],
+                "queryOptions": {}
+              }
+            },
+            "vizConfig": {
+              "kind": "VizConfig",
+              "group": "table",
+              "version": "13.0.2",
+              "spec": {
+                "options": {
+                  "cellHeight": "sm",
+                  "showHeader": true
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "value": 0,
+                          "color": "green"
+                        },
+                        {
+                          "value": 80,
+                          "color": "red"
+                        }
+                      ]
+                    },
+                    "custom": {
+                      "align": "auto",
+                      "cellOptions": {
+                        "type": "auto"
+                      },
+                      "footer": {
+                        "reducers": []
+                      },
+                      "inspect": false
                     }
                   },
                   "overrides": []
@@ -1574,6 +1671,32 @@
                           "element": {
                             "kind": "ElementReference",
                             "name": "panel-4"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TabsLayoutTab",
+              "spec": {
+                "title": "lap summary",
+                "layout": {
+                  "kind": "GridLayout",
+                  "spec": {
+                    "items": [
+                      {
+                        "kind": "GridLayoutItem",
+                        "spec": {
+                          "x": 0,
+                          "y": 0,
+                          "width": 24,
+                          "height": 14,
+                          "element": {
+                            "kind": "ElementReference",
+                            "name": "panel-8"
                           }
                         }
                       }
