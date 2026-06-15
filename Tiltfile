@@ -35,7 +35,7 @@ local_resource(
   serve_env={
     # ingest does not listen to log_level
     # "LOG_LEVEL": "debug",
-    "FORMULATEL_F123_CAPTURE_PACKETS": "true",
+    # "FORMULATEL_F123_CAPTURE_PACKETS": "true",
   },
   labels=["formulatel"]
 )
