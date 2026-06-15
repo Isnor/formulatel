@@ -39,8 +39,8 @@ type TableBatcher struct {
 	tracer        trace.Tracer
 }
 
-// buildRow converts a GameTelemetry to a row map for the specified table.
-func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
+// buildRowForCopy converts a GameTelemetry to a row map for the specified table.
+func buildRowForCopy(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
 	// TODO: is there a less terrible way of implementing this? I don't like that we need to map each data type
 	//	to its respective table, it feels clunky.
 	switch tableName {
@@ -56,8 +56,8 @@ func buildRow(msg *pb.GameTelemetry, tableName string) (map[string]any, error) {
 			return nil, err
 		}
 		return row, nil
-	case "lap_times":
-		row, err := buildLapTimesDataRow(msg)
+	case "live_lap_data":
+		row, err := buildCurrentLapDataRow(msg)
 		if err != nil {
 			return nil, err
 		}
@@ -130,34 +130,25 @@ func buildVehicleDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 	return nil, errors.New("did not write vehicle telemetry: no vehicle data found")
 }
 
-func buildLapTimesDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
-	if lapTimes := msg.GetLapTimesData(); lapTimes != nil {
+func buildCurrentLapDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
+	if lapTimes := msg.GetCurrentLapData(); lapTimes != nil {
 		return map[string]any{
 			"time":                  msg.Timestamp.AsTime(),
 			"session_id":            msg.SessionId,
 			"user_id":               msg.UserId,
 			"title":                 msg.Title,
-			"lap_time":              lapTimes.LapTime,
-			"current_lap_time":      lapTimes.CurrentLapTime,
+			"lap_num":               lapTimes.LapNum,
+			"current_lap_time":      lapTimes.LapTime,
+			"sector":                lapTimes.Sector,
 			"sector1_time":          lapTimes.Sector1Time,
 			"sector2_time":          lapTimes.Sector2Time,
-			"sector3_time":          lapTimes.Sector3Time,
 			"delta_to_car_in_front": lapTimes.DeltaToCarInFront,
 			"delta_to_race_leader":  lapTimes.DeltaToRaceLeader,
 			"lap_distance":          lapTimes.LapDistance,
 			"total_distance":        lapTimes.TotalDistance,
-			"car_position":          lapTimes.CarPosition,
-			"current_lap_num":       lapTimes.CurrentLapNum,
-			"pit_status":            lapTimes.PitStatus,
-			"num_pit_stops":         lapTimes.NumPitStops,
-			"grid_position":         lapTimes.GridPosition,
-			"driver_status":         lapTimes.DriverStatus,
-			"result_status":         lapTimes.ResultStatus,
-			"pit_lane_timer_active": lapTimes.PitLaneTimerActive,
-			"pit_lane_time":         lapTimes.PitLaneTime,
 		}, nil
 	}
-	return nil, errors.New("did not write lap times telemetry: no lap times data found")
+	return nil, errors.New("did not write current lap data telemetry: no lap times data found")
 }
 
 // NewTableBatcher creates a new TableBatcher.
@@ -181,12 +172,45 @@ func (b *TableBatcher) Start() {
 	go b.flusherWorker()
 }
 
+// WriteLapRow writes a single LapTimesData row
+func (b *TableBatcher) WriteLapRow(ctx context.Context, row *pb.GameTelemetry) error {
+	if lapTime := row.GetLapTimesData(); lapTime != nil {
+		_, err := b.conn.Exec(
+			ctx,
+			`INSERT INTO session_lap_data
+				(session_id, user_id, title, lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT DO NOTHING`,
+			row.SessionId,
+			row.UserId,
+			row.Title.Number(),
+			lapTime.LapNum,
+			lapTime.LapTime.AsDuration(),
+			lapTime.Sector1Time.AsDuration(),
+			lapTime.Sector2Time.AsDuration(),
+			lapTime.Sector3Time.AsDuration(),
+			lapTime.LapValid,
+			lapTime.Sector1Valid,
+			lapTime.Sector2Valid,
+			lapTime.Sector3Valid,
+		)
+		if err != nil {
+			return fmt.Errorf("%w: failed writing lap time row", err)
+		}
+		slog.DebugContext(ctx, "wrote lap time", "session_id", row.SessionId, "user_id", row.UserId, "lap_num", lapTime.LapNum)
+		return nil
+	}
+	slog.ErrorContext(ctx, "row did not have lap data", "row", row)
+	return errors.New("cannot write lap row: no lap time data found")
+}
+
 // flusherWorker runs the dual-trigger flush worker.
 func (b *TableBatcher) flusherWorker() {
 	// TODO: test for edge cases on this, it might not be a good idea. It's written this way to try to
 	// have a new context for each batch written that somehow links to the receive context of a message.
-	traceCtx, span := b.tracer.Start(b.ctx, "table.batch")
 	for {
+		traceCtx, span := b.tracer.Start(b.ctx, "table.batch")
+		defer span.End()
 		select {
 		case <-b.ctx.Done():
 			b.flush(b.ctx)
@@ -194,18 +218,39 @@ func (b *TableBatcher) flusherWorker() {
 			slog.InfoContext(b.ctx, "table batcher stopped", "reason", "context finished")
 			return
 		case msg, ok := <-b.msgChan:
+			// TODO: !ok tells us that msgChan is closed, not empty. If this isn't flushed properly,
+			// we will lose rows that aren't buffered from the channel yet.
 			if !ok {
 				b.flush(b.ctx)
 				b.ticker.Stop()
 				slog.InfoContext(b.ctx, "table batcher stopped", "reason", "channel closed")
 				return
 			}
+			// TODO: if the msg type is LapData (not the live data), we need to add it to its table with
+			//	insert into ... on conflict do nothing to make sure we don't add duplicates due to how we
+			//	receive lap data.
+			if msg.msg.GetLapTimesData() != nil {
+				// TODO: this is probably a terrible idea
+				go func() {
+					if err := b.WriteLapRow(traceCtx, msg.msg); err != nil {
+						slog.ErrorContext(traceCtx, "did not write lap data: no lap data found", "error", err)
+						span.RecordError(err)
+						span.SetStatus(codes.Error, "failed writing lap data")
+					}
+					span.End()
+				}()
+				continue
+			}
 			// Use the per-message context for logging (for trace correlation)
 			b.bufferMu.Lock()
 			// Extract telemetry data from wrapped message
-			row, err := buildRow(msg.msg, b.tableName)
+			row, err := buildRowForCopy(msg.msg, b.tableName)
 			if err != nil {
 				slog.ErrorContext(msg.ctx, "failed building row", "table_name", b.tableName, "reason", err.Error())
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed building row for copy")
+				span.End()
+				continue
 			}
 			span.AddLink(trace.LinkFromContext(msg.ctx))
 			if row != nil {
@@ -216,13 +261,11 @@ func (b *TableBatcher) flusherWorker() {
 				b.flush(traceCtx)
 				span.AddEvent("flushed batch")
 				span.End()
-				traceCtx, span = b.tracer.Start(b.ctx, "table.batch")
 			}
 		case <-b.ticker.C:
-			b.flush(traceCtx)
 			span.AddEvent("flushed batch")
+			b.flush(traceCtx)
 			span.End()
-			traceCtx, span = b.tracer.Start(b.ctx, "table.batch")
 		}
 	}
 }
@@ -338,16 +381,12 @@ var motionDataColumnOrder = []string{
 	"yaw", "pitch", "roll",
 }
 
-var lapTimesColumnOrder = []string{
+var currentLapColumnOrder = []string{
 	"time", "session_id", "user_id", "title",
-	"lap_time", "current_lap_time",
-	"sector1_time", "sector2_time", "sector3_time",
+	"lap_num", "current_lap_time",
+	"sector", "sector1_time", "sector2_time",
 	"delta_to_car_in_front", "delta_to_race_leader",
 	"lap_distance", "total_distance",
-	"car_position", "current_lap_num",
-	"pit_status", "num_pit_stops", "grid_position",
-	"driver_status", "result_status",
-	"pit_lane_timer_active", "pit_lane_time",
 }
 
 // rowKeys extracts column keys from a row map in database schema order.
@@ -373,9 +412,9 @@ func rowKeys(row map[string]any, tableName string) []string {
 		return keys
 	}
 
-	if tableName == "lap_times" {
-		keys := make([]string, 0, len(lapTimesColumnOrder))
-		for _, col := range lapTimesColumnOrder {
+	if tableName == "live_lap_data" {
+		keys := make([]string, 0, len(currentLapColumnOrder))
+		for _, col := range currentLapColumnOrder {
 			if _, ok := row[col]; ok {
 				keys = append(keys, col)
 			}
@@ -394,9 +433,10 @@ func rowKeys(row map[string]any, tableName string) []string {
 
 // BatchRouter routes messages to the appropriate TableBatcher.
 type BatchRouter struct {
-	vehicleBatcher  *TableBatcher
-	motionBatcher   *TableBatcher
-	lapTimesBatcher *TableBatcher
+	vehicleBatcher        *TableBatcher
+	motionBatcher         *TableBatcher
+	sessionLapDataBatcher *TableBatcher
+	liveLapDataBatcher    *TableBatcher
 }
 
 // TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
@@ -408,31 +448,36 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 	// TODO: why 100? should be configurable at least.
 	vehicleChan := make(chan GameTelemetryWithContext, 100)
 	motionChan := make(chan GameTelemetryWithContext, 100)
-	lapTimesChan := make(chan GameTelemetryWithContext, 100)
+	sessionLapDataChan := make(chan GameTelemetryWithContext, 100)
+	liveLapDataChan := make(chan GameTelemetryWithContext, 100)
 
 	// TODO: probably don't need this
 	go func() {
 		<-ctx.Done()
 		close(vehicleChan)
 		close(motionChan)
-		close(lapTimesChan)
+		close(sessionLapDataChan)
+		close(liveLapDataChan)
 	}()
 
 	// TODO: we create N batchers, 1 per table, meaning the BatchRouter actually has N*batchSize capacity
 	//	Maybe this is fine, but it makes the signature of this function misleading
 	vehicleBatcher := NewTableBatcher(ctx, conn, "vehicle_data", vehicleChan, batchSize, flushInterval)
 	motionBatcher := NewTableBatcher(ctx, conn, "motion_data", motionChan, batchSize, flushInterval)
-	lapTimesBatcher := NewTableBatcher(ctx, conn, "lap_times", lapTimesChan, batchSize, flushInterval)
+	liveLapDataBatcher := NewTableBatcher(ctx, conn, "live_lap_data", liveLapDataChan, batchSize, flushInterval)
+	sessionLapDataBatcher := NewTableBatcher(ctx, conn, "session_lap_data", sessionLapDataChan, batchSize, flushInterval)
 
 	// Start all batchers
 	vehicleBatcher.Start()
 	motionBatcher.Start()
-	lapTimesBatcher.Start()
+	sessionLapDataBatcher.Start()
+	liveLapDataBatcher.Start()
 
 	return &BatchRouter{
-		vehicleBatcher:  vehicleBatcher,
-		motionBatcher:   motionBatcher,
-		lapTimesBatcher: lapTimesBatcher,
+		vehicleBatcher:        vehicleBatcher,
+		motionBatcher:         motionBatcher,
+		sessionLapDataBatcher: sessionLapDataBatcher,
+		liveLapDataBatcher:    liveLapDataBatcher,
 	}, nil
 }
 
@@ -455,9 +500,16 @@ func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
 			b.motionBatcher.msgChan <- wrapped
 		}
 
-		// Lap times data
+		// Session lap data
 		if msg.GetLapTimesData() != nil {
-			b.lapTimesBatcher.msgChan <- wrapped
+			slog.DebugContext(ctx, "read lap data", "lap_time", msg.GetLapTimesData())
+			b.sessionLapDataBatcher.msgChan <- wrapped
+		}
+
+		// current lap data
+		if msg.GetCurrentLapData() != nil {
+			slog.DebugContext(ctx, "read live lap data")
+			b.liveLapDataBatcher.msgChan <- wrapped
 		}
 	}()
 }

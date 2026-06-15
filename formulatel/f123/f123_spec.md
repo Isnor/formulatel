@@ -701,6 +701,7 @@ Frequency: 20 per second but cycling through cars
 Size: 1460 bytes
 Version: 1
 
+4+2+1+2+1+2+1+1 = 14 bytes per lap
 struct LapHistoryData
 {
     uint32    m_lapTimeInMS;           // Lap time in milliseconds
@@ -714,6 +715,7 @@ struct LapHistoryData
                                        // 0x04 bit set-sector 2 valid, 0x08 bit set-sector 3 valid
 };
 
+// 3 bytes per stint
 struct TyreStintHistoryData
 {
     uint8     m_endLap;                // Lap the tyre usage ends on (255 of current tyre)
@@ -721,6 +723,7 @@ struct TyreStintHistoryData
     uint8     m_tyreVisualCompound;    // Visual tyres used by this driver
 };
 
+// 29 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + (100 * 14) + (8 * 3) = 36 + 1400 + 24 = 1460
 struct PacketSessionHistoryData
 {
     PacketHeader  m_header;                   // Header

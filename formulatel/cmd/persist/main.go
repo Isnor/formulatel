@@ -39,7 +39,7 @@ func main() {
 	}
 
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	})))
 
 	slog.InfoContext(ctx, "starting persist service", "timescale_dsn", cfg.TimescaleDSN, "mqtt_broker", cfg.MQTTBroker)
@@ -71,6 +71,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	mqtt.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
+	mqtt.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
 	// Connect to MQTT
 	mqttOptions := mqtt.NewClientOptions().AddBroker(cfg.MQTTBroker)
 	// TODO: should this be configurable?

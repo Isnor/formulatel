@@ -86,10 +86,8 @@ This requires `curl`.
 - [x] have fun!
 - [x] grafana dashboards reading from k8s cluster
 - [x] chart telemetry data
-- [ ] generic racing telemetry<->metric conversion? It will be a hassle to turn each protobuf into a metric manually, is there a better way?
-- [ ] build a dashboard for interesting telemetry data
+- [x] build a dashboard for interesting telemetry data
 - [x] realtime charting with something like Grafana Live
-- [~] --opensearch-- implemented a PoC with Kafka and didn't get much out of it
 - [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal braking point? racing line? I don't know) or maybe predict when the tires will die or something.
 - [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
 

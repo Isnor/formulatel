@@ -2,18 +2,18 @@ package f123
 
 // this file contains the spec for the EA/codemasters F1 23 telemetry packets, converted into Go
 // From the spec document (23):
-// DISCLAIMER: “This information is being provided under license from EA for reference purposes
+// DISCLAIMER: "This information is being provided under license from EA for reference purposes
 // 	only and we do not make any representations or warranties about the accuracy or reliability of
-// 	the information for any specific purpose.”
+// 	the information for any specific purpose."
 
 // PacketType represents the type of packet being sent.
 type PacketType uint8
 
 const (
-	// CarMotionPacket contains all motion data for player’s car – only sent while player is in control.
+	// CarMotionPacket contains all motion data for player's car - only sent while player is in control.
 	CarMotionPacket PacketType = iota
 
-	// SessionPacket contains data about the session – track, time left.
+	// SessionPacket contains data about the session - track, time left.
 	SessionPacket
 
 	// LapDataPacket contains data about all the lap times of cars in the session.
@@ -64,7 +64,7 @@ type PacketHeader struct {
 	SessionUID              uint64     // Unique identifier for the session
 	SessionTime             float32    // Session timestamp
 	FrameIdentifier         uint32     // Identifier for the frame the data was retrieved on
-	OverallFrameIdentifier  uint32     // Overall identifier for the frame the data was retrieved on, doesn't go back after flashbacks
+	OverallFrameIdentifier  uint32     // Identifier for the frame the data was retrieved on, doesn't go back after flashbacks
 	PlayerCarIndex          uint8      // Index of player's car in the array
 	SecondaryPlayerCarIndex uint8      // Index of secondary player's car in the array (splitscreen) 255 if no second player
 }
@@ -104,15 +104,15 @@ type CarMotionData struct {
 	WorldPositionX     float32 // World space X position - metres
 	WorldPositionY     float32 // World space Y position
 	WorldPositionZ     float32 // World space Z position
-	WorldVelocityX     float32 // Velocity in world space X – metres/s
+	WorldVelocityX     float32 // Velocity in world space X - metres/s
 	WorldVelocityY     float32 // Velocity in world space Y
 	WorldVelocityZ     float32 // Velocity in world space Z
-	WorldForwardDirX   int16   // World space forward X direction (normalised)
-	WorldForwardDirY   int16   // World space forward Y direction (normalised)
-	WorldForwardDirZ   int16   // World space forward Z direction (normalised)
-	WorldRightDirX     int16   // World space right X direction (normalised)
-	WorldRightDirY     int16   // World space right Y direction (normalised)
-	WorldRightDirZ     int16   // World space right Z direction (normalised)
+	WorldForwardDirX   int16   // World space forward X direction (normalized)
+	WorldForwardDirY   int16   // World space forward Y direction (normalized)
+	WorldForwardDirZ   int16   // World space forward Z direction (normalized)
+	WorldRightDirX     int16   // World space right X direction (normalized)
+	WorldRightDirY     int16   // World space right Y direction (normalized)
+	WorldRightDirZ     int16   // World space right Z direction (normalized)
 	GForceLateral      float32 // Lateral G-Force component
 	GForceLongitudinal float32 // Longitudinal G-Force component
 	GForceVertical     float32 // Vertical G-Force component
@@ -132,8 +132,8 @@ type LapData struct {
 	Sector2TimeMinutes          uint8   // Sector 2 whole minute part
 	DeltaToCarInFrontInMS       uint16  // Time delta to car in front in milliseconds
 	DeltaToRaceLeaderInMS       uint16  // Time delta to race leader in milliseconds
-	LapDistance                 float32 // Distance vehicle is around current lap in metres – could be negative if line hasn’t been crossed yet
-	TotalDistance               float32 // Total distance travelled in session in metres – could be negative if line hasn’t been crossed yet
+	LapDistance                 float32 // Distance vehicle is around current lap in metres - could be negative if line hasn't been crossed yet
+	TotalDistance               float32 // Total distance traveled in session in metres - could be negative if line hasn't been crossed yet
 	SafetyCarDelta              float32 // Delta in seconds for safety car
 	CarPosition                 uint8   // Car race position
 	CurrentLapNum               uint8   // Current lap number
@@ -152,7 +152,7 @@ type LapData struct {
 	PitLaneTimerActive          uint8   // Pit lane timing
 	PitLaneTimeInLaneInMS       uint16  // If active, the current time spent in the pit lane in ms
 	PitStopTimerInMS            uint16  // Time of the actual pit stop in ms
-	PitStopShouldServePen       uint8   // Whether the car should serve a penalty at this stop
+	PitStopShouldServePen       uint8   // Whether the car should serve penalty at this stop
 }
 
 // 120*1249=148680bytes/s ~=146k/s
@@ -161,3 +161,37 @@ type CarStatusData struct{}
 // all of these added means in the worst case, we have over 480 packets/s and over half a Mb per second of data to process.
 // that doesn't seem to bad, but if we wanted something similar to run on something like an arduino or some DIY pedal/handbrake/etc.,
 // we may need to worry more about performance.
+
+// SessionHistoryPacket contains historical lap and tyre data for the session.
+// Sent at 20Hz but cycles through cars (one car per packet).
+// Contains complete sector times including sector 3, unlike LapDataPacket.
+type SessionHistoryData struct {
+	CurrentCarIdx         uint8               // Index of the car this data relates to
+	NumLaps               uint8               // Number of laps in the data
+	NumTyreStints         uint8               // Number of tyre stints
+	BestLapTimeLapNum     uint8               // Lap number of best lap time
+	BestSector1LapNum     uint8               // Lap number of best sector 1 time
+	BestSector2LapNum     uint8               // Lap number of best sector 2 time
+	BestSector3LapNum     uint8               // Lap number of best sector 3 time
+	LapHistoryData        [100]LapHistoryData // Historical lap data for up to 100 laps
+	TyreStintsHistoryData [8]TyreStintHistoryData
+}
+
+// LapHistoryData represents a single lap entry in the session history.
+type LapHistoryData struct {
+	LapTimeInMS        uint32 // Lap time in milliseconds
+	Sector1TimeInMS    uint16 // Sector 1 time in milliseconds
+	Sector1TimeMinutes uint8  // Sector 1 whole minute part
+	Sector2TimeInMS    uint16 // Sector 2 time in milliseconds
+	Sector2TimeMinutes uint8  // Sector 2 whole minute part
+	Sector3TimeInMS    uint16 // Sector 3 time in milliseconds
+	Sector3TimeMinutes uint8  // Sector 3 whole minute part
+	LapValidBitFlags   uint8  // Bit flags for validity: 0x01 lap valid, 0x02 sector 1 valid, 0x04 sector 2 valid, 0x08 sector 3 valid
+}
+
+// TyreStintHistoryData represents a tyre stint entry.
+type TyreStintHistoryData struct {
+	EndLap             uint8 // Lap the tyre usage ends on (255 if current tyre)
+	TyreActualCompound uint8 // Actual tyres used by driver
+	TyreVisualCompound uint8 // Visual tyres used by driver
+}

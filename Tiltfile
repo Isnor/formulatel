@@ -32,8 +32,10 @@ local_resource(
     "./formulatel/internal/mqttutil",
     "./protobuf",
   ],
-  env={
-    "LOG_LEVEL": "info",
+  serve_env={
+    # ingest does not listen to log_level
+    # "LOG_LEVEL": "debug",
+    # "FORMULATEL_F123_CAPTURE_PACKETS": "true",
   },
   labels=["formulatel"]
 )

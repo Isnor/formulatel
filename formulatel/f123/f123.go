@@ -6,47 +6,94 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"os"
 	"time"
+	"unsafe"
 
 	pb "github.com/isnor/formulatel/internal/genproto"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TODO: make this configurable
 const maxPacketSize = 2048 // the largest packet is just 1460 bytes.
 
-// this is fairly EA/codemasters F1-specific
-func ReadBin[T any](reader io.Reader) *T {
-	x := new(T)
-	binary.Read(reader, binary.LittleEndian, x)
-	return x
+// F123PacketBuffer is an attempt to make the flow of "read 29 bytes", "determine type", "decode body"
+// more organized and testable. It doesn't do that very well. To use this:
+// 1 - call [UnpackHeader] to unpack the header of the packet
+// 2 - use the [PacketHeader.PacketId] field to determine the type T
+// 3 - call [f123.UnpackBody[T]] to unpack the body of the packet
+type F123PacketBuffer struct {
+	*bytes.Buffer
+	header *PacketHeader
 }
 
-type F123PacketReader struct {
+// NewF123PacketBuffer wraps packet in a [bytes.Buffer] and should therefore not be used after calling
+// this function.
+func NewF123PacketBuffer(packet []byte) *F123PacketBuffer {
+	return &F123PacketBuffer{
+		Buffer: bytes.NewBuffer(packet),
+	}
+}
+
+// UnpackHeader returns the header of the buffer of `b`. The first successful call is stored.
+// This function should be called before reading any data from the underlying buffer of `b`.
+func (b *F123PacketBuffer) UnpackHeader() (*PacketHeader, error) {
+	if b.header != nil {
+		return b.header, nil
+	}
+	header := &PacketHeader{}
+
+	if err := binary.Read(b, binary.LittleEndian, header); err != nil {
+		slog.Error("error reading header", "error", err, "unread", b.Len())
+		return nil, err
+	}
+	b.header = header
+	return b.header, nil
+}
+
+// UnpackBody reads the body of an f123 packet _whose header has already been read from the `packet` buffer_ into
+// the specified type and returns a pointer to that data. T must correspond to the data being read, i.e.
+// it should be a struct whose fields are laid out such that `binary.Read` can unpack
+// from `reader` as LittleEndian binary data. Errors encountered during `binary.Read` are returned.
+func UnpackBody[T any](packet *F123PacketBuffer) (*T, error) {
+	if packet.header == nil { // TODO: maybe start reading 29 bytes in if the header is nil?
+		return nil, errors.New("ReadHeader must be called on [packet] before ReadBody can use it")
+	}
+	body := new(T)
+	slog.Debug("received body packet", "remaining_bytes", packet.Len(), "struct_size", unsafe.Sizeof(*body))
+	if err := binary.Read(packet, binary.LittleEndian, body); err != nil {
+		slog.Error("failed reading packet body", "error", err, "packet_size", packet.Cap(), "struct_size", unsafe.Sizeof(*body))
+		return body, err
+	}
+	slog.Debug("read body", "body", *body)
+	return body, nil
+}
+
+// F123PacketListener listens for packets on a UDP connection and puts them in PacketBuffer
+type F123PacketListener struct {
 	Server       net.PacketConn
 	PacketBuffer chan<- []byte
 
 	finishedWithError error
 }
 
-// Run tries to read packets until `serverContext` is cancelled. If it is, Run
-// returns nil. If Run returns a non-nil error, subsequent calls to Run return
+// Listen tries to read packets until `serverContext` is cancelled. If it is, Listen
+// returns nil. If Listen returns a non-nil error, subsequent calls to Listen return
 // the same error and no packets are read.
-func (f *F123PacketReader) Run(serverContext context.Context) error {
+func (f *F123PacketListener) Listen(serverContext context.Context) error {
 	if f.finishedWithError != nil {
 		return f.finishedWithError
 	}
-	slog.InfoContext(serverContext, "starting formulatel ingest")
+	slog.InfoContext(serverContext, "starting formulatel f123 packet reader")
 
 	// listen for packets
 	for {
 		select {
 		case <-serverContext.Done():
-			slog.InfoContext(serverContext, "formulatel ingest closed")
+			slog.InfoContext(serverContext, "formulatel f123 packet reader closed")
 			return nil
 		default:
 			// read a packet of data up to MaxPacketSize bytes from a UDP connection
@@ -61,8 +108,11 @@ func (f *F123PacketReader) Run(serverContext context.Context) error {
 			if numRead > 0 {
 				// all the server does is read packet by packet into a channel. The server needs to create
 				// child routines to read the packets and handle them with the client
-				f.PacketBuffer <- packet
-				slog.DebugContext(serverContext, "formulatel_ingest_f123 read a packet")
+				if err != nil {
+					slog.ErrorContext(serverContext, "error reading packet", "error", err)
+				}
+				f.PacketBuffer <- packet[:numRead]
+				slog.DebugContext(serverContext, "formulatel f123 read a packet", "bytes_read", numRead)
 				continue
 			} else {
 				time.Sleep(500 * time.Millisecond) // we didn't receive any bytes, wait for a bit
@@ -80,44 +130,199 @@ func (f *F123PacketReader) Run(serverContext context.Context) error {
 // this is a game-specific implementation detail that unpacks F123 packets and puts them in a channel
 // specific to the type of telemetry in the packet
 type F123PacketTransformer struct {
-	Packets            <-chan []byte
-	VehicleDataChannel chan<- *pb.GameTelemetry // a channel for the vehicle data
-	MotionDataChannel  chan<- *pb.GameTelemetry // a channel for motion data
-	LapTimesChannel    chan<- *pb.GameTelemetry // a channel for lap time data
-	capture            bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
+	Packets               <-chan []byte
+	VehicleDataChannel    chan<- *pb.GameTelemetry // a channel for the vehicle data
+	MotionDataChannel     chan<- *pb.GameTelemetry // a channel for motion data
+	CurrentLapDataChannel chan<- *pb.GameTelemetry // a channel for current lap data
+	LapTimesDataChannel   chan<- *pb.GameTelemetry // a channel for lap times data
+	LatestLaps            *LatestLapData           // a cache of the index of each car's latest recorded lap in the session
+	capture               bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
+
+	timeAtLastCapture time.Time // used to "rate limit" the number of packets we capture
 }
 
 // Consume reads packets from a buffered channel until the channel is closed or the reader is shutdown
 func (f *F123PacketTransformer) Consume(ctx context.Context) {
-	slog.InfoContext(ctx, "f123 packet reader starting consuming")
+	slog.InfoContext(ctx, "f123 packet transformer starting consuming")
 	for {
 		select {
 		case <-ctx.Done():
-			slog.InfoContext(ctx, "f123 packet reader stopping consuming")
+			slog.InfoContext(ctx, "f123 packet transformer stopping consuming")
 			return
-		case packet := <-f.Packets:
+		case packet, ok := <-f.Packets:
+			// Channel is closed (ok == false) when Run() exits
+			if !ok {
+				// TODO: we should probably flush the channel here, no?
+				slog.InfoContext(ctx, "f123 packet channel closed, transformer stopping consume")
+				return
+			}
 			f.handlePacket(ctx, packet)
 		}
 	}
 }
 
-// handlePacket reads a packet header and calls Route on the remaining bytes
+// Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
+// TODO: consider the signature here, it was hacked together initially
+func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader, data *F123PacketBuffer) error {
+
+	switch header.PacketId {
+	case CarTelemetryPacket:
+		telemetryArray, err := UnpackBody[[22]CarTelemetryData](data)
+		if err != nil {
+			return err
+		}
+		playerTelemetry := telemetryArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a car telemetry packet")
+
+		telproto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_VehicleData{
+				VehicleData: f.normalizeVehicleData(header, &playerTelemetry),
+			},
+		}
+		f.VehicleDataChannel <- telproto
+	case CarMotionPacket:
+		motionArray, err := UnpackBody[[22]CarMotionData](data)
+		if err != nil {
+			return err
+		}
+		playerMotion := motionArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a motion packet")
+
+		motionProto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_MotionData{
+				MotionData: f.normalizeMotionData(header, &playerMotion),
+			},
+		}
+		f.MotionDataChannel <- motionProto
+	case LapDataPacket:
+		// LapDataPacket is 22 bytes, read into LapData array
+		lapArray, err := UnpackBody[[22]LapData](data)
+		if err != nil {
+			return err
+		}
+		playerLapData := lapArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a lap data packet")
+
+		// Note: sector3_time is derived from sector1+sector2 for simplicity
+		// In a full implementation, this would be calculated from total_distance or sector3 time
+		currentLapData := &pb.CurrentLapData{
+			LapTime:           uint32(playerLapData.LastLapTimeInMS),
+			Sector1Time:       uint32(playerLapData.Sector1TimeInMS),
+			Sector2Time:       uint32(playerLapData.Sector2TimeInMS),
+			DeltaToCarInFront: uint32(playerLapData.DeltaToCarInFrontInMS),
+			DeltaToRaceLeader: uint32(playerLapData.DeltaToRaceLeaderInMS),
+			LapDistance:       playerLapData.LapDistance,
+			TotalDistance:     playerLapData.TotalDistance,
+			LapNum:            uint32(playerLapData.CurrentLapNum),
+			Sector:            uint32(playerLapData.Sector),
+		}
+
+		lapProto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_CurrentLapData{
+				CurrentLapData: currentLapData,
+			},
+		}
+		f.CurrentLapDataChannel <- lapProto
+	case SessionHistoryPacket:
+		// SessionHistoryPacket contains historical lap data with complete sector times
+		// This packet is sent at 20Hz cycling through cars (one car per packet).
+		sessionHistoryPacket, err := UnpackBody[SessionHistoryData](data)
+		if err != nil {
+			return err
+		}
+		// TODO: ignoring non-player packets should be configurable
+		// Ignore packets that don't come from the player's car.
+		if sessionHistoryPacket.CurrentCarIdx == header.PlayerCarIndex {
+			// this is a weird one, but what's happening is this session history packet comes in with
+			// all of the completed laps and we're unpacking them to store in our lap_data table.
+			lapTimesData := f.normalizeSessionHistoryData(header, sessionHistoryPacket)
+			if len(lapTimesData) > 0 {
+				slog.InfoContext(ctx, "read a session history packet for player car", "laps_read", len(lapTimesData))
+
+				for _, lapTime := range lapTimesData {
+					sessionHistoryProto := &pb.GameTelemetry{
+						Title:     pb.GameTitle_GAME_TITLE_F123,
+						SessionId: fmt.Sprint(header.SessionUID),
+						UserId:    fmt.Sprint(header.PlayerCarIndex),
+						Timestamp: timestamppb.Now(),
+						Data: &pb.GameTelemetry_LapTimesData{
+							LapTimesData: lapTime,
+						},
+					}
+					f.LapTimesDataChannel <- sessionHistoryProto
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// handlePacket reads a packet header and calls Route on the remaining bytes. It also deals with capturing
+// the packet if `capture` is enabled.
 func (f *F123PacketTransformer) handlePacket(ctx context.Context, packet []byte) {
 	var clone []byte
 	if f.capture {
 		clone = bytes.Clone(packet) // create a copy of packet to write to a file because we pass ownership of packet to a byte buffer; only for packet capture
+		f.handleCapture(ctx, clone)
 	}
-	buf := bytes.NewBuffer(packet)
-	header := ReadBin[PacketHeader](buf)
-	if f.capture {
-		packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
-		if err != nil {
-			fmt.Println("failed writing capture ", err.Error())
+	packetBuf := NewF123PacketBuffer(packet)
+	header, err := packetBuf.UnpackHeader()
+	if err != nil {
+		slog.ErrorContext(ctx, "transformer failed unpacking header", "error", err)
+	}
+	f.Route(ctx, header, packetBuf)
+}
+
+// handleCapture handles the arbitrary conditional logic for writing/capturing packets for replay
+// and testing.
+func (f *F123PacketTransformer) handleCapture(ctx context.Context, packet []byte) {
+	packetReader := &F123PacketBuffer{Buffer: bytes.NewBuffer(packet)}
+	slog.DebugContext(ctx, "decoding packet for capture", "bytes", packetReader.Len())
+	header, err := packetReader.UnpackHeader()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed capturing packet")
+		return
+	}
+	slog.DebugContext(ctx, "read header",
+		// "header", *header,
+		"remaining_bytes", packetReader.Len(),
+	)
+
+	// session History capture logic
+	if header.PacketId == SessionHistoryPacket {
+		sessionHistory, _ := UnpackBody[SessionHistoryData](packetReader)
+		if sessionHistory == nil {
+			return
 		}
-		defer packetCapture.Close()
-		packetCapture.Write(clone)
+		slog.InfoContext(ctx, "read session history", "num_laps", sessionHistory.NumLaps, "car_index", sessionHistory.CurrentCarIdx)
+		if sessionHistory.CurrentCarIdx == header.PlayerCarIndex && sessionHistory.NumLaps > 1 && time.Since(f.timeAtLastCapture) > time.Second {
+			packetCapture, err := os.CreateTemp("captured_packets", fmt.Sprintf("%d_%d_%d", header.PacketId, header.SessionUID, time.Now().Nanosecond()))
+			if err != nil {
+				slog.ErrorContext(ctx, "failed writing capture", "error", err)
+			}
+			defer packetCapture.Close()
+			numWrote, err := packetCapture.Write(packet)
+			defer func() { f.timeAtLastCapture = time.Now() }()
+			if err != nil {
+				slog.ErrorContext(ctx, "failed writing capture", "error", err)
+			} else {
+				slog.InfoContext(ctx, "wrote a session history packet", "bytes_wrote", numWrote, "num_laps", sessionHistory.NumLaps, "laps", sessionHistory.LapHistoryData[:sessionHistory.NumLaps])
+			}
+		}
 	}
-	f.Route(ctx, header, buf)
 }
 
 // normalizeVehicleData maps F1 23 CarTelemetryData to protobuf VehicleData
@@ -185,83 +390,85 @@ func (f *F123PacketTransformer) normalizeMotionData(
 	}
 }
 
-// Route uses the [PacketType] of `header` to read the bytes from `reader` into the appropriate type.
-// TODO: consider the signature here, it was hacked together initially
-func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader, data *bytes.Buffer) error {
-
-	// TODO: create a child context and add tracing
-	// todoContext := ctx
-	switch header.PacketId {
-	case CarTelemetryPacket:
-		telemetryArray := ReadBin[[22]CarTelemetryData](data)
-		playerTelemetry := telemetryArray[header.PlayerCarIndex]
-		slog.DebugContext(ctx, "read a car telemetry packet")
-
-		telproto := &pb.GameTelemetry{
-			Title:     pb.GameTitle_GAME_TITLE_F123,
-			SessionId: fmt.Sprint(header.SessionUID),
-			UserId:    fmt.Sprint(header.PlayerCarIndex),
-			Timestamp: timestamppb.Now(),
-			Data: &pb.GameTelemetry_VehicleData{
-				VehicleData: f.normalizeVehicleData(header, &playerTelemetry),
-			},
-		}
-		f.VehicleDataChannel <- telproto
-	case CarMotionPacket:
-		motionArray := ReadBin[[22]CarMotionData](data)
-		playerMotion := motionArray[header.PlayerCarIndex]
-		slog.DebugContext(ctx, "read a motion packet")
-
-		motionProto := &pb.GameTelemetry{
-			Title:     pb.GameTitle_GAME_TITLE_F123,
-			SessionId: fmt.Sprint(header.SessionUID),
-			UserId:    fmt.Sprint(header.PlayerCarIndex),
-			Timestamp: timestamppb.Now(),
-			Data: &pb.GameTelemetry_MotionData{
-				MotionData: f.normalizeMotionData(header, &playerMotion),
-			},
-		}
-		f.MotionDataChannel <- motionProto
-	case LapDataPacket:
-		// LapDataPacket is 22 bytes, read into LapData array
-		lapArray := ReadBin[[22]LapData](data)
-		playerLapData := lapArray[header.PlayerCarIndex]
-		slog.DebugContext(ctx, "read a lap data packet")
-
-		// Note: sector3_time is derived from sector1+sector2 for simplicity
-		// In a full implementation, this would be calculated from total_distance or sector3 time
-		lapTimesData := &pb.LapTimesData{
-			LapTime:            uint32(playerLapData.LastLapTimeInMS),
-			CurrentLapTime:     uint32(playerLapData.CurrentLapTimeInMS),
-			Sector1Time:        uint32(playerLapData.Sector1TimeInMS),
-			Sector2Time:        uint32(playerLapData.Sector2TimeInMS),
-			Sector3Time:        0, // Derived value - would calculate from sector3 time if available
-			DeltaToCarInFront:  uint32(playerLapData.DeltaToCarInFrontInMS),
-			DeltaToRaceLeader:  uint32(playerLapData.DeltaToRaceLeaderInMS),
-			LapDistance:        playerLapData.LapDistance,
-			TotalDistance:      playerLapData.TotalDistance,
-			CarPosition:        uint32(playerLapData.CarPosition),
-			CurrentLapNum:      uint32(playerLapData.CurrentLapNum),
-			GridPosition:       uint32(playerLapData.GridPosition),
-			DriverStatus:       uint32(playerLapData.DriverStatus),
-			ResultStatus:       uint32(playerLapData.ResultStatus),
-			PitStatus:          uint32(playerLapData.PitStatus),
-			NumPitStops:        uint32(playerLapData.NumPitStops),
-			PitLaneTimerActive: uint32(playerLapData.PitLaneTimerActive),
-			PitLaneTime:        float32(playerLapData.PitLaneTimeInLaneInMS),
-		}
-
-		lapProto := &pb.GameTelemetry{
-			Title:     pb.GameTitle_GAME_TITLE_F123,
-			SessionId: fmt.Sprint(header.SessionUID),
-			UserId:    fmt.Sprint(header.PlayerCarIndex),
-			Timestamp: timestamppb.Now(),
-			Data: &pb.GameTelemetry_LapTimesData{
-				LapTimesData: lapTimesData,
-			},
-		}
-		f.LapTimesChannel <- lapProto
+// normalizeSessionHistoryData unpacks the lap data from the SessionHistoryData field
+func (f *F123PacketTransformer) normalizeSessionHistoryData(
+	header *PacketHeader,
+	sessionHistory *SessionHistoryData,
+) []*pb.HistoricLapData {
+	// this data comes with the current incomplete lap which we do not want for this channel.
+	// It will always be the last entry, so we'll remove that from the list of laps
+	// we're sending
+	maxLapIndex := int(sessionHistory.NumLaps) - 1
+	if maxLapIndex <= 0 {
+		slog.Info("f123 packet transformer not sending current incomplete lap as historic lap")
+		return nil
 	}
+	laps := make([]*pb.HistoricLapData, maxLapIndex)
+	incomingLaps := sessionHistory.LapHistoryData
+	// get latest index for this session, car
+	sessionID, userID := fmt.Sprintf("%d", header.SessionUID), fmt.Sprintf("%d", header.PlayerCarIndex)
+	latest := f.LatestLaps.Get(sessionID, userID)
+	if latest >= maxLapIndex {
+		slog.Info("f123 packet transformer not sending already-recorded historic lap", "latest_recorded", latest, "completed_laps_received", maxLapIndex)
+		return nil
+	}
+	f.LatestLaps.Set(sessionID, userID, maxLapIndex)
+	for i := range maxLapIndex {
+		lap := incomingLaps[i]
 
-	return nil
+		laps[i] = &pb.HistoricLapData{
+			LapNum:       uint32(i),
+			LapTime:      durationpb.New(time.Millisecond * time.Duration(lap.LapTimeInMS)),
+			Sector1Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector1TimeInMS)),
+			Sector2Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector2TimeInMS)),
+			Sector3Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector3TimeInMS)),
+			LapValid:     lap.LapValidBitFlags&0x01 == 0,
+			Sector1Valid: lap.LapValidBitFlags&0x02 == 0,
+			Sector2Valid: lap.LapValidBitFlags&0x04 == 0,
+			Sector3Valid: lap.LapValidBitFlags&0x08 == 0,
+		}
+	}
+	return laps
+}
+
+// F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer
+type F123IngestConfig struct {
+	MaxPacketsBuffered uint `split_words:"true" default:"1000"` // size of the buffered channel of packets
+	CapturePackets     bool `split_words:"true" default:"false"`
+
+	VehicleDataChannel    chan *pb.GameTelemetry `envconfig:"-"`
+	MotionDataChannel     chan *pb.GameTelemetry `envconfig:"-"`
+	CurrentLapDataChannel chan *pb.GameTelemetry `envconfig:"-"`
+	LapTimesDataChannel   chan *pb.GameTelemetry `envconfig:"-"`
+}
+
+// F123Ingest is simply a convenient container
+type F123Ingest struct {
+	*F123PacketListener
+	*F123PacketTransformer
+}
+
+// NewF123Ingest is a convenience function that uses `cfg` to setup a PacketReader and PacketTransformer
+func NewF123Ingest(
+	cfg F123IngestConfig,
+	conn net.PacketConn,
+) *F123Ingest {
+	buffer := make(chan []byte, cfg.MaxPacketsBuffered)
+	packetReader := &F123PacketListener{
+		Server:       conn,
+		PacketBuffer: buffer, // send all packets here
+	}
+	transformer := &F123PacketTransformer{
+		Packets:               buffer,                    // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel:    cfg.VehicleDataChannel,    // write vehicle packets as their protobuf representation here
+		MotionDataChannel:     cfg.MotionDataChannel,     // write motion packets as their protobuf representation here
+		CurrentLapDataChannel: cfg.CurrentLapDataChannel, // write current lap times packets as their protobuf representation here
+		LapTimesDataChannel:   cfg.LapTimesDataChannel,   // write historic lap data packets as their protobuf representation here
+		LatestLaps:            NewLatestLapData(),
+		capture:               cfg.CapturePackets,
+	}
+	return &F123Ingest{
+		F123PacketListener:    packetReader,
+		F123PacketTransformer: transformer,
+	}
 }
