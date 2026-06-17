@@ -32,6 +32,7 @@ message GameTelemetry {
     MotionData motion_data = 12;
     CurrentLapData current_lap_data = 13;
     HistoricLapData lap_times_data = 14;
+    MotionExTires motion_ex_tires = 15; // F1 23 MotionExPacket extended wheel data
   }
 }
 
@@ -66,23 +67,42 @@ message TireData {
   // CompoundType compound = 14; // c0, c1, ... cN is fine for F1, but what about GT3, stock, rally, etc.?
 }
 
+// WheelData contains universal wheel-level data common across racing sims
+// All fields are required (non-optional) for consistency
+message WheelData {
+  float wheel_speed = 1;                // m/s
+  float vertical_force = 2;             // N (downforce)
+  float slip_angle = 3;                 // radians -
+  float slip_ratio = 4;                 // 0-1
+  float lateral_force = 5;              // N
+  float longitudinal_force = 6;         // N
+  float suspension_position = 7;        // m
+  float suspension_velocity = 8;        // m/s
+}
+
+message MotionExTires {
+  WheelData back_left = 1;
+  WheelData back_right = 2;
+  WheelData front_left = 3;
+  WheelData front_right = 4;
+}
+
 // this message describes physics data for the vehicle, including position, velocity, and forces.
 message MotionData {
-  // TODO: why are these all camel cased?
   // Position in world space (metres)
-  float positionX = 1;
-  float positionY = 2;
-  float positionZ = 3;
+  float position_x = 1;
+  float position_y = 2;
+  float position_z = 3;
 
   // Velocity in world space (metres/s)
-  float velocityX = 4;
-  float velocityY = 5;
-  float velocityZ = 6;
+  float velocity_x = 4;
+  float velocity_y = 5;
+  float velocity_z = 6;
 
   // G-Force components
-  float gForceLateral = 7;
-  float gForceLongitudinal = 8;
-  float gForceVertical = 9;
+  float g_force_lateral = 7;
+  float g_force_longitudinal = 8;
+  float g_force_vertical = 9;
 
   // Rotation angles (radians)
   float yaw = 10;

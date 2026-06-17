@@ -135,6 +135,7 @@ type F123PacketTransformer struct {
 	MotionDataChannel     chan<- *pb.GameTelemetry // a channel for motion data
 	CurrentLapDataChannel chan<- *pb.GameTelemetry // a channel for current lap data
 	LapTimesDataChannel   chan<- *pb.GameTelemetry // a channel for lap times data
+	MotionExDataChannel   chan<- *pb.GameTelemetry // a channel for motion ex data (extended wheel data)
 	LatestLaps            *LatestLapData           // a cache of the index of each car's latest recorded lap in the session
 	capture               bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
 
@@ -211,8 +212,6 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 		playerLapData := lapArray[header.PlayerCarIndex]
 		slog.DebugContext(ctx, "read a lap data packet")
 
-		// Note: sector3_time is derived from sector1+sector2 for simplicity
-		// In a full implementation, this would be calculated from total_distance or sector3 time
 		currentLapData := &pb.CurrentLapData{
 			LapTime:           uint32(playerLapData.LastLapTimeInMS),
 			Sector1Time:       uint32(playerLapData.Sector1TimeInMS),
@@ -265,6 +264,30 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 				}
 			}
 		}
+	case MotionExPacket:
+		// MotionExPacket contains extended motion data for player car only (not all 22 cars)
+		// This packet is sent at 20Hz cycling through cars, but we only care about player's car
+		motionExArray, err := UnpackBody[[1]ExtendedMotionData](data)
+		if err != nil {
+			return err
+		}
+		// Only process the player's car
+		playerMotionEx := motionExArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a motion ex packet for player car")
+
+		// normalizeMotionExData returns the MotionExTires struct
+		motionExTires := f.normalizeMotionExData(&playerMotionEx)
+
+		motionExProto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_MotionExTires{
+				MotionExTires: motionExTires,
+			},
+		}
+		f.MotionExDataChannel <- motionExProto
 	}
 
 	return nil
@@ -332,28 +355,28 @@ func (f *F123PacketTransformer) normalizeVehicleData(
 ) *pb.VehicleData {
 	tires := &pb.VehicleData_Tires{
 		FrontLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]), // FL
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[2]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[2]),
-			Pressure:           uint32(telemetry.TyresPressure[2]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexFrontLeft]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexFrontLeft]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexFrontLeft]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexFrontLeft]),
 		},
 		FrontRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]), // FR
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[3]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[3]),
-			Pressure:           uint32(telemetry.TyresPressure[3]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexFrontRight]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexFrontRight]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexFrontRight]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexFrontRight]),
 		},
 		BackLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]), // RL
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[0]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[0]),
-			Pressure:           uint32(telemetry.TyresPressure[0]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexRearLeft]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexRearLeft]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexRearLeft]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexRearLeft]),
 		},
 		BackRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]), // RR
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[1]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[1]),
-			Pressure:           uint32(telemetry.TyresPressure[1]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexRearRight]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexRearRight]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexRearRight]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexRearRight]),
 		},
 	}
 
@@ -422,13 +445,62 @@ func (f *F123PacketTransformer) normalizeSessionHistoryData(
 			Sector1Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector1TimeInMS)),
 			Sector2Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector2TimeInMS)),
 			Sector3Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector3TimeInMS)),
-			LapValid:     lap.LapValidBitFlags&0x01 == 0,
-			Sector1Valid: lap.LapValidBitFlags&0x02 == 0,
-			Sector2Valid: lap.LapValidBitFlags&0x04 == 0,
-			Sector3Valid: lap.LapValidBitFlags&0x08 == 0,
+			LapValid:     (lap.LapValidBitFlags & 0x01) != 0,
+			Sector1Valid: (lap.LapValidBitFlags & 0x02) != 0,
+			Sector2Valid: (lap.LapValidBitFlags & 0x04) != 0,
+			Sector3Valid: (lap.LapValidBitFlags & 0x08) != 0,
 		}
 	}
 	return laps
+}
+
+// normalizeMotionExData unpacks the wheel data from the MotionExPacket
+// Maps F1 23 binary data to WheelData protobuf (common fields only)
+func (f *F123PacketTransformer) normalizeMotionExData(
+	motionEx *ExtendedMotionData,
+) *pb.MotionExTires {
+	return &pb.MotionExTires{
+		BackLeft: &pb.WheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexRearLeft],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexRearLeft],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexRearLeft],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexRearLeft],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexRearLeft],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexRearLeft],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexRearLeft],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexRearLeft],
+		},
+		BackRight: &pb.WheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexRearRight],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexRearRight],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexRearRight],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexRearRight],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexRearRight],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexRearRight],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexRearRight],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexRearRight],
+		},
+		FrontLeft: &pb.WheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexFrontLeft],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexFrontLeft],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexFrontLeft],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexFrontLeft],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexFrontLeft],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexFrontLeft],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexFrontLeft],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexFrontLeft],
+		},
+		FrontRight: &pb.WheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexFrontRight],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexFrontRight],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexFrontRight],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexFrontRight],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexFrontRight],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexFrontRight],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexFrontRight],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexFrontRight],
+		},
+	}
 }
 
 // F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer
@@ -440,6 +512,7 @@ type F123IngestConfig struct {
 	MotionDataChannel     chan *pb.GameTelemetry `envconfig:"-"`
 	CurrentLapDataChannel chan *pb.GameTelemetry `envconfig:"-"`
 	LapTimesDataChannel   chan *pb.GameTelemetry `envconfig:"-"`
+	MotionExDataChannel   chan *pb.GameTelemetry `envconfig:"-"`
 }
 
 // F123Ingest is simply a convenient container
