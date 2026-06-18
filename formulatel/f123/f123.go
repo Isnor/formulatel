@@ -130,13 +130,14 @@ func (f *F123PacketListener) Listen(serverContext context.Context) error {
 // this is a game-specific implementation detail that unpacks F123 packets and puts them in a channel
 // specific to the type of telemetry in the packet
 type F123PacketTransformer struct {
-	Packets               <-chan []byte
-	VehicleDataChannel    chan<- *pb.GameTelemetry // a channel for the vehicle data
-	MotionDataChannel     chan<- *pb.GameTelemetry // a channel for motion data
-	CurrentLapDataChannel chan<- *pb.GameTelemetry // a channel for current lap data
-	LapTimesDataChannel   chan<- *pb.GameTelemetry // a channel for lap times data
-	LatestLaps            *LatestLapData           // a cache of the index of each car's latest recorded lap in the session
-	capture               bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
+	Packets                  <-chan []byte
+	VehicleDataChannel       chan<- *pb.GameTelemetry // a channel for the vehicle data
+	MotionDataChannel        chan<- *pb.GameTelemetry // a channel for motion data
+	CurrentLapDataChannel    chan<- *pb.GameTelemetry // a channel for current lap data
+	LapTimesDataChannel      chan<- *pb.GameTelemetry // a channel for lap times data
+	ExtendedWheelDataChannel chan<- *pb.GameTelemetry // a channel for extended wheel data
+	LatestLaps               *LatestLapData           // a cache of the index of each car's latest recorded lap in the session
+	capture                  bool                     // TODO: remove, just for testing. when set, writes a file for every packet received
 
 	timeAtLastCapture time.Time // used to "rate limit" the number of packets we capture
 }
@@ -180,7 +181,7 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_VehicleData{
-				VehicleData: f.normalizeVehicleData(header, &playerTelemetry),
+				VehicleData: f.normalizeVehicleData(&playerTelemetry),
 			},
 		}
 		f.VehicleDataChannel <- telproto
@@ -198,7 +199,7 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_MotionData{
-				MotionData: f.normalizeMotionData(header, &playerMotion),
+				MotionData: f.normalizeMotionData(&playerMotion),
 			},
 		}
 		f.MotionDataChannel <- motionProto
@@ -211,8 +212,6 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 		playerLapData := lapArray[header.PlayerCarIndex]
 		slog.DebugContext(ctx, "read a lap data packet")
 
-		// Note: sector3_time is derived from sector1+sector2 for simplicity
-		// In a full implementation, this would be calculated from total_distance or sector3 time
 		currentLapData := &pb.CurrentLapData{
 			LapTime:           uint32(playerLapData.LastLapTimeInMS),
 			Sector1Time:       uint32(playerLapData.Sector1TimeInMS),
@@ -265,6 +264,30 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 				}
 			}
 		}
+	case MotionExPacket:
+		// MotionExPacket contains extended motion data for player car only (not all 22 cars)
+		// This packet is sent at 20Hz cycling through cars, but we only care about player's car
+		playerExtWheels, err := UnpackBody[ExtendedMotionData](data)
+		if err != nil {
+			return err
+		}
+		// Only process the player's car
+		// playerMotionEx := motionExArray[header.PlayerCarIndex]
+		slog.DebugContext(ctx, "read a motion ex packet for player car")
+
+		// normalizeMotionExData returns the MotionExTires struct
+		extendedWheelData := f.normalizeMotionExData(playerExtWheels)
+
+		motionExProto := &pb.GameTelemetry{
+			Title:     pb.GameTitle_GAME_TITLE_F123,
+			SessionId: fmt.Sprint(header.SessionUID),
+			UserId:    fmt.Sprint(header.PlayerCarIndex),
+			Timestamp: timestamppb.Now(),
+			Data: &pb.GameTelemetry_WheelData{
+				WheelData: extendedWheelData,
+			},
+		}
+		f.ExtendedWheelDataChannel <- motionExProto
 	}
 
 	return nil
@@ -327,33 +350,32 @@ func (f *F123PacketTransformer) handleCapture(ctx context.Context, packet []byte
 
 // normalizeVehicleData maps F1 23 CarTelemetryData to protobuf VehicleData
 func (f *F123PacketTransformer) normalizeVehicleData(
-	header *PacketHeader,
 	telemetry *CarTelemetryData,
 ) *pb.VehicleData {
 	tires := &pb.VehicleData_Tires{
 		FrontLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[2]), // FL
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[2]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[2]),
-			Pressure:           uint32(telemetry.TyresPressure[2]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexFrontLeft]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexFrontLeft]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexFrontLeft]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexFrontLeft]),
 		},
 		FrontRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[3]), // FR
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[3]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[3]),
-			Pressure:           uint32(telemetry.TyresPressure[3]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexFrontRight]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexFrontRight]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexFrontRight]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexFrontRight]),
 		},
 		BackLeft: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[0]), // RL
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[0]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[0]),
-			Pressure:           uint32(telemetry.TyresPressure[0]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexRearLeft]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexRearLeft]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexRearLeft]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexRearLeft]),
 		},
 		BackRight: &pb.TireData{
-			BrakeTemperature:   uint32(telemetry.BrakesTemperature[1]), // RR
-			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[1]),
-			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[1]),
-			Pressure:           uint32(telemetry.TyresPressure[1]),
+			BrakeTemperature:   uint32(telemetry.BrakesTemperature[WheelIndexRearRight]),
+			InnerTemperature:   uint32(telemetry.TyresInnerTemperature[WheelIndexRearRight]),
+			SurfaceTemperature: uint32(telemetry.TyresSurfaceTemperature[WheelIndexRearRight]),
+			Pressure:           uint32(telemetry.TyresPressure[WheelIndexRearRight]),
 		},
 	}
 
@@ -371,7 +393,6 @@ func (f *F123PacketTransformer) normalizeVehicleData(
 
 // normalizeMotionData maps F1 23 CarMotionData to protobuf MotionData
 func (f *F123PacketTransformer) normalizeMotionData(
-	header *PacketHeader,
 	motion *CarMotionData,
 ) *pb.MotionData {
 	return &pb.MotionData{
@@ -422,24 +443,75 @@ func (f *F123PacketTransformer) normalizeSessionHistoryData(
 			Sector1Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector1TimeInMS)),
 			Sector2Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector2TimeInMS)),
 			Sector3Time:  durationpb.New(time.Millisecond * time.Duration(lap.Sector3TimeInMS)),
-			LapValid:     lap.LapValidBitFlags&0x01 == 0,
-			Sector1Valid: lap.LapValidBitFlags&0x02 == 0,
-			Sector2Valid: lap.LapValidBitFlags&0x04 == 0,
-			Sector3Valid: lap.LapValidBitFlags&0x08 == 0,
+			LapValid:     (lap.LapValidBitFlags & 0x01) != 0,
+			Sector1Valid: (lap.LapValidBitFlags & 0x02) != 0,
+			Sector2Valid: (lap.LapValidBitFlags & 0x04) != 0,
+			Sector3Valid: (lap.LapValidBitFlags & 0x08) != 0,
 		}
 	}
 	return laps
 }
 
+// normalizeMotionExData unpacks the wheel data from the MotionExPacket
+// Maps F1 23 binary data to WheelData protobuf (common fields only)
+func (f *F123PacketTransformer) normalizeMotionExData(
+	motionEx *ExtendedMotionData,
+) *pb.ExtendedFourWheelData {
+	return &pb.ExtendedFourWheelData{
+		BackLeft: &pb.ExtendedWheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexRearLeft],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexRearLeft],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexRearLeft],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexRearLeft],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexRearLeft],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexRearLeft],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexRearLeft],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexRearLeft],
+		},
+		BackRight: &pb.ExtendedWheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexRearRight],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexRearRight],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexRearRight],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexRearRight],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexRearRight],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexRearRight],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexRearRight],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexRearRight],
+		},
+		FrontLeft: &pb.ExtendedWheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexFrontLeft],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexFrontLeft],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexFrontLeft],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexFrontLeft],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexFrontLeft],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexFrontLeft],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexFrontLeft],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexFrontLeft],
+		},
+		FrontRight: &pb.ExtendedWheelData{
+			WheelSpeed:         motionEx.WheelSpeed[WheelIndexFrontRight],
+			VerticalForce:      motionEx.WheelVertForce[WheelIndexFrontRight],
+			SlipAngle:          motionEx.WheelSlipAngle[WheelIndexFrontRight],
+			SlipRatio:          motionEx.WheelSlipRatio[WheelIndexFrontRight],
+			LateralForce:       motionEx.WheelLatForce[WheelIndexFrontRight],
+			LongitudinalForce:  motionEx.WheelLonForce[WheelIndexFrontRight],
+			SuspensionPosition: motionEx.SuspensionPosition[WheelIndexFrontRight],
+			SuspensionVelocity: motionEx.SuspensionVelocity[WheelIndexFrontRight],
+		},
+	}
+}
+
 // F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer
 type F123IngestConfig struct {
-	MaxPacketsBuffered uint `split_words:"true" default:"1000"` // size of the buffered channel of packets
-	CapturePackets     bool `split_words:"true" default:"false"`
+	MaxPacketsBuffered uint   `split_words:"true" default:"1000"` // size of the buffered channel of packets
+	CapturePackets     bool   `split_words:"true" default:"false"`
+	UDPPort            uint16 `envconfig:"UDP_PORT" default:"27543"`
 
-	VehicleDataChannel    chan *pb.GameTelemetry `envconfig:"-"`
-	MotionDataChannel     chan *pb.GameTelemetry `envconfig:"-"`
-	CurrentLapDataChannel chan *pb.GameTelemetry `envconfig:"-"`
-	LapTimesDataChannel   chan *pb.GameTelemetry `envconfig:"-"`
+	VehicleDataChannel       chan *pb.GameTelemetry `envconfig:"-"`
+	MotionDataChannel        chan *pb.GameTelemetry `envconfig:"-"`
+	CurrentLapDataChannel    chan *pb.GameTelemetry `envconfig:"-"`
+	LapTimesDataChannel      chan *pb.GameTelemetry `envconfig:"-"`
+	ExtendedWheelDataChannel chan *pb.GameTelemetry `envconfig:"-"`
 }
 
 // F123Ingest is simply a convenient container
@@ -459,13 +531,14 @@ func NewF123Ingest(
 		PacketBuffer: buffer, // send all packets here
 	}
 	transformer := &F123PacketTransformer{
-		Packets:               buffer,                    // read and unpack F123 packets, placing them in a data-specific channel
-		VehicleDataChannel:    cfg.VehicleDataChannel,    // write vehicle packets as their protobuf representation here
-		MotionDataChannel:     cfg.MotionDataChannel,     // write motion packets as their protobuf representation here
-		CurrentLapDataChannel: cfg.CurrentLapDataChannel, // write current lap times packets as their protobuf representation here
-		LapTimesDataChannel:   cfg.LapTimesDataChannel,   // write historic lap data packets as their protobuf representation here
-		LatestLaps:            NewLatestLapData(),
-		capture:               cfg.CapturePackets,
+		Packets:                  buffer,                    // read and unpack F123 packets, placing them in a data-specific channel
+		VehicleDataChannel:       cfg.VehicleDataChannel,    // write vehicle packets as their protobuf representation here
+		MotionDataChannel:        cfg.MotionDataChannel,     // write motion packets as their protobuf representation here
+		CurrentLapDataChannel:    cfg.CurrentLapDataChannel, // write current lap times packets as their protobuf representation here
+		LapTimesDataChannel:      cfg.LapTimesDataChannel,   // write historic lap data packets as their protobuf representation here
+		ExtendedWheelDataChannel: cfg.ExtendedWheelDataChannel,
+		LatestLaps:               NewLatestLapData(),
+		capture:                  cfg.CapturePackets,
 	}
 	return &F123Ingest{
 		F123PacketListener:    packetReader,

@@ -18,11 +18,6 @@ import (
 
 // TODO: turns out we can't forward a UDP port in k8s without some extra stuff, so ingest needs to run on the host, not in k8s
 // (unless your playstation/xbox is in the cluster)
-
-const (
-	TelemetryPort = 27543 // chosen at "random"
-)
-
 func main() {
 	// setup the server
 	// read environment variables, then override with CLI flags, of which we have defined none.
@@ -35,9 +30,9 @@ func main() {
 	serverContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 	// TODO: we probably shouldn't bind to 0.0.0.0
-	conn, err := (&net.ListenConfig{}).ListenPacket(serverContext, "udp4", fmt.Sprintf("0.0.0.0:%d", TelemetryPort))
+	conn, err := (&net.ListenConfig{}).ListenPacket(serverContext, "udp4", fmt.Sprintf("0.0.0.0:%d", ingestConfig.UDPPort))
 	if err != nil {
-		slog.Error("failed listening for UDP packets", "port", TelemetryPort, "error", err.Error())
+		slog.Error("failed listening for UDP packets", "port", ingestConfig.UDPPort, "error", err.Error())
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -49,6 +44,10 @@ func main() {
 	ingestConfig.MotionDataChannel = make(chan *pb.GameTelemetry, 100)
 	ingestConfig.CurrentLapDataChannel = make(chan *pb.GameTelemetry, 100)
 	ingestConfig.LapTimesDataChannel = make(chan *pb.GameTelemetry, 100)
+	// TODO: ingest silently failed / didn't send any telemetry when I forgot to
+	// add this after implementing it in the f123 package. surely there is a better
+	// design pattern for the dumbassery we're trying to do here
+	ingestConfig.ExtendedWheelDataChannel = make(chan *pb.GameTelemetry, 100)
 
 	ingest := f123.NewF123Ingest(ingestConfig, conn)
 
@@ -92,10 +91,11 @@ func main() {
 
 		// wire each telemetry channel with an mqtt topic
 		for topic, channel := range map[string]chan *pb.GameTelemetry{
-			"formulatel/vehicledata/f123":    ingestConfig.VehicleDataChannel,
-			"formulatel/motiondata/f123":     ingestConfig.MotionDataChannel,
-			"formulatel/currentlapdata/f123": ingestConfig.CurrentLapDataChannel,
-			"formulatel/laptimesdata/f123":   ingestConfig.LapTimesDataChannel,
+			"formulatel/vehicledata/f123":       ingestConfig.VehicleDataChannel,
+			"formulatel/motiondata/f123":        ingestConfig.MotionDataChannel,
+			"formulatel/currentlapdata/f123":    ingestConfig.CurrentLapDataChannel,
+			"formulatel/laptimesdata/f123":      ingestConfig.LapTimesDataChannel,
+			"formulatel/extendedwheeldata/f123": ingestConfig.ExtendedWheelDataChannel,
 		} {
 			wg.Go(func() {
 				ctx, cancel := context.WithCancel(serverContext)

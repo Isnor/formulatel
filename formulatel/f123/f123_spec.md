@@ -165,14 +165,14 @@ struct PacketSessionData
     PacketHeader    m_header;               	// Header
 
     uint8           m_weather;              	// Weather - 0 = clear, 1 = light cloud, 2 = overcast
-                                            	// 3 = light rain, 4 = heavy rain, 5 = storm
+                                                // 3 = light rain, 4 = heavy rain, 5 = storm
     int8	            m_trackTemperature;    	// Track temp. in degrees celsius
     int8	            m_airTemperature;      	// Air temp. in degrees celsius
     uint8           m_totalLaps;           	// Total number of laps in this race
     uint16          m_trackLength;           	// Track length in metres
     uint8           m_sessionType;         	// 0 = unknown, 1 = P1, 2 = P2, 3 = P3, 4 = Short P
-                                            	// 5 = Q1, 6 = Q2, 7 = Q3, 8 = Short Q, 9 = OSQ
-                                            	// 10 = R, 11 = R2, 12 = R3, 13 = Time Trial
+                                                // 5 = Q1, 6 = Q2, 7 = Q3, 8 = Short Q, 9 = OSQ
+                                                // 10 = R, 11 = R2, 12 = R3, 13 = Time Trial
     int8            m_trackId;         		// -1 for unknown, see appendix
     uint8           m_formula;                  	// Formula, 0 = F1 Modern, 1 = F1 Classic, 2 = F2,
                                                  // 3 = F1 Generic, 4 = Beta, 5 = Supercars
@@ -290,25 +290,21 @@ union EventDataDetails
         uint8	vehicleIdx; // Vehicle index of car achieving fastest lap
         float	lapTime;    // Lap time is in seconds
     } FastestLap;
-
     struct
     {
         uint8   vehicleIdx; // Vehicle index of car retiring
     } Retirement;
-
     struct
     {
         uint8   vehicleIdx; // Vehicle index of team mate
     } TeamMateInPits;
-
     struct
     {
         uint8   vehicleIdx; // Vehicle index of the race winner
     } RaceWinner;
-
     struct
     {
-    	uint8 penaltyType;		// Penalty type – see Appendices
+        uint8 penaltyType;		    // Penalty type – see Appendices
         uint8 infringementType;		// Infringement type – see Appendices
         uint8 vehicleIdx;         	// Vehicle index of the car the penalty is applied to
         uint8 otherVehicleIdx;    	// Vehicle index of the other car involved
@@ -316,44 +312,37 @@ union EventDataDetails
         uint8 lapNum;             	// Lap the penalty occurred on
         uint8 placesGained;       	// Number of places gained by this
     } Penalty;
-
     struct
     {
-        uint8 vehicleIdx;		// Vehicle index of the vehicle triggering speed trap
-        float speed;      		// Top speed achieved in kilometres per hour
-        uint8 isOverallFastestInSession; // Overall fastest speed in session = 1, otherwise 0
-        uint8 isDriverFastestInSession;  // Fastest speed for driver in session = 1, otherwise 0
-        uint8 fastestVehicleIdxInSession;// Vehicle index of the vehicle that is the fastest in this session
-        float fastestSpeedInSession;      // Speed of the vehicle that is the fastest in this session
+        uint8 vehicleIdx;		            // Vehicle index of the vehicle triggering speed trap
+        float speed;      		            // Top speed achieved in kilometres per hour
+        uint8 isOverallFastestInSession;    // Overall fastest speed in session = 1, otherwise 0
+        uint8 isDriverFastestInSession;     // Fastest speed for driver in session = 1, otherwise 0
+        uint8 fastestVehicleIdxInSession;   // Vehicle index of the vehicle that is the fastest in this session
+        float fastestSpeedInSession;        // Speed of the vehicle that is the fastest in this session
     } SpeedTrap;
-
     struct
     {
         uint8 numLights;			// Number of lights showing
     } StartLIghts;
-
     struct
     {
         uint8 vehicleIdx;                 // Vehicle index of the vehicle serving drive through
     } DriveThroughPenaltyServed;
-
     struct
     {
         uint8 vehicleIdx;                 // Vehicle index of the vehicle serving stop go
     } StopGoPenaltyServed;
-
     struct
     {
         uint32 flashbackFrameIdentifier;  // Frame identifier flashed back to
         float flashbackSessionTime;       // Session time flashed back to
     } Flashback;
-
     struct
     {
         uint32 buttonStatus;              // Bit flags specifying which buttons are being pressed
                                           // currently - see appendices
     } Buttons;
-
     struct
     {
         uint8 overtakingVehicleIdx;       // Vehicle index of the vehicle overtaking
@@ -364,10 +353,8 @@ union EventDataDetails
 struct PacketEventData
 {
     PacketHeader    	m_header;               	// Header
-
     uint8           	m_eventStringCode[4];   	// Event string code, see below
-    EventDataDetails	m_eventDetails;         	// Event details - should be interpreted differently
-                                                 // for each type
+    EventDataDetails	m_eventDetails;         	// Event details - should be interpreted differently for each type
 };
 
 ## **Event String Codes**
@@ -426,7 +413,6 @@ struct ParticipantData
 struct PacketParticipantsData
 {
     PacketHeader    m_header;            // Header
-
     uint8           m_numActiveCars;	// Number of active cars in the data – should match number of cars on HUD
     ParticipantData m_participants[22];
 };
@@ -470,7 +456,6 @@ struct CarSetupData
 struct PacketCarSetupData
 {
     PacketHeader    m_header;            // Header
-
     CarSetupData    m_carSetups[22];
 };
 
@@ -509,9 +494,7 @@ struct CarTelemetryData
 struct PacketCarTelemetryData
 {
     PacketHeader    	m_header;	      // Header
-
     CarTelemetryData    m_carTelemetryData[22];
-
     uint8               m_mfdPanelIndex;       // Index of MFD panel open - 255 = MFD closed
                                                // Single player, race – 0 = Car setup, 1 = Pits
                                                // 2 = Damage, 3 =  Engine, 4 = Temperatures
@@ -548,10 +531,10 @@ struct CarStatusData
     uint16      m_drsActivationDistance;    // 0 = DRS not available, non-zero - DRS will be available
                                             // in [X] metres
     uint8       m_actualTyreCompound;	   // F1 Modern - 16 = C5, 17 = C4, 18 = C3, 19 = C2, 20 = C1
-   					   // 21 = C0, 7 = inter, 8 = wet
-   					   // F1 Classic - 9 = dry, 10 = wet
-   					   // F2 – 11 = super soft, 12 = soft, 13 = medium, 14 = hard
-   					   // 15 = wet
+                          // 21 = C0, 7 = inter, 8 = wet
+                          // F1 Classic - 9 = dry, 10 = wet
+                          // F2 – 11 = super soft, 12 = soft, 13 = medium, 14 = hard
+                          // 15 = wet
     uint8       m_visualTyreCompound;       // F1 visual (can be different from actual compound)
                                             // 16 = soft, 17 = medium, 18 = hard, 7 = inter, 8 = wet
                                             // F1 Classic – same as above
@@ -780,11 +763,10 @@ The motion packet gives extended data for the car being driven with the goal of 
 Frequency: Rate as specified in menus
 Size: 217 bytes
 Version: 1
-
+```C
 struct PacketMotionExData
 {
     PacketHeader    m_header;               	// Header
-
     // Extra player car ONLY data
     float         m_suspensionPosition[4];       // Note: All wheel arrays have the following order:
     float         m_suspensionVelocity[4];       // RL, RR, FL, FR
@@ -807,6 +789,7 @@ struct PacketMotionExData
     float         m_frontWheelsAngle;            // Current front wheels angle in radians
     float         m_wheelVertForce[4];           // Vertical forces for each wheel
 };
+```
 
 ## **Restricted data (Your Telemetry setting)**
 
@@ -879,7 +862,7 @@ You should see the tag:
 \<motion\>
   ...
   \<udp enabled="false" broadcast=”false” ip="127.0.0.1" port="20777" sendRate=”20” format=”2023” yourTelemetry=”restricted” onlineNames="off" /\>
-	  ...
+      ...
 \</motion\>
 
 Here you can set the values manually. Note that any changes made within the game when it is running will overwrite any changes made manually. Note the enabled flag is now a state.

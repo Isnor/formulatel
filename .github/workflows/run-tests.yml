@@ -2,18 +2,14 @@ name: Run Formulatel Tests
 
 on:
   pull_request:
-    branches:
-      - main
-      - beta
     paths:
       - 'formulatel/**'
       - 'migrations/**'
   push:
     branches:
       - main
-    paths:
-      - 'formulatel/**'
-      - 'migrations/**'
+    tags:
+      - v*
 
 env:
   TESTCONTAINERS_RYUK_DISABLED: true
@@ -54,20 +50,8 @@ jobs:
           # Install govulncheck for vulnerability scanning
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - name: Run tests
-        run: |
-          cd formulatel
-          # Clean test cache and run all tests
-          go clean -testcache
-          go test -v -race -count=1 \
-            -timeout=5m \
-            -parallel=4 \
-            ./...
-
-      - name: Archive coverage
-        run: |
-          cd formulatel
-          go test -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Run Tests
+        run: make coverage
         continue-on-error: true
 
       - name: Upload coverage to Coveralls
@@ -79,11 +63,12 @@ jobs:
           flag-name: coverage-${{ github.sha }}
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
-          path: formulatel/coverage.out
+          path: |
+            formulatel/coverage.out
 
       - name: Check for vulnerabilities
         run: |
@@ -101,3 +86,4 @@ jobs:
           path: |
             formulatel/**/*_test.log
             formulatel/**/*_test.go
+            formulatel/coverage.html

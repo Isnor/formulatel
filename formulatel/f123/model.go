@@ -53,6 +53,21 @@ const (
 	MotionExPacket
 )
 
+// 0 – Rear Left (RL)
+// 1 – Rear Right (RR)
+// 2 – Front Left (FL)
+// 3 – Front Right (FR)
+const (
+	// index of the rear left wheel in all wheel arrays
+	WheelIndexRearLeft = 0
+	// index of the rear right wheel in all wheel arrays
+	WheelIndexRearRight = 1
+	// index of the front left wheel in all wheel arrays
+	WheelIndexFrontLeft = 2
+	// index of the front right wheel in all wheel arrays
+	WheelIndexFrontRight = 3
+)
+
 // this data is coming in little-endian packed format, so _do not_ change the field types or order.
 type PacketHeader struct {
 	PacketFormat            uint16     // 2023
@@ -194,4 +209,31 @@ type TyreStintHistoryData struct {
 	EndLap             uint8 // Lap the tyre usage ends on (255 if current tyre)
 	TyreActualCompound uint8 // Actual tyres used by driver
 	TyreVisualCompound uint8 // Visual tyres used by driver
+}
+
+// ExtendedMotionData represents extended motion data for player car (F1 23 MotionExPacket). The spec says
+// "The motion packet gives extended data for the car being driven with the goal of being able to drive a
+// motion platform setup." but I'm interested in seeing what it looks like and if we can use it to
+// get any faster
+type ExtendedMotionData struct {
+	SuspensionPosition     [4]float32 // Suspension position per wheel
+	SuspensionVelocity     [4]float32 // Suspension velocity per wheel
+	SuspensionAcceleration [4]float32 // suspension acceleration
+	WheelSpeed             [4]float32 // Speed of each wheel (m/s)
+	WheelSlipRatio         [4]float32 // Slip ratio 0-1
+	WheelSlipAngle         [4]float32 // Slip angles (radians)
+	WheelLatForce          [4]float32 // Lateral forces (N)
+	WheelLonForce          [4]float32 // Longitudinal forces (N)
+	HeightOfCOGAboveGround float32    // Height of centre of gravity above ground
+	LocalVelocityX         float32    //  Velocity in local space – metres/s
+	LocalVelocityY         float32    //  Velocity in local space
+	LocalVelocityZ         float32    //  Velocity in local space
+	AngularVelocityX       float32    //  Angular velocity x-component – radians/s
+	AngularVelocityY       float32    //  Angular velocity y-component
+	AngularVelocityZ       float32    //  Angular velocity z-component
+	AngularAccelerationX   float32    //  Angular acceleration x-component – radians/s/s
+	AngularAccelerationY   float32    //  Angular acceleration y-component
+	AngularAccelerationZ   float32    //  Angular acceleration z-component
+	FrontWheelsAngle       float32    //  Current front wheels angle in radians
+	WheelVertForce         [4]float32 // Vertical forces for each wheel
 }

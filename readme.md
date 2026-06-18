@@ -11,6 +11,7 @@ This project is about collecting, transforming, and visualizing racing sim telem
 config:
   theme: redux
   look: neo
+title: formulatel
 ---
 flowchart LR
   subgraph Sources [Sim Racing Games]
@@ -18,29 +19,25 @@ flowchart LR
     T2[Title B]
     TN[Title C]
   end
-  X[ingest<br/>Receive, Transform, Publish]
+  Ingest[ingest<br/>Receive, Transform, Publish]
   subgraph PubSub [Pub/Sub Topics by Type]
-    TypeA[Topic: Motion]
-    TypeB[Topic: Weather]
-    TypeN[Topic: Tires]
+    TypeA[Topic: Vehicle]
+    TypeB[Topic: Motion]
+    TypeN[Topic: Laps]
   end
   G[Grafana<br/>Visualization]
-  Y[persist<br/>Persistence Layer]
+  T1 --> Ingest
+  T2 --> Ingest
+  TN --> Ingest
+  Ingest --> TypeA
+  Ingest --> TypeB
+  Ingest --> TypeN
+  Persist[persist<br/>Persistence Layer]
   DB[(Datastore)]
-  T1 --> X
-  T2 --> X
-  TN --> X
-  X --> TypeA
-  X --> TypeB
-  X --> TypeN
-  TypeA --> G
-  TypeB --> G
-  TypeN --> G
-  TypeA --> Y
-  TypeB --> Y
-  TypeN --> Y
-  Y --> DB
-  DB --> G
+  Persist --> DB
+  PubSub --> Persist
+  PubSub <--Live Visualization--> G
+  G <--Analysis--> DB
 ```
 
 ## Development
