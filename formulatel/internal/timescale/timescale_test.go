@@ -204,6 +204,59 @@ func pseudoRandomLiveLapDataTelemetry() *pb.GameTelemetry {
 	}
 }
 
+func pseudoRandomMotionExTelemetry() *pb.GameTelemetry {
+	return &pb.GameTelemetry{
+		Title:     pb.GameTitle_GAME_TITLE_F123,
+		SessionId: "motion-ex-test",
+		UserId:    "testuser",
+		Timestamp: timestamppb.Now(),
+		Data: &pb.GameTelemetry_WheelData{
+			WheelData: &pb.ExtendedFourWheelData{
+				BackLeft: &pb.ExtendedWheelData{
+					WheelSpeed:         50.0,
+					VerticalForce:      4000.0,
+					SlipAngle:          0.05,
+					SlipRatio:          0.15,
+					LateralForce:       200.0,
+					LongitudinalForce:  150.0,
+					SuspensionPosition: 0.1,
+					SuspensionVelocity: -0.01,
+				},
+				BackRight: &pb.ExtendedWheelData{
+					WheelSpeed:         48.0,
+					VerticalForce:      4200.0,
+					SlipAngle:          0.03,
+					SlipRatio:          0.12,
+					LateralForce:       180.0,
+					LongitudinalForce:  120.0,
+					SuspensionPosition: 0.15,
+					SuspensionVelocity: 0.02,
+				},
+				FrontLeft: &pb.ExtendedWheelData{
+					WheelSpeed:         52.0,
+					VerticalForce:      3800.0,
+					SlipAngle:          0.10,
+					SlipRatio:          0.08,
+					LateralForce:       250.0,
+					LongitudinalForce:  80.0,
+					SuspensionPosition: 0.08,
+					SuspensionVelocity: -0.03,
+				},
+				FrontRight: &pb.ExtendedWheelData{
+					WheelSpeed:         51.0,
+					VerticalForce:      4100.0,
+					SlipAngle:          0.02,
+					SlipRatio:          0.05,
+					LateralForce:       220.0,
+					LongitudinalForce:  100.0,
+					SuspensionPosition: 0.12,
+					SuspensionVelocity: 0.01,
+				},
+			},
+		},
+	}
+}
+
 func TestSimpleDBWrites(t *testing.T) {
 	t.Parallel()
 	testtable.TestTable{
@@ -309,6 +362,43 @@ func TestSimpleDBWrites(t *testing.T) {
 				assert.EqualValues(t, 100.5, posX)
 			},
 		},
+		&WithMigrationsTest{
+			Name: "insert extended wheel data",
+			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
+				// Create a batcher for extended_wheel_data
+				msgChan := make(chan GameTelemetryWithContext, 10)
+				batcher := NewTableBatcher(t.Context(), p, "extended_wheel_data", msgChan, 5, 50*time.Millisecond)
+				batcher.Start()
+
+				// Create test telemetry message with motion ex (extended wheel) data
+				msg := pseudoRandomMotionExTelemetry()
+
+				// Send message directly to the batcher channel
+				batcher.msgChan <- GameTelemetryWithContext{ctx: t.Context(), msg: msg}
+
+				// Wait for flush
+				time.Sleep(100 * time.Millisecond)
+				close(msgChan)
+
+				// Verify data was written
+				var wheelSpeed float32
+				err = p.QueryRow(t.Context(),
+					"SELECT fl_wheel_speed FROM extended_wheel_data WHERE session_id = $1",
+					"motion-ex-test").Scan(&wheelSpeed)
+				require.NoError(t, err)
+				assert.EqualValues(t, 52.0, wheelSpeed)
+
+				// Verify other wheel data
+				var blSpeed, brSpeed, frSpeed float32
+				err = p.QueryRow(t.Context(),
+					"SELECT bl_wheel_speed, br_wheel_speed, fr_wheel_speed FROM extended_wheel_data WHERE session_id = $1",
+					"motion-ex-test").Scan(&blSpeed, &brSpeed, &frSpeed)
+				require.NoError(t, err)
+				assert.EqualValues(t, 50.0, blSpeed)
+				assert.EqualValues(t, 48.0, brSpeed)
+				assert.EqualValues(t, 51.0, frSpeed)
+			},
+		},
 	}.Run(t)
 }
 
@@ -410,6 +500,112 @@ func TestDuplicateLapTimes(t *testing.T) {
 				require.NotNil(t, lapTelemetryRead)
 				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapNum, lapTelemetryRead.LapNum)
 				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapTime, lapTelemetryRead.LapTime)
+			},
+		},
+	}.Run(t)
+}
+
+// TestBatchRouterExtendedWheelData tests that extended wheel data is properly routed and written
+func TestBatchRouterExtendedWheelData(t *testing.T) {
+	t.Parallel()
+	testtable.TestTable{
+		&WithMigrationsTest{
+			Name: "extended wheel data routing",
+			Expectations: func(t *testing.T, p *pgxpool.Pool, err error) {
+				msgChan := make(chan *pb.GameTelemetry)
+				router, err := NewBatchRouter(t.Context(), p, msgChan, 1, 10*time.Millisecond)
+				require.NoError(t, err)
+
+				// Create motion ex telemetry with known values
+				motionExTelemetry := &pb.GameTelemetry{
+					Title:     pb.GameTitle_GAME_TITLE_F123,
+					SessionId: "motion-ex-router-test",
+					UserId:    "testuser",
+					Timestamp: timestamppb.Now(),
+					Data: &pb.GameTelemetry_WheelData{
+						WheelData: &pb.ExtendedFourWheelData{
+							BackLeft: &pb.ExtendedWheelData{
+								WheelSpeed:         50.0,
+								VerticalForce:      4000.0,
+								SlipAngle:          0.05,
+								SlipRatio:          0.15,
+								LateralForce:       200.0,
+								LongitudinalForce:  150.0,
+								SuspensionPosition: 0.1,
+								SuspensionVelocity: -0.01,
+							},
+							BackRight: &pb.ExtendedWheelData{
+								WheelSpeed:         48.0,
+								VerticalForce:      4200.0,
+								SlipAngle:          0.03,
+								SlipRatio:          0.12,
+								LateralForce:       180.0,
+								LongitudinalForce:  120.0,
+								SuspensionPosition: 0.15,
+								SuspensionVelocity: 0.02,
+							},
+							FrontLeft: &pb.ExtendedWheelData{
+								WheelSpeed:         52.0,
+								VerticalForce:      3800.0,
+								SlipAngle:          0.10,
+								SlipRatio:          0.08,
+								LateralForce:       250.0,
+								LongitudinalForce:  80.0,
+								SuspensionPosition: 0.08,
+								SuspensionVelocity: -0.03,
+							},
+							FrontRight: &pb.ExtendedWheelData{
+								WheelSpeed:         51.0,
+								VerticalForce:      4100.0,
+								SlipAngle:          0.02,
+								SlipRatio:          0.05,
+								LateralForce:       220.0,
+								LongitudinalForce:  100.0,
+								SuspensionPosition: 0.12,
+								SuspensionVelocity: 0.01,
+							},
+						},
+					},
+				}
+
+				// Route the message
+				router.Add(t.Context(), motionExTelemetry)
+
+				// Wait for the batcher to complete the flush
+				time.Sleep(100 * time.Millisecond)
+
+				// Verify data was written to extended_wheel_data table
+				extendedWheelData := &pb.ExtendedFourWheelData{
+					BackLeft:   &pb.ExtendedWheelData{},
+					BackRight:  &pb.ExtendedWheelData{},
+					FrontLeft:  &pb.ExtendedWheelData{},
+					FrontRight: &pb.ExtendedWheelData{},
+				}
+				err = p.QueryRow(t.Context(), "SELECT fl_wheel_speed FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&(extendedWheelData.FrontLeft).WheelSpeed)
+				require.NoError(t, err)
+				assert.EqualValues(t, float32(52.0), extendedWheelData.FrontLeft.WheelSpeed)
+
+				// Verify all four wheels
+				var blSpeed, brSpeed, frSpeed float32
+				err = p.QueryRow(t.Context(), "SELECT bl_wheel_speed, br_wheel_speed, fr_wheel_speed FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSpeed, &brSpeed, &frSpeed)
+				require.NoError(t, err)
+				assert.EqualValues(t, float32(50.0), blSpeed)
+				assert.EqualValues(t, float32(48.0), brSpeed)
+				assert.EqualValues(t, float32(51.0), frSpeed)
+
+				// Verify suspension data
+				var blSuspensionPos, frSuspensionPos float32
+				err = p.QueryRow(t.Context(), "SELECT bl_suspension_position, fr_suspension_position FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSuspensionPos, &frSuspensionPos)
+				require.NoError(t, err)
+				assert.EqualValues(t, float32(0.1), blSuspensionPos)
+				assert.EqualValues(t, float32(0.12), frSuspensionPos)
+
+				// Verify slip angles
+				var blSlipAngle, frSlipAngle float32
+				err = p.QueryRow(t.Context(), "SELECT bl_slip_angle, fr_slip_angle FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSlipAngle, &frSlipAngle)
+				require.NoError(t, err)
+				assert.EqualValues(t, float32(0.05), blSlipAngle)
+				assert.EqualValues(t, float32(0.02), frSlipAngle)
 			},
 		},
 	}.Run(t)

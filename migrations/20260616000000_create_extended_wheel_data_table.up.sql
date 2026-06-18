@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS extended_wheel_data (
     fr_lateral_force      REAL NOT NULL,
     fr_longitudinal_force REAL NOT NULL,
     fr_suspension_position REAL,
-    fr_suspension_velocity REAL,
+    fr_suspension_velocity REAL
 
 ) WITH (
     timescaledb.hypertable,

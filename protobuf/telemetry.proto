@@ -32,11 +32,12 @@ message GameTelemetry {
     MotionData motion_data = 12;
     CurrentLapData current_lap_data = 13;
     HistoricLapData lap_times_data = 14;
-    MotionExTires motion_ex_tires = 15; // F1 23 MotionExPacket extended wheel data
+    ExtendedFourWheelData wheel_data = 15;
   }
 }
 
-// this message is for any onboard telemetry from the vehicle, generally seen by the driver via a dashboard, screen, or MFD
+// this message is for any onboard telemetry from the vehicle, generally seen by the driver
+// via a dashboard, screen, or MFD
 message VehicleData {
   uint32 speed = 1;
   uint32 rpm = 2;
@@ -69,7 +70,7 @@ message TireData {
 
 // WheelData contains universal wheel-level data common across racing sims
 // All fields are required (non-optional) for consistency
-message WheelData {
+message ExtendedWheelData {
   float wheel_speed = 1;                // m/s
   float vertical_force = 2;             // N (downforce)
   float slip_angle = 3;                 // radians -
@@ -80,11 +81,15 @@ message WheelData {
   float suspension_velocity = 8;        // m/s
 }
 
-message MotionExTires {
-  WheelData back_left = 1;
-  WheelData back_right = 2;
-  WheelData front_left = 3;
-  WheelData front_right = 4;
+// ExtendedFourWheelData packages four ExtendedWheelData messages in a "standard" 4-wheel layout
+// common to almost all race cars. This exists to give us the potential to support titles with
+// vehicle that have, for example, 8 wheels by defining a new message to describe the placement
+// of those wheels
+message ExtendedFourWheelData {
+  ExtendedWheelData back_left = 1;
+  ExtendedWheelData back_right = 2;
+  ExtendedWheelData front_left = 3;
+  ExtendedWheelData front_right = 4;
 }
 
 // this message describes physics data for the vehicle, including position, velocity, and forces.

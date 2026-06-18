@@ -158,46 +158,46 @@ func buildCurrentLapDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 }
 
 func buildExtendedWheelDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
-	if exTires := msg.GetMotionExTires(); exTires != nil {
+	if exTires := msg.GetWheelData(); exTires != nil {
 		return map[string]any{
-			"time":                                msg.Timestamp.AsTime(),
-			"session_id":                          msg.SessionId,
-			"user_id":                             msg.UserId,
-			"title":                               msg.Title,
+			"time":       msg.Timestamp.AsTime(),
+			"session_id": msg.SessionId,
+			"user_id":    msg.UserId,
+			"title":      msg.Title,
 			// Back Left Wheel
-			"bl_wheel_speed":     exTires.BackLeft.WheelSpeed,
-			"bl_vertical_force":  exTires.BackLeft.VerticalForce,
-			"bl_slip_angle":      exTires.BackLeft.SlipAngle,
-			"bl_slip_ratio":      exTires.BackLeft.SlipRatio,
-			"bl_lateral_force":   exTires.BackLeft.LateralForce,
-			"bl_longitudinal_force": exTires.BackLeft.LongitudinalForce,
+			"bl_wheel_speed":         exTires.BackLeft.WheelSpeed,
+			"bl_vertical_force":      exTires.BackLeft.VerticalForce,
+			"bl_slip_angle":          exTires.BackLeft.SlipAngle,
+			"bl_slip_ratio":          exTires.BackLeft.SlipRatio,
+			"bl_lateral_force":       exTires.BackLeft.LateralForce,
+			"bl_longitudinal_force":  exTires.BackLeft.LongitudinalForce,
 			"bl_suspension_position": exTires.BackLeft.SuspensionPosition,
 			"bl_suspension_velocity": exTires.BackLeft.SuspensionVelocity,
 			// Back Right Wheel
-			"br_wheel_speed":     exTires.BackRight.WheelSpeed,
-			"br_vertical_force":  exTires.BackRight.VerticalForce,
-			"br_slip_angle":      exTires.BackRight.SlipAngle,
-			"br_slip_ratio":      exTires.BackRight.SlipRatio,
-			"br_lateral_force":   exTires.BackRight.LateralForce,
-			"br_longitudinal_force": exTires.BackRight.LongitudinalForce,
+			"br_wheel_speed":         exTires.BackRight.WheelSpeed,
+			"br_vertical_force":      exTires.BackRight.VerticalForce,
+			"br_slip_angle":          exTires.BackRight.SlipAngle,
+			"br_slip_ratio":          exTires.BackRight.SlipRatio,
+			"br_lateral_force":       exTires.BackRight.LateralForce,
+			"br_longitudinal_force":  exTires.BackRight.LongitudinalForce,
 			"br_suspension_position": exTires.BackRight.SuspensionPosition,
 			"br_suspension_velocity": exTires.BackRight.SuspensionVelocity,
 			// Front Left Wheel
-			"fl_wheel_speed":     exTires.FrontLeft.WheelSpeed,
-			"fl_vertical_force":  exTires.FrontLeft.VerticalForce,
-			"fl_slip_angle":      exTires.FrontLeft.SlipAngle,
-			"fl_slip_ratio":      exTires.FrontLeft.SlipRatio,
-			"fl_lateral_force":   exTires.FrontLeft.LateralForce,
-			"fl_longitudinal_force": exTires.FrontLeft.LongitudinalForce,
+			"fl_wheel_speed":         exTires.FrontLeft.WheelSpeed,
+			"fl_vertical_force":      exTires.FrontLeft.VerticalForce,
+			"fl_slip_angle":          exTires.FrontLeft.SlipAngle,
+			"fl_slip_ratio":          exTires.FrontLeft.SlipRatio,
+			"fl_lateral_force":       exTires.FrontLeft.LateralForce,
+			"fl_longitudinal_force":  exTires.FrontLeft.LongitudinalForce,
 			"fl_suspension_position": exTires.FrontLeft.SuspensionPosition,
 			"fl_suspension_velocity": exTires.FrontLeft.SuspensionVelocity,
 			// Front Right Wheel
-			"fr_wheel_speed":     exTires.FrontRight.WheelSpeed,
-			"fr_vertical_force":  exTires.FrontRight.VerticalForce,
-			"fr_slip_angle":      exTires.FrontRight.SlipAngle,
-			"fr_slip_ratio":      exTires.FrontRight.SlipRatio,
-			"fr_lateral_force":   exTires.FrontRight.LateralForce,
-			"fr_longitudinal_force": exTires.FrontRight.LongitudinalForce,
+			"fr_wheel_speed":         exTires.FrontRight.WheelSpeed,
+			"fr_vertical_force":      exTires.FrontRight.VerticalForce,
+			"fr_slip_angle":          exTires.FrontRight.SlipAngle,
+			"fr_slip_ratio":          exTires.FrontRight.SlipRatio,
+			"fr_lateral_force":       exTires.FrontRight.LateralForce,
+			"fr_longitudinal_force":  exTires.FrontRight.LongitudinalForce,
 			"fr_suspension_position": exTires.FrontRight.SuspensionPosition,
 			"fr_suspension_velocity": exTires.FrontRight.SuspensionVelocity,
 		}, nil
@@ -487,11 +487,11 @@ func rowKeys(row map[string]any, tableName string) []string {
 
 // BatchRouter routes messages to the appropriate TableBatcher.
 type BatchRouter struct {
-	vehicleBatcher            *TableBatcher
-	motionBatcher             *TableBatcher
-	sessionLapDataBatcher     *TableBatcher
-	liveLapDataBatcher        *TableBatcher
-	extendedWheelDataBatcher  *TableBatcher
+	vehicleBatcher           *TableBatcher
+	motionBatcher            *TableBatcher
+	sessionLapDataBatcher    *TableBatcher
+	liveLapDataBatcher       *TableBatcher
+	extendedWheelDataBatcher *TableBatcher
 }
 
 // TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
@@ -533,11 +533,11 @@ func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.Ga
 	extendedWheelDataBatcher.Start()
 
 	return &BatchRouter{
-		vehicleBatcher:            vehicleBatcher,
-		motionBatcher:             motionBatcher,
-		sessionLapDataBatcher:     sessionLapDataBatcher,
-		liveLapDataBatcher:        liveLapDataBatcher,
-		extendedWheelDataBatcher:  extendedWheelDataBatcher,
+		vehicleBatcher:           vehicleBatcher,
+		motionBatcher:            motionBatcher,
+		sessionLapDataBatcher:    sessionLapDataBatcher,
+		liveLapDataBatcher:       liveLapDataBatcher,
+		extendedWheelDataBatcher: extendedWheelDataBatcher,
 	}, nil
 }
 
@@ -573,7 +573,7 @@ func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
 		}
 
 		// Extended wheel data (MotionExPacket)
-		if msg.GetMotionExTires() != nil {
+		if msg.GetWheelData() != nil {
 			slog.DebugContext(ctx, "read motion ex data", "session_id", msg.SessionId, "user_id", msg.UserId)
 			b.extendedWheelDataBatcher.msgChan <- wrapped
 		}
