@@ -61,7 +61,7 @@ jobs:
             ./...
 
       - name: Archive coverage
-        run: make cover
+        run: make coverage
         continue-on-error: true
 
       - name: Upload coverage to Coveralls
