@@ -2,18 +2,14 @@ name: Run Formulatel Tests
 
 on:
   pull_request:
-    branches:
-      - main
-      - beta
     paths:
       - 'formulatel/**'
       - 'migrations/**'
   push:
     branches:
       - main
-    paths:
-      - 'formulatel/**'
-      - 'migrations/**'
+    tags:
+      - v*
 
 env:
   TESTCONTAINERS_RYUK_DISABLED: true
@@ -65,9 +61,7 @@ jobs:
             ./...
 
       - name: Archive coverage
-        run: |
-          cd formulatel
-          go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: make cover
         continue-on-error: true
 
       - name: Upload coverage to Coveralls
@@ -83,7 +77,7 @@ jobs:
         if: always()
         with:
           name: coverage-report
-          path: formulatel/coverage.out
+          path: formulatel/coverage.html
 
       - name: Check for vulnerabilities
         run: |

@@ -6,3 +6,4 @@ captured_packets/
 out/
 formulatel/cmd/decode/
 *.out
+coverage.*
