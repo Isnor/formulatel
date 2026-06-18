@@ -181,7 +181,7 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_VehicleData{
-				VehicleData: f.normalizeVehicleData(header, &playerTelemetry),
+				VehicleData: f.normalizeVehicleData(&playerTelemetry),
 			},
 		}
 		f.VehicleDataChannel <- telproto
@@ -199,7 +199,7 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			UserId:    fmt.Sprint(header.PlayerCarIndex),
 			Timestamp: timestamppb.Now(),
 			Data: &pb.GameTelemetry_MotionData{
-				MotionData: f.normalizeMotionData(header, &playerMotion),
+				MotionData: f.normalizeMotionData(&playerMotion),
 			},
 		}
 		f.MotionDataChannel <- motionProto
@@ -350,7 +350,6 @@ func (f *F123PacketTransformer) handleCapture(ctx context.Context, packet []byte
 
 // normalizeVehicleData maps F1 23 CarTelemetryData to protobuf VehicleData
 func (f *F123PacketTransformer) normalizeVehicleData(
-	header *PacketHeader,
 	telemetry *CarTelemetryData,
 ) *pb.VehicleData {
 	tires := &pb.VehicleData_Tires{
@@ -394,7 +393,6 @@ func (f *F123PacketTransformer) normalizeVehicleData(
 
 // normalizeMotionData maps F1 23 CarMotionData to protobuf MotionData
 func (f *F123PacketTransformer) normalizeMotionData(
-	header *PacketHeader,
 	motion *CarMotionData,
 ) *pb.MotionData {
 	return &pb.MotionData{
@@ -505,14 +503,15 @@ func (f *F123PacketTransformer) normalizeMotionExData(
 
 // F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer
 type F123IngestConfig struct {
-	MaxPacketsBuffered uint `split_words:"true" default:"1000"` // size of the buffered channel of packets
-	CapturePackets     bool `split_words:"true" default:"false"`
+	MaxPacketsBuffered uint   `split_words:"true" default:"1000"` // size of the buffered channel of packets
+	CapturePackets     bool   `split_words:"true" default:"false"`
+	UDPPort            uint16 `envconfig:"UDP_PORT" default:"27543"`
 
-	VehicleDataChannel    chan *pb.GameTelemetry `envconfig:"-"`
-	MotionDataChannel     chan *pb.GameTelemetry `envconfig:"-"`
-	CurrentLapDataChannel chan *pb.GameTelemetry `envconfig:"-"`
-	LapTimesDataChannel   chan *pb.GameTelemetry `envconfig:"-"`
-	MotionExDataChannel   chan *pb.GameTelemetry `envconfig:"-"`
+	VehicleDataChannel       chan *pb.GameTelemetry `envconfig:"-"`
+	MotionDataChannel        chan *pb.GameTelemetry `envconfig:"-"`
+	CurrentLapDataChannel    chan *pb.GameTelemetry `envconfig:"-"`
+	LapTimesDataChannel      chan *pb.GameTelemetry `envconfig:"-"`
+	ExtendedWheelDataChannel chan *pb.GameTelemetry `envconfig:"-"`
 }
 
 // F123Ingest is simply a convenient container
@@ -537,7 +536,7 @@ func NewF123Ingest(
 		MotionDataChannel:        cfg.MotionDataChannel,     // write motion packets as their protobuf representation here
 		CurrentLapDataChannel:    cfg.CurrentLapDataChannel, // write current lap times packets as their protobuf representation here
 		LapTimesDataChannel:      cfg.LapTimesDataChannel,   // write historic lap data packets as their protobuf representation here
-		ExtendedWheelDataChannel: cfg.MotionExDataChannel,
+		ExtendedWheelDataChannel: cfg.ExtendedWheelDataChannel,
 		LatestLaps:               NewLatestLapData(),
 		capture:                  cfg.CapturePackets,
 	}

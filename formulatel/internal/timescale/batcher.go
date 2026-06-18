@@ -572,7 +572,7 @@ func (b *BatchRouter) Add(ctx context.Context, msg *pb.GameTelemetry) {
 			b.liveLapDataBatcher.msgChan <- wrapped
 		}
 
-		// Extended wheel data (MotionExPacket)
+		// Extended wheel data
 		if msg.GetWheelData() != nil {
 			slog.DebugContext(ctx, "read motion ex data", "session_id", msg.SessionId, "user_id", msg.UserId)
 			b.extendedWheelDataBatcher.msgChan <- wrapped

@@ -227,7 +227,8 @@ func (*GameTelemetry_LapTimesData) isGameTelemetry_Data() {}
 
 func (*GameTelemetry_WheelData) isGameTelemetry_Data() {}
 
-// this message is for any onboard telemetry from the vehicle, generally seen by the driver via a dashboard, screen, or MFD
+// this message is for any onboard telemetry from the vehicle, generally seen by the driver
+// via a dashboard, screen, or MFD
 type VehicleData struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

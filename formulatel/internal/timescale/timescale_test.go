@@ -207,7 +207,7 @@ func pseudoRandomLiveLapDataTelemetry() *pb.GameTelemetry {
 	}
 }
 
-func pseudoRandomMotionExTelemetry() *pb.GameTelemetry {
+func pseudoRandomExtendedWheelTelemetry() *pb.GameTelemetry {
 	return &pb.GameTelemetry{
 		Title:     pb.GameTitle_GAME_TITLE_F123,
 		SessionId: "motion-ex-test",
@@ -374,7 +374,7 @@ func TestSimpleDBWrites(t *testing.T) {
 				batcher.Start()
 
 				// Create test telemetry message with motion ex (extended wheel) data
-				msg := pseudoRandomMotionExTelemetry()
+				msg := pseudoRandomExtendedWheelTelemetry()
 
 				// Send message directly to the batcher channel
 				batcher.msgChan <- GameTelemetryWithContext{ctx: t.Context(), msg: msg}
@@ -520,7 +520,7 @@ func TestBatchRouterExtendedWheelData(t *testing.T) {
 				require.NoError(t, err)
 
 				// Create motion ex telemetry with known values
-				motionExTelemetry := &pb.GameTelemetry{
+				extendedWheelTelemetry := &pb.GameTelemetry{
 					Title:     pb.GameTitle_GAME_TITLE_F123,
 					SessionId: "motion-ex-router-test",
 					UserId:    "testuser",
@@ -572,7 +572,7 @@ func TestBatchRouterExtendedWheelData(t *testing.T) {
 				}
 
 				// Route the message
-				router.Add(t.Context(), motionExTelemetry)
+				router.Add(t.Context(), extendedWheelTelemetry)
 
 				// Wait for the batcher to complete the flush
 				time.Sleep(100 * time.Millisecond)

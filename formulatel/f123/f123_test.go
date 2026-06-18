@@ -72,11 +72,11 @@ func (f F123IngestTestTable) Run(t *testing.T) {
 
 func TestF123Ingest(t *testing.T) {
 	config := F123IngestConfig{
-		VehicleDataChannel:    make(chan *pb.GameTelemetry, 100),
-		MotionDataChannel:     make(chan *pb.GameTelemetry, 100),
-		CurrentLapDataChannel: make(chan *pb.GameTelemetry, 100),
-		LapTimesDataChannel:   make(chan *pb.GameTelemetry, 100),
-		MotionExDataChannel:   make(chan *pb.GameTelemetry, 100),
+		VehicleDataChannel:       make(chan *pb.GameTelemetry, 100),
+		MotionDataChannel:        make(chan *pb.GameTelemetry, 100),
+		CurrentLapDataChannel:    make(chan *pb.GameTelemetry, 100),
+		LapTimesDataChannel:      make(chan *pb.GameTelemetry, 100),
+		ExtendedWheelDataChannel: make(chan *pb.GameTelemetry, 100),
 	}
 	F123IngestTestTable{
 		config: config,
