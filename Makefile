@@ -9,7 +9,7 @@ proto:
 	protoc -I=./protobuf --go_out=./formulatel ./protobuf/*.proto
 
 coverage:
-	go -C formulatel test -coverprofile=coverage.out -covermode=atomic -race ./{f123,internal/timescale}
+	go -C formulatel test -coverprofile=coverage.out -covermode=atomic -race ./f123 ./internal/timescale
 	go -C formulatel tool cover -html=coverage.out -o coverage.html
 
 # TODO: we have a cluster.yml now, need to reconcile this with that file
