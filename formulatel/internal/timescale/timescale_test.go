@@ -68,11 +68,11 @@ func (mt *WithMigrationsTest) Run(t *testing.T) {
 	t.Run(mt.Name, func(t *testing.T) {
 		t.Parallel()
 		pgContainer := mustPostgresContainer()
-
+		tid := rand.Uint32N(uint32(time.Now().Nanosecond()))
 		// create a test database for this test to have a "sandbox" to run in
 		connPool, err := pgxpool.New(t.Context(), pgContainer.MustConnectionString(t.Context(), "sslmode=disable"))
 		require.NoError(t, err, "could not connect to postgres container %v", err)
-		dbName := strings.ReplaceAll(strings.ToLower(mt.Name), " ", "_")
+		dbName := fmt.Sprintf("%s_%d" , strings.ReplaceAll(strings.ToLower(mt.Name), " ", "_"), tid)
 		_, err = connPool.Exec(t.Context(), fmt.Sprintf("CREATE DATABASE %s", dbName))
 		require.NoError(t, err, "could not create new database")
 
@@ -94,6 +94,9 @@ func (mt *WithMigrationsTest) Run(t *testing.T) {
 		// now we can run the assertions
 		mt.Expectations(t, testDB, err)
 		require.NoError(t, migrations.Down())
+		testDB.Close()
+		_, err = connPool.Exec(t.Context(), fmt.Sprintf("DROP DATABASE %s WITH(FORCE)", dbName))
+		require.NoError(t, err)
 	})
 }
 

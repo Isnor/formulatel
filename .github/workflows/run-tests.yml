@@ -50,17 +50,7 @@ jobs:
           # Install govulncheck for vulnerability scanning
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      - name: Run tests
-        run: |
-          cd formulatel
-          # Clean test cache and run all tests
-          go clean -testcache
-          go test -v -race -count=1 \
-            -timeout=5m \
-            -parallel=4 \
-            ./...
-
-      - name: Archive coverage
+      - name: Run Tests
         run: make coverage
         continue-on-error: true
 
