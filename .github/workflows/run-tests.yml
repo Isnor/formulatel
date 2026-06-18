@@ -73,12 +73,11 @@ jobs:
           flag-name: coverage-${{ github.sha }}
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
           path: |
-            formulatel/coverage.html
             formulatel/coverage.out
 
       - name: Check for vulnerabilities
@@ -97,3 +96,4 @@ jobs:
           path: |
             formulatel/**/*_test.log
             formulatel/**/*_test.go
+            formulatel/coverage.html
