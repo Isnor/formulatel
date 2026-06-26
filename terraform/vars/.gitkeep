@@ -1,0 +1,3 @@
+# deploy to your own tenancy
+
+Use this folder to define the `tfvars` for your environment, or possibly think of a better way to store the secrets we don't want to commit
