@@ -3,7 +3,11 @@ captured_packets/
 .claude/*
 # maybe I should include the memory files as well, not sure
 !.claude/agents/
+.terraform/
+*.tfstate*
+*.tfvars
 out/
 formulatel/cmd/decode/
 *.out
 coverage.*
+sandbox.tfvars
