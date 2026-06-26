@@ -5,6 +5,7 @@ on:
     paths:
       - 'formulatel/**'
       - 'migrations/**'
+      - '.github/workflows/**'
   push:
     branches:
       - main
