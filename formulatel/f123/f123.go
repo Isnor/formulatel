@@ -265,17 +265,13 @@ func (f *F123PacketTransformer) Route(ctx context.Context, header *PacketHeader,
 			}
 		}
 	case MotionExPacket:
-		// MotionExPacket contains extended motion data for player car only (not all 22 cars)
-		// This packet is sent at 20Hz cycling through cars, but we only care about player's car
+		// MotionExPacket contains extended motion data for player car only
 		playerExtWheels, err := UnpackBody[ExtendedMotionData](data)
 		if err != nil {
 			return err
 		}
-		// Only process the player's car
-		// playerMotionEx := motionExArray[header.PlayerCarIndex]
 		slog.DebugContext(ctx, "read a motion ex packet for player car")
 
-		// normalizeMotionExData returns the MotionExTires struct
 		extendedWheelData := f.normalizeMotionExData(playerExtWheels)
 
 		motionExProto := &pb.GameTelemetry{
@@ -453,7 +449,6 @@ func (f *F123PacketTransformer) normalizeSessionHistoryData(
 }
 
 // normalizeMotionExData unpacks the wheel data from the MotionExPacket
-// Maps F1 23 binary data to WheelData protobuf (common fields only)
 func (f *F123PacketTransformer) normalizeMotionExData(
 	motionEx *ExtendedMotionData,
 ) *pb.ExtendedFourWheelData {
@@ -501,7 +496,8 @@ func (f *F123PacketTransformer) normalizeMotionExData(
 	}
 }
 
-// F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer
+// F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer.
+// It also serves a container for the data channels that the Transformer writes to
 type F123IngestConfig struct {
 	MaxPacketsBuffered uint   `split_words:"true" default:"1000"` // size of the buffered channel of packets
 	CapturePackets     bool   `split_words:"true" default:"false"`
@@ -528,7 +524,7 @@ func NewF123Ingest(
 	buffer := make(chan []byte, cfg.MaxPacketsBuffered)
 	packetReader := &F123PacketListener{
 		Server:       conn,
-		PacketBuffer: buffer, // send all packets here
+		PacketBuffer: buffer,
 	}
 	transformer := &F123PacketTransformer{
 		Packets:                  buffer,                    // read and unpack F123 packets, placing them in a data-specific channel
