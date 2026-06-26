@@ -745,6 +745,7 @@ struct TyreSetData
     uint8     m_fitted;                // Whether the set is fitted or not
 };
 
+```C
 struct PacketTyreSetsData
 {
     PacketHeader    m_header;            // Header
@@ -755,6 +756,7 @@ struct PacketTyreSetsData
 
     uint8           m_fittedIdx;         // Index into array of fitted tyre
 };
+```
 
 ## **Motion Ex Packet**
 
@@ -767,7 +769,7 @@ Version: 1
 struct PacketMotionExData
 {
     PacketHeader    m_header;               	// Header
-    // Extra player car ONLY data
+    // player car ONLY data
     float         m_suspensionPosition[4];       // Note: All wheel arrays have the following order:
     float         m_suspensionVelocity[4];       // RL, RR, FL, FR
     float         m_suspensionAcceleration[4];	// RL, RR, FL, FR

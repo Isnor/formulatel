@@ -48,6 +48,128 @@ var mustPostgresContainer = sync.OnceValue(func() *postgres.PostgresContainer {
 	return postgresContainer
 })
 
+// These structs use `db` tags so pgx can scan into the struct directly. Their fields should
+// match the schema of the table they are used to scan from, e.g. MotionDataReader has a field
+// for every column in the motion_data table of our migrations.
+type MotionDataReader struct {
+	Time               time.Time    `db:"time"`
+	SessionID          string       `db:"session_id"`
+	UserId             string       `db:"user_id"`
+	Title              pb.GameTitle `db:"title"`
+	PositionX          float32      `db:"position_x"`
+	PositionY          float32      `db:"position_y"`
+	PositionZ          float32      `db:"position_z"`
+	VelocityX          float32      `db:"velocity_x"`
+	VelocityY          float32      `db:"velocity_y"`
+	VelocityZ          float32      `db:"velocity_z"`
+	GForceLateral      float32      `db:"gforce_lateral"`
+	GForceLongitudinal float32      `db:"gforce_longitudinal"`
+	GForceVertical     float32      `db:"gforce_vertical"`
+	Yaw                float32      `db:"yaw"`
+	Pitch              float32      `db:"pitch"`
+	Roll               float32      `db:"roll"`
+}
+
+type ExtendedWheelDataReader struct {
+	Time                 time.Time    `db:"time"`
+	SessionID            string       `db:"session_id"`
+	UserId               string       `db:"user_id"`
+	Title                pb.GameTitle `db:"title"`
+	BlWheelSpeed         float32      `db:"bl_wheel_speed"`
+	BlVerticalForce      float32      `db:"bl_vertical_force"`
+	BlSlipAngle          float32      `db:"bl_slip_angle"`
+	BlSlipRatio          float32      `db:"bl_slip_ratio"`
+	BlLateralForce       float32      `db:"bl_lateral_force"`
+	BlLongitudinalForce  float32      `db:"bl_longitudinal_force"`
+	BlSuspensionPosition float32      `db:"bl_suspension_position"`
+	BlSuspensionVelocity float32      `db:"bl_suspension_velocity"`
+	BrWheelSpeed         float32      `db:"br_wheel_speed"`
+	BrVerticalForce      float32      `db:"br_vertical_force"`
+	BrSlipAngle          float32      `db:"br_slip_angle"`
+	BrSlipRatio          float32      `db:"br_slip_ratio"`
+	BrLateralForce       float32      `db:"br_lateral_force"`
+	BrLongitudinalForce  float32      `db:"br_longitudinal_force"`
+	BrSuspensionPosition float32      `db:"br_suspension_position"`
+	BrSuspensionVelocity float32      `db:"br_suspension_velocity"`
+	FlWheelSpeed         float32      `db:"fl_wheel_speed"`
+	FlVerticalForce      float32      `db:"fl_vertical_force"`
+	FlSlipAngle          float32      `db:"fl_slip_angle"`
+	FlSlipRatio          float32      `db:"fl_slip_ratio"`
+	FlLateralForce       float32      `db:"fl_lateral_force"`
+	FlLongitudinalForce  float32      `db:"fl_longitudinal_force"`
+	FlSuspensionPosition float32      `db:"fl_suspension_position"`
+	FlSuspensionVelocity float32      `db:"fl_suspension_velocity"`
+	FrWheelSpeed         float32      `db:"fr_wheel_speed"`
+	FrVerticalForce      float32      `db:"fr_vertical_force"`
+	FrSlipAngle          float32      `db:"fr_slip_angle"`
+	FrSlipRatio          float32      `db:"fr_slip_ratio"`
+	FrLateralForce       float32      `db:"fr_lateral_force"`
+	FrLongitudinalForce  float32      `db:"fr_longitudinal_force"`
+	FrSuspensionPosition float32      `db:"fr_suspension_position"`
+	FrSuspensionVelocity float32      `db:"fr_suspension_velocity"`
+}
+
+type VehicleDataReader struct {
+	Time              time.Time    `db:"time"`
+	SessionID         string       `db:"session_id"`
+	UserId            string       `db:"user_id"`
+	Title             pb.GameTitle `db:"title"`
+	Speed             uint32       `db:"speed"`
+	Rpm               uint32       `db:"rpm"`
+	Throttle          float32      `db:"throttle"`
+	Brake             float32      `db:"brake"`
+	Steering          float32      `db:"steering"`
+	Gear              int32        `db:"gear"`
+	EngineTemperature uint32       `db:"engine_temperature"`
+	FlBrakeTemp       uint32       `db:"fl_brake_temp"`
+	FlInnerTemp       uint32       `db:"fl_inner_temp"`
+	FlSurfaceTemp     uint32       `db:"fl_surface_temp"`
+	FlPressure        uint32       `db:"fl_pressure"`
+	FrBrakeTemp       uint32       `db:"fr_brake_temp"`
+	FrInnerTemp       uint32       `db:"fr_inner_temp"`
+	FrSurfaceTemp     uint32       `db:"fr_surface_temp"`
+	FrPressure        uint32       `db:"fr_pressure"`
+	BlBrakeTemp       uint32       `db:"bl_brake_temp"`
+	BlInnerTemp       uint32       `db:"bl_inner_temp"`
+	BlSurfaceTemp     uint32       `db:"bl_surface_temp"`
+	BlPressure        uint32       `db:"bl_pressure"`
+	BrBrakeTemp       uint32       `db:"br_brake_temp"`
+	BrInnerTemp       uint32       `db:"br_inner_temp"`
+	BrSurfaceTemp     uint32       `db:"br_surface_temp"`
+	BrPressure        uint32       `db:"br_pressure"`
+}
+
+type LiveLapDataReader struct {
+	Time              time.Time    `db:"time"`
+	SessionID         string       `db:"session_id"`
+	UserId            string       `db:"user_id"`
+	Title             pb.GameTitle `db:"title"`
+	LapNum            uint32       `db:"lap_num"`
+	CurrentLapTime    uint32       `db:"current_lap_time"`
+	Sector            uint32       `db:"sector"`
+	Sector1Time       uint32       `db:"sector1_time"`
+	Sector2Time       uint32       `db:"sector2_time"`
+	DeltaToCarInFront uint32       `db:"delta_to_car_in_front"`
+	DeltaToRaceLeader uint32       `db:"delta_to_race_leader"`
+	LapDistance       float32      `db:"lap_distance"`
+	TotalDistance     float32      `db:"total_distance"`
+}
+
+type SessionLapDataReader struct {
+	SessionID    string        `db:"session_id"`
+	UserID       string        `db:"user_id"`
+	Title        pb.GameTitle  `db:"title"`
+	LapNum       uint32        `db:"lap_num"`
+	LapTime      time.Duration `db:"lap_time"`
+	Sector1Time  time.Duration `db:"sector1_time"`
+	Sector2Time  time.Duration `db:"sector2_time"`
+	Sector3Time  time.Duration `db:"sector3_time"`
+	LapValid     bool          `db:"lap_valid"`
+	Sector1Valid bool          `db:"sector1_valid"`
+	Sector2Valid bool          `db:"sector2_valid"`
+	Sector3Valid bool          `db:"sector3_valid"`
+}
+
 // WithMigrationsTest is a test that uses a postgres instance that has some or all migrations
 // applied to it.
 type WithMigrationsTest struct {
@@ -72,7 +194,7 @@ func (mt *WithMigrationsTest) Run(t *testing.T) {
 		// create a test database for this test to have a "sandbox" to run in
 		connPool, err := pgxpool.New(t.Context(), pgContainer.MustConnectionString(t.Context(), "sslmode=disable"))
 		require.NoError(t, err, "could not connect to postgres container %v", err)
-		dbName := fmt.Sprintf("%s_%d" , strings.ReplaceAll(strings.ToLower(mt.Name), " ", "_"), tid)
+		dbName := fmt.Sprintf("%s_%d", strings.ReplaceAll(strings.ToLower(mt.Name), " ", "_"), tid)
 		_, err = connPool.Exec(t.Context(), fmt.Sprintf("CREATE DATABASE %s", dbName))
 		require.NoError(t, err, "could not create new database")
 
@@ -309,12 +431,18 @@ func TestSimpleDBWrites(t *testing.T) {
 				close(msgChan)
 
 				// Verify data was written
-				var speed int32
-				err = p.QueryRow(t.Context(),
-					"SELECT speed FROM vehicle_data WHERE session_id = $1 AND user_id = $2",
-					"vehicle-test", "test-user").Scan(&speed)
+				rows, err := p.Query(t.Context(),
+					"SELECT * FROM vehicle_data WHERE session_id = $1 AND user_id = $2",
+					"vehicle-test", "test-user")
 				require.NoError(t, err)
-				assert.EqualValues(t, 150, speed)
+				vehicleData, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (VehicleDataReader, error) {
+					return pgx.RowToStructByName[VehicleDataReader](row)
+				})
+				require.NoError(t, err)
+				assert.EqualValues(t, 150, vehicleData.Speed)
+				assert.EqualValues(t, 8000, vehicleData.Rpm)
+				assert.EqualValues(t, float32(.8), vehicleData.Throttle)
+				assert.EqualValues(t, 200, vehicleData.FlBrakeTemp)
 			},
 		},
 		&WithMigrationsTest{
@@ -356,13 +484,30 @@ func TestSimpleDBWrites(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 				close(msgChan)
 
-				// Verify data was written
-				var posX float32
-				err = p.QueryRow(t.Context(),
-					"SELECT position_x FROM motion_data WHERE session_id = $1",
-					"motion-test").Scan(&posX)
+				// Verify all motion data columns were written
+				rows, err := p.Query(t.Context(),
+					"SELECT time, session_id, user_id, title, position_x, position_y, position_z, velocity_x, velocity_y, velocity_z, gforce_lateral, gforce_longitudinal, gforce_vertical, yaw, pitch, roll "+
+						"FROM motion_data WHERE session_id = $1",
+					"motion-test")
+				assert.NoError(t, err)
+
+				motionData, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (MotionDataReader, error) {
+					return pgx.RowToStructByName[MotionDataReader](row)
+				})
 				require.NoError(t, err)
-				assert.EqualValues(t, 100.5, posX)
+
+				assert.EqualValues(t, float32(100.5), motionData.PositionX)
+				assert.EqualValues(t, float32(200.5), motionData.PositionY)
+				assert.EqualValues(t, float32(10.0), motionData.PositionZ)
+				assert.EqualValues(t, float32(50.0), motionData.VelocityX)
+				assert.EqualValues(t, float32(30.0), motionData.VelocityY)
+				assert.EqualValues(t, float32(0.0), motionData.VelocityZ)
+				assert.EqualValues(t, float32(1.5), motionData.GForceLateral)
+				assert.EqualValues(t, float32(2.0), motionData.GForceLongitudinal)
+				assert.EqualValues(t, float32(1.0), motionData.GForceVertical)
+				assert.EqualValues(t, float32(0.5), motionData.Yaw)
+				assert.EqualValues(t, float32(0.1), motionData.Pitch)
+				assert.EqualValues(t, float32(0.05), motionData.Roll)
 			},
 		},
 		&WithMigrationsTest{
@@ -383,23 +528,64 @@ func TestSimpleDBWrites(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 				close(msgChan)
 
-				// Verify data was written
-				var wheelSpeed float32
-				err = p.QueryRow(t.Context(),
-					"SELECT fl_wheel_speed FROM extended_wheel_data WHERE session_id = $1",
-					"motion-ex-test").Scan(&wheelSpeed)
-				require.NoError(t, err)
-				assert.EqualValues(t, 52.0, wheelSpeed)
+				rows, err := p.Query(t.Context(),
+					`SELECT time, session_id, user_id, title,
+						bl_wheel_speed, bl_vertical_force, bl_slip_angle, bl_slip_ratio,
+						bl_lateral_force, bl_longitudinal_force, bl_suspension_position, bl_suspension_velocity,
+						br_wheel_speed, br_vertical_force, br_slip_angle, br_slip_ratio,
+						br_lateral_force, br_longitudinal_force, br_suspension_position, br_suspension_velocity,
+						fl_wheel_speed, fl_vertical_force, fl_slip_angle, fl_slip_ratio,
+						fl_lateral_force, fl_longitudinal_force, fl_suspension_position, fl_suspension_velocity,
+						fr_wheel_speed, fr_vertical_force, fr_slip_angle, fr_slip_ratio,
+						fr_lateral_force, fr_longitudinal_force, fr_suspension_position, fr_suspension_velocity
+						FROM extended_wheel_data WHERE session_id = $1`,
+					"motion-ex-test")
+				assert.NoError(t, err)
+				assert.True(t, rows.Next())
 
-				// Verify other wheel data
-				var blSpeed, brSpeed, frSpeed float32
-				err = p.QueryRow(t.Context(),
-					"SELECT bl_wheel_speed, br_wheel_speed, fr_wheel_speed FROM extended_wheel_data WHERE session_id = $1",
-					"motion-ex-test").Scan(&blSpeed, &brSpeed, &frSpeed)
+				wheelData, err := pgx.RowToStructByName[ExtendedWheelDataReader](rows)
 				require.NoError(t, err)
-				assert.EqualValues(t, 50.0, blSpeed)
-				assert.EqualValues(t, 48.0, brSpeed)
-				assert.EqualValues(t, 51.0, frSpeed)
+				rows.Close()
+
+				// Verify Front Left wheel
+				assert.EqualValues(t, float32(52.0), wheelData.FlWheelSpeed)
+				assert.EqualValues(t, float32(3800.0), wheelData.FlVerticalForce)
+				assert.EqualValues(t, float32(0.10), wheelData.FlSlipAngle)
+				assert.EqualValues(t, float32(0.08), wheelData.FlSlipRatio)
+				assert.EqualValues(t, float32(250.0), wheelData.FlLateralForce)
+				assert.EqualValues(t, float32(80.0), wheelData.FlLongitudinalForce)
+				assert.EqualValues(t, float32(0.08), wheelData.FlSuspensionPosition)
+				assert.EqualValues(t, float32(-0.03), wheelData.FlSuspensionVelocity)
+
+				// Verify Front Right wheel
+				assert.EqualValues(t, float32(51.0), wheelData.FrWheelSpeed)
+				assert.EqualValues(t, float32(4100.0), wheelData.FrVerticalForce)
+				assert.EqualValues(t, float32(0.02), wheelData.FrSlipAngle)
+				assert.EqualValues(t, float32(0.05), wheelData.FrSlipRatio)
+				assert.EqualValues(t, float32(220.0), wheelData.FrLateralForce)
+				assert.EqualValues(t, float32(100.0), wheelData.FrLongitudinalForce)
+				assert.EqualValues(t, float32(0.12), wheelData.FrSuspensionPosition)
+				assert.EqualValues(t, float32(0.01), wheelData.FrSuspensionVelocity)
+
+				// Verify Back Left wheel
+				assert.EqualValues(t, float32(50.0), wheelData.BlWheelSpeed)
+				assert.EqualValues(t, float32(4000.0), wheelData.BlVerticalForce)
+				assert.EqualValues(t, float32(0.05), wheelData.BlSlipAngle)
+				assert.EqualValues(t, float32(0.15), wheelData.BlSlipRatio)
+				assert.EqualValues(t, float32(200.0), wheelData.BlLateralForce)
+				assert.EqualValues(t, float32(150.0), wheelData.BlLongitudinalForce)
+				assert.EqualValues(t, float32(0.1), wheelData.BlSuspensionPosition)
+				assert.EqualValues(t, float32(-0.01), wheelData.BlSuspensionVelocity)
+
+				// Verify Back Right wheel
+				assert.EqualValues(t, float32(48.0), wheelData.BrWheelSpeed)
+				assert.EqualValues(t, float32(4200.0), wheelData.BrVerticalForce)
+				assert.EqualValues(t, float32(0.03), wheelData.BrSlipAngle)
+				assert.EqualValues(t, float32(0.12), wheelData.BrSlipRatio)
+				assert.EqualValues(t, float32(180.0), wheelData.BrLateralForce)
+				assert.EqualValues(t, float32(120.0), wheelData.BrLongitudinalForce)
+				assert.EqualValues(t, float32(0.15), wheelData.BrSuspensionPosition)
+				assert.EqualValues(t, float32(0.02), wheelData.BrSuspensionVelocity)
 			},
 		},
 	}.Run(t)
@@ -486,23 +672,20 @@ func TestDuplicateLapTimes(t *testing.T) {
 				for range 3 {
 					assert.NoError(t, batcher.WriteLapRow(t.Context(), lapDataTelemetryWritten), "should not get error when inserting duplicate row")
 				}
-				rows, err := p.Query(t.Context(), "select lap_num, lap_time from session_lap_data")
+				rows, err := p.Query(t.Context(), "select * from session_lap_data")
 				assert.NoError(t, err, "did not get rows from session_lap_data")
-				lapTelemetryRead, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (*pb.HistoricLapData, error) {
-					result := pb.HistoricLapData{}
-					var lapTime time.Duration
-					err := row.Scan(&result.LapNum, &lapTime)
-					result.LapTime = durationpb.New(lapTime)
-					return &result, err
-					// this is neat, but the struct fields need to match the column names or have `db` tags, neither
-					// of which are true for our protobufs
-					// tel, err := pgx.RowToStructByName[pb.HistoricLapData](row)
-					// return &tel, err
+
+				lapTelemetryRead, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (SessionLapDataReader, error) {
+					return pgx.RowToStructByName[SessionLapDataReader](row)
 				})
 				require.NoError(t, err, "expected a single lap to have been recorded")
-				require.NotNil(t, lapTelemetryRead)
 				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapNum, lapTelemetryRead.LapNum)
-				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapTime, lapTelemetryRead.LapTime)
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().LapTime.AsDuration(), lapTelemetryRead.LapTime)
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().Sector1Time.AsDuration(), lapTelemetryRead.Sector1Time)
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().Sector2Time.AsDuration(), lapTelemetryRead.Sector2Time)
+				assert.EqualValues(t, lapDataTelemetryWritten.GetLapTimesData().Sector3Time.AsDuration(), lapTelemetryRead.Sector3Time)
+				assert.EqualValues(t, "testuser", lapTelemetryRead.UserID)
+				assert.EqualValues(t, "testing", lapTelemetryRead.SessionID)
 			},
 		},
 	}.Run(t)
@@ -579,10 +762,7 @@ func TestBatchRouterExtendedWheelData(t *testing.T) {
 
 				// Verify data was written to extended_wheel_data table
 				extendedWheelData := &pb.ExtendedFourWheelData{
-					BackLeft:   &pb.ExtendedWheelData{},
-					BackRight:  &pb.ExtendedWheelData{},
-					FrontLeft:  &pb.ExtendedWheelData{},
-					FrontRight: &pb.ExtendedWheelData{},
+					FrontLeft: &pb.ExtendedWheelData{},
 				}
 				err = p.QueryRow(t.Context(), "SELECT fl_wheel_speed FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&(extendedWheelData.FrontLeft).WheelSpeed)
 				require.NoError(t, err)

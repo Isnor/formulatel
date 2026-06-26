@@ -25,7 +25,7 @@ local_resource(
   "formulatel_ingest",
   cmd="make build",
   serve_cmd="./out/ingest",
-  # trigger_mode=TRIGGER_MODE_MANUAL,
+  trigger_mode=TRIGGER_MODE_MANUAL,
   deps=[
     "./formulatel/cmd/ingest",
     "./formulatel/f123",
@@ -41,6 +41,6 @@ local_resource(
 )
 
 # build and run the persist service
-docker_build("formulatel/persist", context="./formulatel", dockerfile="formulatel/persist.Dockerfile")
+docker_build("formulatel/persist", trigger_mode=TRIGGER_MODE_MANUAL, context="./formulatel", dockerfile="formulatel/persist.Dockerfile")
 k8s_yaml("kubernetes/persist.yml")
 k8s_resource("persist", labels=["formulatel"])

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 
@@ -73,8 +72,8 @@ func buildRowForCopy(msg *pb.GameTelemetry, tableName string) (map[string]any, e
 	}
 }
 
-// TODO: I'm not overly fond of these functions; the reason it's written this way is to try to take advantage
-//	of the postgres COPY protocol. Take a look at the writeBatch function for more on that implementation.
+// these `buildXRow` functions convert a GameTelemetry into a row for the table for that
+// type of telemetry.
 
 func buildMotionDataRow(msg *pb.GameTelemetry) (map[string]any, error) {
 	if motionData := msg.GetMotionData(); motionData != nil {
@@ -221,6 +220,7 @@ func NewTableBatcher(ctx context.Context, conn *pgxpool.Pool, tableName string, 
 	}
 }
 
+// TODO: why not let the user run [flusherWorker] themselves?
 // Start begins listening to the message channel and flushes batches.
 func (b *TableBatcher) Start() {
 	go b.flusherWorker()
@@ -360,7 +360,7 @@ func (b *TableBatcher) flush(ctx context.Context) {
 // writeBatch writes rows to the database using pgx.CopyFrom.
 func (b *TableBatcher) writeBatch(ctx context.Context, rows []map[string]any) error {
 	// Build column order from first row keys using fixed column order
-	keys := rowKeys(rows[0], b.tableName)
+	keys := rowKeys(rows[0])
 
 	// Build pgx.CopyFromSource with properly typed values
 	sourceRows := make([][]any, len(rows))
@@ -416,72 +416,12 @@ func (c *copyFromSource) Values() ([]any, error) {
 	return values, nil
 }
 
-// columnOrder maps column name to its position in the database schema
-// This ensures consistent column ordering across all batch writes
-var vehicleDataColumnOrder = []string{
-	"time", "session_id", "user_id", "title", "speed", "rpm", "throttle",
-	"brake", "steering", "gear", "engine_temperature",
-	"fl_brake_temp", "fl_inner_temp", "fl_surface_temp", "fl_pressure",
-	"fr_brake_temp", "fr_inner_temp", "fr_surface_temp", "fr_pressure",
-	"bl_brake_temp", "bl_inner_temp", "bl_surface_temp", "bl_pressure",
-	"br_brake_temp", "br_inner_temp", "br_surface_temp", "br_pressure",
-}
-
-var motionDataColumnOrder = []string{
-	"time", "session_id", "user_id", "title",
-	"position_x", "position_y", "position_z",
-	"velocity_x", "velocity_y", "velocity_z",
-	"gforce_lateral", "gforce_longitudinal", "gforce_vertical",
-	"yaw", "pitch", "roll",
-}
-
-var currentLapColumnOrder = []string{
-	"time", "session_id", "user_id", "title",
-	"lap_num", "current_lap_time",
-	"sector", "sector1_time", "sector2_time",
-	"delta_to_car_in_front", "delta_to_race_leader",
-	"lap_distance", "total_distance",
-}
-
-// rowKeys extracts column keys from a row map in database schema order.
-func rowKeys(row map[string]any, tableName string) []string {
-	if tableName == "vehicle_data" {
-		// Return columns in fixed database order, filtering to only columns present in row
-		keys := make([]string, 0, len(vehicleDataColumnOrder))
-		for _, col := range vehicleDataColumnOrder {
-			if _, ok := row[col]; ok {
-				keys = append(keys, col)
-			}
-		}
-		return keys
-	}
-
-	if tableName == "motion_data" {
-		keys := make([]string, 0, len(motionDataColumnOrder))
-		for _, col := range motionDataColumnOrder {
-			if _, ok := row[col]; ok {
-				keys = append(keys, col)
-			}
-		}
-		return keys
-	}
-
-	if tableName == "live_lap_data" {
-		keys := make([]string, 0, len(currentLapColumnOrder))
-		for _, col := range currentLapColumnOrder {
-			if _, ok := row[col]; ok {
-				keys = append(keys, col)
-			}
-		}
-		return keys
-	}
-
-	// Fallback: use alphabetically sorted keys
+// rowKeys returns the column names of a row
+func rowKeys(row map[string]any) []string {
 	keys := make([]string, 0, len(row))
 	for k := range row {
 		keys = append(keys, k)
 	}
-	slices.Sort(keys)
 	return keys
 }
 
@@ -494,11 +434,9 @@ type BatchRouter struct {
 	extendedWheelDataBatcher *TableBatcher
 }
 
-// TODO: I hate everything about this; use a struct to define the apparently endless number of parameters we will need
+// TODO: add config struct with envconfig tags
 //
-//	or just pass the Config object in
-//
-// NewBatchRouter creates a new BatchRouter that routes to vehicle and motion batchers.
+// NewBatchRouter creates a new BatchRouter that routes GameTelemetry into a channel for specific to the type of data in the GameTelemetry.
 func NewBatchRouter(ctx context.Context, conn *pgxpool.Pool, msgChan chan *pb.GameTelemetry, batchSize int, flushInterval time.Duration) (*BatchRouter, error) {
 	// TODO: why 100? should be configurable at least.
 	vehicleChan := make(chan GameTelemetryWithContext, 100)
