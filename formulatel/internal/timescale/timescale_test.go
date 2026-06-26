@@ -51,7 +51,6 @@ var mustPostgresContainer = sync.OnceValue(func() *postgres.PostgresContainer {
 // These structs use `db` tags so pgx can scan into the struct directly. Their fields should
 // match the schema of the table they are used to scan from, e.g. MotionDataReader has a field
 // for every column in the motion_data table of our migrations.
-// TODO: do we really need to define these again? can we reuse the buildXDataRow functions instead?
 type MotionDataReader struct {
 	Time               time.Time    `db:"time"`
 	SessionID          string       `db:"session_id"`
