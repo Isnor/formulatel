@@ -39,6 +39,8 @@ resource "oci_core_network_security_group" "vm_nsg" {
   display_name   = "formulatel-security-group"
 }
 
+# TODO: remove the ssh and k8s rule, use tailscale instead
+
 # Restrict SSH (22) to a specific IP address
 resource "oci_core_network_security_group_security_rule" "ssh_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
@@ -54,7 +56,23 @@ resource "oci_core_network_security_group_security_rule" "ssh_rule" {
   }
 }
 
-# Rule: Open MQTT (1883) to the world so your gaming PC can stream data
+# Restrict kube-server (6443) to specific IP address
+resource "oci_core_network_security_group_security_rule" "k8s_rule" {
+  network_security_group_id = oci_core_network_security_group.vm_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "${var.home_ip}/32"
+  source_type               = "CIDR_BLOCK"
+  tcp_options {
+    destination_port_range {
+      min = 6443
+      max = 6443
+    }
+  }
+}
+
+# Open MQTT (1883) to the world
+# TODO: restrict this to some list of NA CIDR blocks instead of the entire world.
 resource "oci_core_network_security_group_security_rule" "mqtt_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"
@@ -75,12 +93,12 @@ resource "oci_core_instance" "single_node_k8s" {
   compartment_id      = var.compartment_ocid
   shape               = "VM.Standard.A1.Flex" # The Always Free ARM Shape
 
-  # the free tier allows us enough CPU and memory credits to run 2 OCPUs and 12GB of memory 24/7.
+  # the free tier allows us enough CPU and memory credits to run 4 OCPUs and 24GB of memory 24/7.
   # hopefully this is sufficient to run postgres+timescaleDB along with a slim kubernetes distribution
   # on Ubuntu
   shape_config {
-    ocpus         = 2  # Split the free tier allocation safely
-    memory_in_gbs = 12
+    ocpus         = 4
+    memory_in_gbs = 24
   }
 
   create_vnic_details {
@@ -94,9 +112,8 @@ resource "oci_core_instance" "single_node_k8s" {
     source_id   = var.ubuntu_arm_image_ocid
   }
 
-  # TODO: add user data setup script: open iptables, install postgres, install k3s
   metadata = {
     ssh_authorized_keys = file("~/.ssh/id_rsa.pub")
-    # user_data           = base64encode(file("${path.module}/bootstrap.sh"))
+    user_data           = base64encode(file("${path.module}/setup-server.sh"))
   }
 }
