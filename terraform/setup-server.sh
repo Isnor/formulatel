@@ -1,11 +1,16 @@
 #!/bin/bash
 
+# TODO: this script routinely fails to execute properly via cloud-init because `apt` fails sometimes,
+# but I don't know why
 # setup-server.sh is meant to provision a single-node kubernetes cluster and a postgres instance
 # on an ubuntu VM.
 
 
 # allow TCP traffic in for kubernetes, mqtt, and postgres
-iptables -I INPUT 6 -p tcp --dport 6443 -j ACCEPT # k8s
+# accept all traffic on port 6443 - probably a bad idea, restrict to a CIDR. the reason we have this at all
+# is so the admin can run kubectl from their workstation instead of logging into the box
+iptables -I INPUT 6 -p tcp --dport 6443 -j ACCEPT
+iptables -I INPUT -s 10.42.0.0/16 -j ACCEPT # accept all traffic from the local kubernetes cluster
 # iptables -I INPUT 6 -p tcp --dport 1883 -j ACCEPT # mqtt - uncomment when we're ready to accept ingest traffic
 netfilter-persistent save
 
@@ -24,9 +29,13 @@ sudo apt update && sudo apt install -y timescaledb-2-postgresql-18 postgresql-cl
 
 # Configure Postgres to accept connections from the internal K3s network interface
 echo "listen_addresses = '*'" >> /etc/postgresql/18/main/postgresql.conf
-echo "host all all 10.0.0.0/16 md5" >> /etc/postgresql/18/main/pg_hba.conf
+echo "host	all 		all 		10.42.0.0/16 		scram-sha-256" >> /etc/postgresql/18/main/pg_hba.conf
 sudo timescaledb-tune --quiet --yes
 sudo systemctl restart postgresql
+
+# TODO: this line is untested; the query is required, but I ran it manually over the CLI after setting up
+# the VM the fist time.
+sudo -u postgres psql -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
 
 # install kubernetes
 export PUBLIC_IP=$(curl -s ifconfig.me | tr -d '\r\n')
@@ -42,6 +51,7 @@ tls-san:
   - "${PUBLIC_IP}"
 cluster-init: true
 EOF
+
 # k3s: a small, low-memory distribution of k8s
 curl -sfL https://get.k3s.io | sh -s -
 

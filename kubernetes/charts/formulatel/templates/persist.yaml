@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "formulatel.fullname" . }}-persist
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: persist
+spec:
+  replicas: {{ .Values.persist.replicas }}
+  selector:
+    matchLabels:
+      app: persist
+  template:
+    metadata:
+      labels:
+        app: persist
+    spec:
+      containers:
+        - name: persist
+          image: {{ .Values.persist.image }}:{{ .Values.persist.tag }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: formulatel-db-secrets
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: formulatel-db-secrets
+                  key: password
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: formulatel-db-secrets
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: formulatel-db-secrets
+                  key: port
+            - name: DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: MQTT_BROKER
+              value: {{ .Values.persist.mqtt_broker | quote }}
+            - name: OTEL_TRACES_EXPORTER
+              value: 'console'
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: 'http://otel-collector-opentelemetry-collector:4317'
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true" # TODO: probably bad?
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_SERVICE_NAME
+              value: 'formulatel-persist'
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1024Mi

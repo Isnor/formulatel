@@ -12,10 +12,6 @@ on:
     tags:
       - 'v*'
 
-env:
-  IMAGE_NAME_DB_MIGRATIONS: timescaledb-migrations
-  IMAGE_NAME_PERSIST: persist
-
 permissions:
   contents: read
   packages: write

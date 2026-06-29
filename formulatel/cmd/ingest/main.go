@@ -78,7 +78,7 @@ func main() {
 	mqtt.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
 
 	// TODO: make mqtt options configurable
-	connectionOptions := mqttutil.GenerateMQTTv3Options().AddBroker("tcp://localhost:1883")
+	connectionOptions := mqttutil.GenerateMQTTv3Options().AddBroker(ingestConfig.MQTTBroker)
 	// TODO: this should be deterministic in some way
 	connectionOptions.ClientID = "formulatel_ingest"
 

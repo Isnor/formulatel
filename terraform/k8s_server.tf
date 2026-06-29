@@ -77,7 +77,7 @@ resource "oci_core_network_security_group_security_rule" "mqtt_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"
   protocol                  = "6"
-  source                    = "0.0.0.0/0"
+  source                    = "${var.home_ip}/32"
   source_type               = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
@@ -115,5 +115,11 @@ resource "oci_core_instance" "single_node_k8s" {
   metadata = {
     ssh_authorized_keys = file("~/.ssh/id_rsa.pub")
     user_data           = base64encode(file("${path.module}/setup-server.sh"))
+  }
+
+  lifecycle {
+    ignore_changes = [
+      metadata, # remove or comment to destructively update to test a new setup script
+    ]
   }
 }
