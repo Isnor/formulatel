@@ -1,0 +1,22 @@
+# formulatel chart values
+
+# Global Configuration
+global:
+  namespace: formulatel
+
+# Persist Component
+persist:
+  image: ghcr.io/isnor/formulatel/persist
+  tag: sha-9f25c28@sha256:0d7424e2c3bc2533bbc922d3f83a63d910a139ede624ac4d9b01cebddad8798a
+  replicas: 1
+
+# Migration Job configuration
+migrate:
+  enabled: true
+  image: ghcr.io/isnor/formulatel/timescaledb-migrations
+  tag: sha-9f25c28@sha256:1ecc5154bfe80c51b6db8c2b3340c7ec6ec0283758fff5609e6975d564f085a6
+
+# configuration values used in multiple templates
+# db values
+db:
+  name: postgres

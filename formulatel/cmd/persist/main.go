@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -37,6 +38,10 @@ func main() {
 		slog.ErrorContext(ctx, "failed to load config", "error", err)
 		os.Exit(1)
 	}
+	if err = cfg.Validate(); err != nil {
+		slog.ErrorContext(ctx, "invalid persist config; not starting", "error", err)
+		os.Exit(1)
+	}
 
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -46,6 +51,7 @@ func main() {
 
 	// TODO: we shouldn't need this once we get OBI + auto working, but I've been having trouble and just want to see my traces
 	exporter, err := autoexport.NewSpanExporter(ctx)
+	// TODO: configure with environment variables
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(.1))),
 		sdktrace.WithBatcher(exporter),
@@ -53,8 +59,13 @@ func main() {
 	)
 	otel.SetTracerProvider(tracerProvider)
 
-	// Connect to TimescaleDB
-	connPool, err := timescale.NewConnectionPool(ctx, cfg.TimescaleDSN)
+	// connect to TimescaleDB
+	connectionString := cfg.TimescaleDSN
+	// use the connection details if those were provided instead of the DSN
+	if connectionString == "" {
+		connectionString = fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
+	}
+	connPool, err := timescale.NewConnectionPool(ctx, connectionString)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to connect to timescaledb", "error", err)
 		os.Exit(1)
@@ -87,7 +98,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Subscribe to wildcard topic: formulatel/+/f123
+	// subscribe to wildcard topic: formulatel/+/f123
+	// TODO: make the topic configurable
 	subTopic := cfg.MQTTPrefix + "/+/f123"
 	tracer := otel.Tracer("formulatel/persist/mqtt")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {

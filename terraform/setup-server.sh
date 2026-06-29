@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: this script routinely fails to execute properly via cloud-init because `apt` fails sometimes,
+# but I don't know why
 # setup-server.sh is meant to provision a single-node kubernetes cluster and a postgres instance
 # on an ubuntu VM.
 
@@ -24,7 +26,7 @@ sudo apt update && sudo apt install -y timescaledb-2-postgresql-18 postgresql-cl
 
 # Configure Postgres to accept connections from the internal K3s network interface
 echo "listen_addresses = '*'" >> /etc/postgresql/18/main/postgresql.conf
-echo "host all all 10.0.0.0/16 md5" >> /etc/postgresql/18/main/pg_hba.conf
+echo "host all all 10.0.0.0/16 scram-sha-256" >> /etc/postgresql/18/main/pg_hba.conf
 sudo timescaledb-tune --quiet --yes
 sudo systemctl restart postgresql
 
@@ -42,6 +44,7 @@ tls-san:
   - "${PUBLIC_IP}"
 cluster-init: true
 EOF
+
 # k3s: a small, low-memory distribution of k8s
 curl -sfL https://get.k3s.io | sh -s -
 

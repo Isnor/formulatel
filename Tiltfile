@@ -5,10 +5,10 @@ helm_repo("open-telemetry", resource_name="otel_helm_repo", url="https://open-te
 helm_repo("jaegertracing", resource_name="jager_helm_repo", url="https://jaegertracing.github.io/helm-charts", labels=["helm"])
 k8s_yaml("kubernetes/namespace.yml")
 
-helm_resource("grafana", chart="oci://ghcr.io/grafana-community/helm-charts/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/grafana-values.yml"], port_forwards="3000", labels=["infra"])
+helm_resource("grafana", chart="oci://ghcr.io/grafana-community/helm-charts/grafana", namespace="formulatel", flags=["--values", "./kubernetes/config/local/grafana-values.yml"], port_forwards="3000", labels=["infra"])
 helm_resource("mosquitto", chart="k8s-at-home/mosquitto", namespace="formulatel", port_forwards="1883", labels=["infra"])
-helm_resource("otel-obi", chart="open-telemetry/opentelemetry-ebpf-instrumentation", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-obi-values.yml"], labels=["infra"])
-helm_resource("otel-collector", chart="open-telemetry/opentelemetry-collector", namespace="formulatel", flags=["--values", "./kubernetes/config/open-telemetry-collector-values.yml"], labels=["infra"])
+helm_resource("otel-obi", chart="open-telemetry/opentelemetry-ebpf-instrumentation", namespace="formulatel", flags=["--values", "./kubernetes/config/local/open-telemetry-obi-values.yml"], labels=["infra"])
+helm_resource("otel-collector", chart="open-telemetry/opentelemetry-collector", namespace="formulatel", flags=["--values", "./kubernetes/config/local/open-telemetry-collector-values.yml"], labels=["infra"])
 helm_resource("jaeger", chart="jaegertracing/jaeger", namespace="formulatel", labels=["infra"])
 
 # set up a postgres instance with timescaleDB
@@ -42,5 +42,6 @@ local_resource(
 
 # build and run the persist service
 docker_build("formulatel/persist", trigger_mode=TRIGGER_MODE_MANUAL, context="./formulatel", dockerfile="formulatel/persist.Dockerfile")
+# TODO: let's use the helm chart for persist instead
 k8s_yaml("kubernetes/persist.yml")
 k8s_resource("persist", labels=["formulatel"])

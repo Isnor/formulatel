@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "formulatel.fullname" . }}-dbmigrate
+  namespace: {{ .Values.global.namespace }}
+spec:
+  template:
+    spec:
+      containers:
+      - name: dbmigrate
+        image: {{ .Values.migrate.image }}:{{ .Values.migrate.tag }}
+        command: ["migrate"]
+        args:
+          - "-path"
+          - "migrations"
+          - "-database"
+          - "postgres://$(PGHOST):$(PGPORT)/{{ .Values.db.name }}?sslmode=disable"
+          - "up"
+        env:
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: formulatel-db-secrets
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: formulatel-db-secrets
+              key: password
+        - name: PG_DB
+          value: {{ .Values.db.name }}
+      restartPolicy: Never
+  backOffLimit: 3
