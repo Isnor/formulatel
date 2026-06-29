@@ -11,6 +11,7 @@ variable "availability_domain" {
 variable "home_ip" {
   type = string
   description = "an IPv4 address to allow SSH traffic from"
+  sensitive = true
 }
 
 variable "ubuntu_arm_image_ocid" {
