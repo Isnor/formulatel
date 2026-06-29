@@ -1,6 +1,15 @@
 plugins:
   - grafana-mqtt-datasource
 
+persistence:
+  enabled: true
+
+# creates the admin user using an existing secret
+admin:
+  existingSecret: "formulatel-grafana-admin"
+  userKey: username
+  passwordKey: password
+
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -12,7 +21,7 @@ datasources:
           tlsAuth: false
           clientID: formulatel_grafana
           isDefault: true
-      # because this configuration needs a password, we won't try to store this for >=staging. 
+      # because this configuration needs a password, we won't try to store this for >=staging.
       # - name: formulatel_psql
       #   type: postgres
       #   ...

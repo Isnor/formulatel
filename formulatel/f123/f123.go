@@ -502,6 +502,7 @@ type F123IngestConfig struct {
 	MaxPacketsBuffered uint   `split_words:"true" default:"1000"` // size of the buffered channel of packets
 	CapturePackets     bool   `split_words:"true" default:"false"`
 	UDPPort            uint16 `envconfig:"UDP_PORT" default:"27543"`
+	MQTTBroker         string `envconfig:"MQTT_BROKER" default:"tcp://localhost:1883"`
 
 	VehicleDataChannel       chan *pb.GameTelemetry `envconfig:"-"`
 	MotionDataChannel        chan *pb.GameTelemetry `envconfig:"-"`

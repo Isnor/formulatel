@@ -13,7 +13,27 @@ Eventually, create roles for db-migrate and persist instead of using the `postgr
 After you have user credentials to create secrets from, use `kubectl` to add them to kubernetes:
 
 ```bash
-kubectl create secret generic formulatel-db-secrets --from-literal='username=formulatel_persist' --from-literal='password=12345' --from-literal='host=10.42.0.1' --from-literal='port=5432' --namespace=formulatel
+kubectl create secret generic formulatel-db-secrets --from-literal='username=formulatel_persist' --from-literal='password=12345' --from-literal='host=10.0.1.38' --from-literal='port=5432' --namespace=formulatel
 ```
 
-**Note**: The `10.42.0.1` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
+**Note**: The `10.0.1.38` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
+
+## configure Grafana datasources
+
+Since we can't exactly store passwords in plaintext, the Grafana values don't have the datasources like postgres setup automatically like they do when we `tilt up` locally. Log in to Grafana and setup the data sources manually.
+
+## forward ports
+
+For local testing before setting up any DNS records, you will have to forward the Grafana and mosquitto ports:
+
+```bash
+kubectl --namespace formulatel port-forward $POD_NAME 1883|3000
+```
+
+## start ingest
+
+Make sure to set the MQTT_BROKER envar before running ingest to point to the remote MQTT broker
+
+```bash
+export MQTT_BROKER='tcp://127.0.0.1:1883'
+```
