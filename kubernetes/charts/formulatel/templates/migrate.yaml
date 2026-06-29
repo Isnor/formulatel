@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "formulatel.fullname" . }}-dbmigrate
+  name: {{ include "formulatel.fullname" . }}-dbmigrate-{{ .Values.migrate.tag }}
   namespace: {{ .Values.global.namespace }}
 spec:
   template:
@@ -27,6 +27,16 @@ spec:
             secretKeyRef:
               name: formulatel-db-secrets
               key: password
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: formulatel-db-secrets
+              key: host
+        - name: PGPORT
+          valueFrom:
+            secretKeyRef:
+              name: formulatel-db-secrets
+              key: port
         - name: PG_DB
           value: {{ .Values.db.name }}
       restartPolicy: Never
