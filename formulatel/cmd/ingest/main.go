@@ -37,7 +37,7 @@ func main() {
 	}
 	defer conn.Close()
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	})))
 
 	ingestConfig.VehicleDataChannel = make(chan *pb.GameTelemetry, 100)
