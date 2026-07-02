@@ -6,13 +6,13 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: {{ .Values.grafana.hostname }}
+    - host: {{ .Values.grafana_ingress.hostname }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ .Values.grafana.service_name }}
+                name: {{ .Values.grafana_ingress.service_name }}
                 port:
-                  number: {{ .Values.grafana.port }}
+                  number: {{ .Values.grafana_ingress.port }}

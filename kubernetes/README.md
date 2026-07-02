@@ -28,27 +28,12 @@ kubectl create secret generic formulatel-db-secrets --from-literal='username=for
 
 **Note**: The `10.0.1.38` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
 
-## install grafana
-
-Use `helm` to install Grafana, replacing the context and namespace with your own:
-
-```bash
-helm --kube-context formulatel-staging install grafana oci://ghcr.io/grafana-community/helm-charts/grafana --namespace formulatel --values=kubernetes/config/staging/grafana-values.yml
-```
-
-## install `mosquitto` MQTT broker:
-
-**Note: This chart is archived and should be updated**
-
-```bash
-helm --kube-context formulatel-staging --namespace formulatel install mosquitto k8s-at-home/mosquitto
-```
-
 ## install formulatel
 
-Use the included chart to install `persist` and `db-migrate`
+Use the included chart to install `mqtt`, `grafana`, `persist` and `db-migrate`
 
 ```bash
+helm dependency build kubernetes/charts/formulatel
 helm --kube-context formulatel-staging --namespace formulatel install formulatel ./kubernetes/charts/formulatel --values=./kubernetes/charts/formulatel/values.yaml
 ```
 
@@ -69,6 +54,13 @@ kubectl --namespace formulatel port-forward $POD_NAME 1883|3000
 ## start ingest
 
 Make sure to set the MQTT_BROKER envar before running ingest to point to the remote MQTT broker
+
+**With DNS**:
+```bash
+export MQTT_BROKER='tcp://mqtt.formula.tel:1883'
+```
+
+**With Port-Forwarding**:
 
 ```bash
 export MQTT_BROKER='tcp://127.0.0.1:1883'

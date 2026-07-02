@@ -13,7 +13,7 @@ persist:
   image: ghcr.io/isnor/formulatel/persist
   tag: main
   replicas: 1
-  mqtt_broker: 'tcp://mosquitto:1883' # address to the MQTT broker that persist talks to
+  mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
 # db-migrate
 migrate:
@@ -21,12 +21,42 @@ migrate:
   image: ghcr.io/isnor/formulatel/timescaledb-migrations
   tag: main
 
+grafana:
+  plugins:
+    - grafana-mqtt-datasource
+
+  persistence:
+    enabled: true
+
+  # creates the admin user using an existing secret
+  admin:
+    existingSecret: "formulatel-grafana-admin"
+    userKey: username
+    passwordKey: password
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: formulatel_mqtt
+          type: grafana-mqtt-datasource
+          jsonData:
+            uri: "tcp://formulatel-mosquitto:1883"
+            tlsAuth: false
+            clientID: formulatel_grafana
+            isDefault: true
+
 # grafana - sets up an Ingress to allow web traffic into an existing Grafana service running in the cluster
 # TODO: how heavily does this rely on traefik?
-grafana:
+grafana_ingress:
   hostname: dashboard.formula.tel # host to route requests from
   port: 80 # port that Grafana exposes
-  service_name: grafana # name of the grafana service deployed in the cluster
+  service_name: formulatel-grafana # name of the grafana service deployed in the cluster
+
+# mosquitto config - these values are passed to the `mosquitto` chart
+mosquitto:
+  service:
+    type: LoadBalancer
 
 # configuration values used in multiple templates
 # db values

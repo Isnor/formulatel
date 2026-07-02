@@ -1,0 +1,9 @@
+dependencies:
+- name: mosquitto
+  repository: https://bdclark.github.io/helm-charts
+  version: 0.6.1
+- name: grafana
+  repository: oci://ghcr.io/grafana-community/helm-charts
+  version: 12.7.2
+digest: sha256:a6fde654b1643ee6330bef17ec527b7e3a565f5364f1ef5a85b542b44420d492
+generated: "2026-07-02T11:59:57.561489835-03:00"
