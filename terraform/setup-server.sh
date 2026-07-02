@@ -1,17 +1,19 @@
 #!/bin/bash
 
-# TODO: this script routinely fails to execute properly via cloud-init because `apt` fails sometimes,
-# but I don't know why
 # setup-server.sh is meant to provision a single-node kubernetes cluster and a postgres instance
 # on an ubuntu VM.
 
+# TODO: this script routinely fails to execute properly via cloud-init because `apt` fails sometimes,
+# but I don't know why
 
 # allow TCP traffic in for kubernetes, mqtt, and postgres
 # accept all traffic on port 6443 - probably a bad idea, restrict to a CIDR. the reason we have this at all
 # is so the admin can run kubectl from their workstation instead of logging into the box
 iptables -I INPUT 6 -p tcp --dport 6443 -j ACCEPT
 iptables -I INPUT -s 10.42.0.0/16 -j ACCEPT # accept all traffic from the local kubernetes cluster
-# iptables -I INPUT 6 -p tcp --dport 1883 -j ACCEPT # mqtt - uncomment when we're ready to accept ingest traffic
+iptables -I INPUT 6 -p tcp --dport 1883 -j ACCEPT # mqtt
+iptables -I INPUT -p tcp --dport 80 -j ACCEPT # grafana
+iptables -I INPUT -p tcp --dport 443 -j ACCEPT # grafana
 netfilter-persistent save
 
 # install postgres
@@ -56,3 +58,7 @@ EOF
 curl -sfL https://get.k3s.io | sh -s -
 
 kubectl create namespace formulatel
+
+# tailscale
+# TODO: see https://tailscale.com/docs/features/access-control/auth-keys to automate this
+# curl -fsSL https://tailscale.com/install.sh | sh

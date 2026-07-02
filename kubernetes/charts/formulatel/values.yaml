@@ -21,6 +21,13 @@ migrate:
   image: ghcr.io/isnor/formulatel/timescaledb-migrations
   tag: main
 
+# grafana - sets up an Ingress to allow web traffic into an existing Grafana service running in the cluster
+# TODO: how heavily does this rely on traefik?
+grafana:
+  hostname: dashboard.formula.tel # host to route requests from
+  port: 80 # port that Grafana exposes
+  service_name: grafana # name of the grafana service deployed in the cluster
+
 # configuration values used in multiple templates
 # db values
 db:

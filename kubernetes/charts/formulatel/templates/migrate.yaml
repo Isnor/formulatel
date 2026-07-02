@@ -40,4 +40,3 @@ spec:
         - name: PG_DB
           value: {{ .Values.db.name }}
       restartPolicy: Never
-  backOffLimit: 3

@@ -20,4 +20,3 @@ spec:
         - name: PG_DB
           value: 'postgres'
       restartPolicy: Never
-  backOffLimit: 3
