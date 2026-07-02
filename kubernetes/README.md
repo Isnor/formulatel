@@ -28,16 +28,26 @@ kubectl create secret generic formulatel-db-secrets --from-literal='username=for
 
 **Note**: The `10.0.1.38` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
 
+## install cert-manager
+
+`cert-manager` gives us a way to create self-signed SSL certificates. It needs to be installed cluster-wide in its own namespace:
+
+```bash
+helm --kube-context formulatel-staging install cert-manager oci://quay.io/jetstack/charts/cert-manager --namespace cert-manager --create-namespace --values=./config/staging/cert-manager-values.yaml --version=v1.20.3
+# update with:
+# helm --kube-context formulatel-staging upgrade cert-manager oci://quay.io/jetstack/charts/cert-manager --namespace=cert-manager --values=./config/staging/cert-manager-values.yaml
+```
+
 ## install formulatel
 
 Use the included chart to install `mqtt`, `grafana`, `persist` and `db-migrate`
 
 ```bash
 helm dependency build kubernetes/charts/formulatel
-helm --kube-context formulatel-staging --namespace formulatel install formulatel ./kubernetes/charts/formulatel --values=./kubernetes/charts/formulatel/values.yaml
+helm --kube-context formulatel-staging --namespace formulatel install formulatel ./charts/formulatel --values=./charts/formulatel/values.yaml
 ```
 
-To update the running service, use `helm upgrade`
+To update the running service, use `helm upgrade`. Remember to run `helm dependency update kubernetes/charts/formulatel` if you add dependencies to Chart.yaml
 
 ## configure Grafana datasources
 

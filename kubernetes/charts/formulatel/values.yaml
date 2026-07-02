@@ -18,8 +18,21 @@ persist:
 # db-migrate
 migrate:
   enabled: true
+  db_secret_name: formulatel-db-secrets
   image: ghcr.io/isnor/formulatel/timescaledb-migrations
   tag: main
+
+# configuration values used in multiple templates
+# db values
+db:
+  name: postgres
+
+letsencrypt:
+  email: isnor.james@gmail.com
+  server: https://acme-v02.api.letsencrypt.org/directory
+  privateKeySecretRef: letsencrypt-prod-account-key
+
+# sub-chart values
 
 grafana:
   plugins:
@@ -46,8 +59,7 @@ grafana:
             clientID: formulatel_grafana
             isDefault: true
 
-# grafana - sets up an Ingress to allow web traffic into an existing Grafana service running in the cluster
-# TODO: how heavily does this rely on traefik?
+# grafana - sets up an Ingress to allow web traffic into our `formulatel-grafana` service
 grafana_ingress:
   hostname: dashboard.formula.tel # host to route requests from
   port: 80 # port that Grafana exposes
@@ -57,8 +69,3 @@ grafana_ingress:
 mosquitto:
   service:
     type: LoadBalancer
-
-# configuration values used in multiple templates
-# db values
-db:
-  name: postgres
