@@ -74,7 +74,7 @@ resource "oci_core_network_security_group_security_rule" "grafana_http_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"
   protocol                  = "6" # TCP
-  source                    = "${var.home_ip}/32"
+  source                    = "0.0.0.0/0"
   source_type               = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
@@ -88,7 +88,7 @@ resource "oci_core_network_security_group_security_rule" "grafana_https_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"
   protocol                  = "6" # TCP
-  source                    = "${var.home_ip}/32"
+  source                    = "0.0.0.0/0"
   source_type               = "CIDR_BLOCK"
   tcp_options {
     destination_port_range {
