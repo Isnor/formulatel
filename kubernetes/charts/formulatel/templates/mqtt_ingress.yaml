@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "formulatel.fullname" . }}-mqtt-ingress
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ include "formulatel.fullname" . }}-letsencrypt-issuer
+    traefik.ingress.kubernetes.io/router.middlewares: formulatel-redirect-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - {{ .Values.mqtt_ingress.hostname }}
+      secretName: mqtt-tls-cert
+  rules:
+    - host: {{ .Values.mqtt_ingress.hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.mqtt_ingress.service_name }}
+                port:
+                  number: {{ .Values.mqtt_ingress.port }}
