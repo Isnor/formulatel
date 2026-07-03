@@ -14,7 +14,7 @@ spec:
           - "-path"
           - "migrations"
           - "-database"
-          - "postgres://$(PGHOST):$(PGPORT)/{{ .Values.db.name }}?sslmode=disable" # TODO: sslmode=enable maybe?
+          - "postgres://$(PGHOST):$(PGPORT)/{{ .Values.db.name }}?sslmode=disable"
           - "up"
         env:
         - name: PGUSER
