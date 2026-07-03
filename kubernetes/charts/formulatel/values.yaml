@@ -65,7 +65,14 @@ grafana_ingress:
   port: 80 # port that Grafana exposes
   service_name: formulatel-grafana # name of the grafana service deployed in the cluster
 
+mqtt_ingress:
+  hostname: mqtt.formula.tel # host to route requests from
+  port: 9001 # websocket port of mosquitto
+  service_name: formulatel-mosquitto # name of the grafana service deployed in the cluster
+
 # mosquitto config - these values are passed to the `mosquitto` chart
 mosquitto:
   service:
-    type: LoadBalancer
+    ports:
+      websocket:
+        enabled: true
