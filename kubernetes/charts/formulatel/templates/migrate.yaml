@@ -20,24 +20,23 @@ spec:
         - name: PGUSER
           valueFrom:
             secretKeyRef:
-              name: formulatel-db-secrets
+              name: {{ .Values.migrate.db_secret_name }}
               key: username
         - name: PGPASSWORD
           valueFrom:
             secretKeyRef:
-              name: formulatel-db-secrets
+              name: {{ .Values.migrate.db_secret_name }}
               key: password
         - name: PGHOST
           valueFrom:
             secretKeyRef:
-              name: formulatel-db-secrets
+              name: {{ .Values.migrate.db_secret_name }}
               key: host
         - name: PGPORT
           valueFrom:
             secretKeyRef:
-              name: formulatel-db-secrets
+              name: {{ .Values.migrate.db_secret_name }}
               key: port
         - name: PG_DB
           value: {{ .Values.db.name }}
       restartPolicy: Never
-  backOffLimit: 3

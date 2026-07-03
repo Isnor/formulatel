@@ -8,6 +8,8 @@ captured_packets/
 *.tfvars
 out/
 formulatel/cmd/decode/
+# ignore chart dependencies that we download with `helm dependency build <>`
+kubernetes/charts/**/*.tgz
 *.out
 coverage.*
 sandbox.tfvars

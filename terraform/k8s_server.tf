@@ -39,19 +39,17 @@ resource "oci_core_network_security_group" "vm_nsg" {
   display_name   = "formulatel-security-group"
 }
 
-# TODO: remove the ssh and k8s rule, use tailscale instead
-
-# Restrict SSH (22) to a specific IP address
-resource "oci_core_network_security_group_security_rule" "ssh_rule" {
+# allow all UDP traffic on a specific port for a mesh network using tailscale
+resource "oci_core_network_security_group_security_rule" "tailscale_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"
-  protocol                  = "6" # TCP
-  source                    = "${var.home_ip}/32"
+  protocol                  = "17" # UDP
+  source                    = "0.0.0.0/0"
   source_type               = "CIDR_BLOCK"
-  tcp_options {
+  udp_options {
     destination_port_range {
-      min = 22
-      max = 22
+      min = 41641
+      max = 41641
     }
   }
 }
@@ -71,8 +69,37 @@ resource "oci_core_network_security_group_security_rule" "k8s_rule" {
   }
 }
 
-# Open MQTT (1883) to the world
-# TODO: restrict this to some list of NA CIDR blocks instead of the entire world.
+# web ports for Grafana
+resource "oci_core_network_security_group_security_rule" "grafana_http_rule" {
+  network_security_group_id = oci_core_network_security_group.vm_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  tcp_options {
+    destination_port_range {
+      min = 80
+      max = 80
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "grafana_https_rule" {
+  network_security_group_id = oci_core_network_security_group.vm_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6" # TCP
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  tcp_options {
+    destination_port_range {
+      min = 443
+      max = 443
+    }
+  }
+}
+
+# MQTT port
+# TODO: restrict this to some list of CIDR blocks instead of the entire world / single IP
 resource "oci_core_network_security_group_security_rule" "mqtt_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"

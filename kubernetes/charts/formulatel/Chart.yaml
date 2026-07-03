@@ -2,5 +2,12 @@ apiVersion: v2
 name: formulatel-app
 description: A Helm chart for the Formula 1 telemetry project (persist, migrate_job)
 type: application
-version: 0.1.0
-appVersion: "1.0"
+version: 0.3.0
+appVersion: "0.1.0"
+dependencies:
+  - name: mosquitto
+    version: 0.6.1
+    repository: https://bdclark.github.io/helm-charts
+  - name: grafana
+    version: 12.7.2
+    repository: oci://ghcr.io/grafana-community/helm-charts
