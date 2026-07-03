@@ -67,7 +67,7 @@ Make sure to set the MQTT_BROKER envar before running ingest to point to the rem
 
 **With DNS**:
 ```bash
-export MQTT_BROKER='tcp://mqtt.formula.tel:1883'
+export MQTT_BROKER='wss://mqtt.formula.tel'
 ```
 
 **With Port-Forwarding**:
