@@ -98,8 +98,8 @@ resource "oci_core_network_security_group_security_rule" "grafana_https_rule" {
   }
 }
 
-# MQTT port
-# TODO: restrict this to some list of CIDR blocks instead of the entire world / single IP
+# MQTT port - direct access to the MQTT broker is restricted to a single IP. This is for testing only;
+# normal ingest clients will connect over secure websockets on 443.
 resource "oci_core_network_security_group_security_rule" "mqtt_rule" {
   network_security_group_id = oci_core_network_security_group.vm_nsg.id
   direction                 = "INGRESS"
@@ -140,7 +140,7 @@ resource "oci_core_instance" "single_node_k8s" {
   }
 
   metadata = {
-    ssh_authorized_keys = file("~/.ssh/id_rsa.pub")
+    ssh_authorized_keys = file("~/.ssh/id_rsa.pub") # TODO: this should be a variable
     user_data           = base64encode(file("${path.module}/setup-server.sh"))
   }
 
