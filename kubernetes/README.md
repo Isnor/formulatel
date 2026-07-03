@@ -65,7 +65,7 @@ kubectl --namespace formulatel port-forward $POD_NAME 1883|3000
 
 Make sure to set the MQTT_BROKER envar before running ingest to point to the remote MQTT broker
 
-**With DNS**:
+**With DNS+SSL**:
 ```bash
 export MQTT_BROKER='wss://mqtt.formula.tel'
 ```
