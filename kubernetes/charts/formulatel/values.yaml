@@ -32,6 +32,17 @@ letsencrypt:
   server: https://acme-v02.api.letsencrypt.org/directory
   privateKeySecretRef: letsencrypt-prod-account-key
 
+# grafana_ingress sets up an Ingress to allow web traffic into our `formulatel-grafana` service
+grafana_ingress:
+  hostname: dashboard.formula.tel # host to route requests from
+  port: 80 # port that Grafana exposes
+  service_name: formulatel-grafana # name of the grafana service deployed in the cluster
+
+mqtt_ingress:
+  hostname: mqtt.formula.tel # host to route requests from
+  port: 9001 # websocket port of mosquitto
+  service_name: formulatel-mosquitto # name of the mqtt broker service deployed in the cluster
+
 # sub-chart values
 
 grafana:
@@ -58,17 +69,6 @@ grafana:
             tlsAuth: false
             clientID: formulatel_grafana
             isDefault: true
-
-# grafana - sets up an Ingress to allow web traffic into our `formulatel-grafana` service
-grafana_ingress:
-  hostname: dashboard.formula.tel # host to route requests from
-  port: 80 # port that Grafana exposes
-  service_name: formulatel-grafana # name of the grafana service deployed in the cluster
-
-mqtt_ingress:
-  hostname: mqtt.formula.tel # host to route requests from
-  port: 9001 # websocket port of mosquitto
-  service_name: formulatel-mosquitto # name of the grafana service deployed in the cluster
 
 # mosquitto config - these values are passed to the `mosquitto` chart
 mosquitto:
