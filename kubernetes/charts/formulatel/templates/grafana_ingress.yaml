@@ -1,3 +1,5 @@
+
+{{- if .Values.ssl.enabled }}
 # this defines a Middleware that we "attach" to our Ingress via a label. It's used to redirect
 # http->https
 apiVersion: traefik.io/v1alpha1
@@ -10,20 +12,26 @@ spec:
     scheme: https
     permanent: true
 ---
+{{- end}}
+{{- if .Values.grafana_ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "formulatel.fullname" . }}-grafana-ingress
   namespace: {{ .Values.global.namespace }}
+  {{- if .Values.ssl.enabled }}
   annotations:
-    cert-manager.io/cluster-issuer: {{ include "formulatel.fullname" . }}-letsencrypt-issuer
+    cert-manager.io/cluster-issuer: {{ .Values.ssl.cluster_issuer }}
     traefik.ingress.kubernetes.io/router.middlewares: formulatel-redirect-https@kubernetescrd
+  {{- end}}
 spec:
   ingressClassName: traefik
+  {{- if .Values.ssl.enabled }}
   tls:
     - hosts:
         - {{ .Values.grafana_ingress.hostname }}
       secretName: grafana-tls-cert
+  {{- end}}
   rules:
     - host: {{ .Values.grafana_ingress.hostname }}
       http:
@@ -35,3 +43,4 @@ spec:
                 name: {{ .Values.grafana_ingress.service_name }}
                 port:
                   number: {{ .Values.grafana_ingress.port }}
+{{- end}}

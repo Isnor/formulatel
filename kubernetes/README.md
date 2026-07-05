@@ -1,6 +1,6 @@
 # kubernetes node setup
 
-This document is very rough and contains some of the manual setup required for the shared postgres/kubernetes node that I wasn't able to script. It's basically creating a password for the `postgres` role and adding a secret to kubernetes
+This document is very rough and contains some of the manual setup required for the shared postgres/kubernetes node that I wasn't able to script.
 
 ## download the kubeconfig
 

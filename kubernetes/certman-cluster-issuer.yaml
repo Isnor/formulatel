@@ -1,0 +1,17 @@
+# this can be used to create a cert-manager ClusterIssuer that talks to LetsEncrypt to get custom SSL certificates.
+# if you are initializing your kubernetes cluster and want to use SSL and you don't already have a
+# ClusterIssuer, you will need to create one with a template like this.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: formulatel-letsencrypt-issuer
+spec:
+  acme:
+    email: "UPDATE_ME"
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: my-prod-letsencrypt-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

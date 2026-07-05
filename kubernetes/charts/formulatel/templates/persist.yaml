@@ -6,7 +6,7 @@ metadata:
   labels:
     app: persist
 spec:
-  replicas: {{ .Values.persist.replicas }}
+  replicas: {{ .Values.persist.replicas | default 1 }}
   selector:
     matchLabels:
       app: persist

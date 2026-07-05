@@ -1,0 +1,80 @@
+# formulatel chart values
+
+# both persist and migrate require a specific secret to be available in kubernetes,
+# so this probably isn't a good chart.
+# TODO: create the database secret as part of the install, requiring the DB values to install the chart
+# TODO: add tests for the chart
+
+global:
+  namespace: formulatel
+
+# persist config
+persist:
+  image: formulatel/persist
+  tag: latest
+  replicas: 1
+  mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
+
+# db-migrate
+migrate:
+  enabled: true
+  # for local development, we'll reuse a single secret that contains the superuser credentials
+  db_secret_name: formulatel-db-user-persist
+  image: formulatel/timescaledb-migrations
+  tag: latest
+
+# configuration values used in multiple templates
+# db values
+db:
+  name: postgres
+
+ssl:
+  enabled: false
+
+# grafana_ingress sets up an Ingress to allow web traffic into our `formulatel-grafana` service
+grafana_ingress:
+  enabled: false
+
+mqtt_ingress:
+  enabled: false
+
+# sub-chart values
+
+grafana:
+  plugins:
+    - grafana-mqtt-datasource
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: formulatel_mqtt
+          type: grafana-mqtt-datasource
+          jsonData:
+            uri: "tcp://formulatel-mosquitto:1883"
+            tlsAuth: false
+            clientID: formulatel_grafana
+            isDefault: true
+        - name: formulatel_psql
+          type: postgres
+          url: timescaledb:5432
+          user: postgres
+          secureJsonData:
+            password: 'postgres'
+          jsonData:
+            database: postgres
+            sslmode: 'disable'
+            maxOpenConns: 100
+            maxIdleConns: 100
+            maxIdleConnsAuto: true
+            connMaxLifetime: 14400
+            postgresVersion: 1800
+            timescaledb: true
+        - name: formulatel_jaeger
+          type: jaeger
+          url: http://jaeger:16686
+
+  grafana.ini:
+    auth.anonymous:
+      enabled: true
+      org_role: Admin
