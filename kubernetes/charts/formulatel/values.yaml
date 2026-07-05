@@ -28,18 +28,18 @@ db:
   name: formulatel
 
 ssl:
-  enabled: true
-  cluster_issuer: formulatel-formulatel-letsencrypt-issuer
+  enabled: false
+  cluster_issuer: ''
 
 # grafana_ingress sets up an Ingress to allow web traffic into our `formulatel-grafana` service
 grafana_ingress:
-  enabled: true
-  hostname: dashboard.formula.tel # host to route requests from
+  enabled: false
+  hostname: '' # host to route requests from
   port: 80 # port that Grafana exposes
   service_name: formulatel-grafana # name of the grafana service deployed in the cluster
 
 mqtt_ingress:
-  enabled: true
-  hostname: mqtt.formula.tel # host to route requests from
+  enabled: false
+  hostname: '' # host to route requests from
   port: 9001 # websocket port of mosquitto
   service_name: formulatel-mosquitto # name of the mqtt broker service deployed in the cluster
