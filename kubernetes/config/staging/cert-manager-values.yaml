@@ -1,3 +1,5 @@
+# if you are setting up your k8s cluster for the first time and need to install
+# cert-manager, this values file could be used.
 crds:
   enabled: true
 prometheus:
