@@ -17,7 +17,7 @@ persist:
 
 # db-migrate
 migrate:
-  enabled: false
+  enabled: true
   db_secret_name: formulatel-db-secrets
   image: ghcr.io/isnor/formulatel/timescaledb-migrations
   tag: main
