@@ -1,9 +1,3 @@
-# formulatel chart values
-
-# both persist and migrate require a specific secret to be available in kubernetes,
-# so this probably isn't a good chart.
-# TODO: create the database secret as part of the install, requiring the DB values to install the chart
-# TODO: add tests for the chart
 
 global:
   namespace: formulatel
