@@ -35,10 +35,6 @@ echo "host	all 		all 		10.42.0.0/16 		scram-sha-256" >> /etc/postgresql/18/main/
 sudo timescaledb-tune --quiet --yes
 sudo systemctl restart postgresql
 
-# TODO: this line is untested; the query is required, but I ran it manually over the CLI after setting up
-# the VM the fist time.
-sudo -u postgres psql -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
-
 # install kubernetes
 export PUBLIC_IP=$(curl -s ifconfig.me | tr -d '\r\n')
 # we need this for the generated certificate to include the public IP of the VM, which we needed to

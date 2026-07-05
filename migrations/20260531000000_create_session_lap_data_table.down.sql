@@ -1,5 +1,5 @@
 begin;
 
-DROP TABLE IF EXISTS session_lap_data;
+DROP TABLE IF EXISTS telemetry.session_lap_data;
 
 end;

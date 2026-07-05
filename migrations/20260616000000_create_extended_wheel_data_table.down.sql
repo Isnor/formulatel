@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS extended_wheel_data;
+DROP TABLE IF EXISTS telemetry.extended_wheel_data;

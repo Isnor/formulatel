@@ -96,7 +96,7 @@ The system is an ETL pipeline with three main components:
 
 ### Currently Implemented (4 of 12)
 - **CarTelemetryPacket** (22 bytes) - Vehicle telemetry
-- **CarMotionPacket** (22 bytes) - Motion/physics data  
+- **CarMotionPacket** (22 bytes) - Motion/physics data
 - **LapDataPacket** - Live/current lap data (writes to live_lap_data)
 - **SessionHistoryPacket** - Complete historic lap data (writes to session_lap_data)
 

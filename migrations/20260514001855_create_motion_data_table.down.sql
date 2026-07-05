@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS motion_data;
+DROP TABLE IF EXISTS telemetry.motion_data;

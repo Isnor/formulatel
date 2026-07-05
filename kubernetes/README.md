@@ -18,7 +18,7 @@ After postgres is installed on the postgres/k8s VM, run `sudo -u postgres psql` 
 
 ## Run the postgres initial setup
 
-The `../terraform/db-init.sql` script can be used to help creating the initial state of the database for our applications to use. It provisions
+The `../terraform/db-init.sql` script can be used to help creating the initial state of the database for our applications to use. It provisions:
 
 - a `grafana` database and `grafana_admin` system user
 - a `formulatel` database with a `telemetry` schema for our telemetry data and an `auth` schema for our user data
@@ -28,13 +28,15 @@ The `../terraform/db-init.sql` script can be used to help creating the initial s
 
 ## create DB secrets
 
-After you have user credentials, you will need to create a secret in Kubernetes for the db-migrate and persist pods to be able to login to the DB. Use `kubectl` to add them to kubernetes; e.g.:
+After you have user credentials, you will need to create secrets in Kubernetes for the pods to be able to login to the DB. Use `kubectl` to add them to kubernetes; e.g.:
 
 ```bash
-kubectl create secret generic formulatel-db-secrets --from-literal='username=formulatel_persist' --from-literal='password=12345' --from-literal='host=10.0.1.38' --from-literal='port=5432' --namespace=formulatel
+kubectl create secret generic formulatel-db-user-grafana-viewer --from-literal='username=grafana_viewer' --from-literal='password=12345' --from-literal='host=10.0.1.38' --from-literal='port=5432' --namespace=formulatel
 ```
 
-**Note**: The password is used in a connection string, so if it has special characters, it's best to URL encode this value
+Create secrets for all of the users, i.e. `formulatel-db-user-{grafana-admin, grafana-viewer, mosquitto-broker, formulatel-persist}`
+
+**Note**: The db-migrate and persist passwords are used in a connection string, so it's best to URL encode this value.
 
 **Note**: The `10.0.1.38` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
 

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS extended_wheel_data (
+CREATE TABLE IF NOT EXISTS telemetry.extended_wheel_data (
     time                  TIMESTAMPTZ NOT NULL,
     session_id            TEXT        NOT NULL,
     user_id               TEXT        NOT NULL,

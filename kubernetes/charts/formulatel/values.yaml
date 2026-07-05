@@ -25,7 +25,7 @@ migrate:
 # configuration values used in multiple templates
 # db values
 db:
-  name: postgres
+  name: formulatel
 
 letsencrypt:
   email: isnor.james@gmail.com
@@ -69,6 +69,26 @@ grafana:
             tlsAuth: false
             clientID: formulatel_grafana
             isDefault: true
+
+  grafana.ini:
+    database:
+      type: postgres
+      ssl_mode: disable
+      instrument_queries: true
+      host: '10.0.1.38:5432'
+      name: grafana
+      # log_queries: true
+
+  envValueFrom:
+    GF_DATABASE_USER:
+      secretKeyRef:
+        name: formulatel-db-user-grafana-admin
+        key: username
+
+    GF_DATABASE_PASSWORD:
+      secretKeyRef:
+        name: formulatel-db-user-grafana-admin
+        key: password
 
 # mosquitto config - these values are passed to the `mosquitto` chart
 mosquitto:

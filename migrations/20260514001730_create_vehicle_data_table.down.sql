@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS vehicle_data;
+DROP TABLE IF EXISTS telemetry.vehicle_data;

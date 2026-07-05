@@ -1,0 +1,3 @@
+DROP EXTENSION IF EXISTS timescaledb;
+
+DROP SCHEMA IF EXISTS telemetry;
