@@ -432,7 +432,7 @@ func TestSimpleDBWrites(t *testing.T) {
 
 				// Verify data was written
 				rows, err := p.Query(t.Context(),
-					"SELECT * FROM vehicle_data WHERE session_id = $1 AND user_id = $2",
+					"SELECT * FROM telemetry.vehicle_data WHERE session_id = $1 AND user_id = $2",
 					"vehicle-test", "test-user")
 				require.NoError(t, err)
 				vehicleData, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (VehicleDataReader, error) {
@@ -486,9 +486,9 @@ func TestSimpleDBWrites(t *testing.T) {
 
 				// Verify all motion data columns were written
 				rows, err := p.Query(t.Context(),
-					"SELECT time, session_id, user_id, title, position_x, position_y, position_z, velocity_x, velocity_y, velocity_z, gforce_lateral, gforce_longitudinal, gforce_vertical, yaw, pitch, roll "+
-						"FROM motion_data WHERE session_id = $1",
-					"motion-test")
+					`SELECT time, session_id, user_id, title, position_x, position_y, position_z, velocity_x, velocity_y,
+						velocity_z, gforce_lateral, gforce_longitudinal, gforce_vertical, yaw, pitch, roll
+						FROM telemetry.motion_data WHERE session_id = $1`, "motion-test")
 				assert.NoError(t, err)
 
 				motionData, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (MotionDataReader, error) {
@@ -538,7 +538,7 @@ func TestSimpleDBWrites(t *testing.T) {
 						fl_lateral_force, fl_longitudinal_force, fl_suspension_position, fl_suspension_velocity,
 						fr_wheel_speed, fr_vertical_force, fr_slip_angle, fr_slip_ratio,
 						fr_lateral_force, fr_longitudinal_force, fr_suspension_position, fr_suspension_velocity
-						FROM extended_wheel_data WHERE session_id = $1`,
+						FROM telemetry.extended_wheel_data WHERE session_id = $1`,
 					"motion-ex-test")
 				assert.NoError(t, err)
 				assert.True(t, rows.Next())
@@ -621,10 +621,10 @@ func TestBatchRouter(t *testing.T) {
 				vehicleTelemetryRead := &pb.VehicleData{}
 				lapTelemetryRead := &pb.HistoricLapData{}
 				currentLapTelemetryRead := &pb.CurrentLapData{}
-				p.QueryRow(t.Context(), "select position_z from motion_data limit 1").Scan(&motionTelemetryRead.PositionZ)
-				p.QueryRow(t.Context(), "select speed, rpm from vehicle_data limit 1").Scan(&vehicleTelemetryRead.Speed, &vehicleTelemetryRead.Rpm)
-				p.QueryRow(t.Context(), "select lap_num from session_lap_data").Scan(&lapTelemetryRead.LapNum)
-				p.QueryRow(t.Context(), "select current_lap_time, sector1_time from live_lap_data").Scan(&currentLapTelemetryRead.LapTime, &currentLapTelemetryRead.Sector1Time)
+				p.QueryRow(t.Context(), "select position_z from telemetry.motion_data limit 1").Scan(&motionTelemetryRead.PositionZ)
+				p.QueryRow(t.Context(), "select speed, rpm from telemetry.vehicle_data limit 1").Scan(&vehicleTelemetryRead.Speed, &vehicleTelemetryRead.Rpm)
+				p.QueryRow(t.Context(), "select lap_num from telemetry.session_lap_data").Scan(&lapTelemetryRead.LapNum)
+				p.QueryRow(t.Context(), "select current_lap_time, sector1_time from telemetry.live_lap_data").Scan(&currentLapTelemetryRead.LapTime, &currentLapTelemetryRead.Sector1Time)
 
 				assert.EqualValues(t, motionTelemetryWritten.GetMotionData().GetPositionZ(), motionTelemetryRead.GetPositionZ())
 
@@ -672,8 +672,8 @@ func TestDuplicateLapTimes(t *testing.T) {
 				for range 3 {
 					assert.NoError(t, batcher.WriteLapRow(t.Context(), lapDataTelemetryWritten), "should not get error when inserting duplicate row")
 				}
-				rows, err := p.Query(t.Context(), "select * from session_lap_data")
-				assert.NoError(t, err, "did not get rows from session_lap_data")
+				rows, err := p.Query(t.Context(), "select * from telemetry.session_lap_data")
+				assert.NoError(t, err, "did not get rows from telemetry.session_lap_data")
 
 				lapTelemetryRead, err := pgx.CollectExactlyOneRow(rows, func(row pgx.CollectableRow) (SessionLapDataReader, error) {
 					return pgx.RowToStructByName[SessionLapDataReader](row)
@@ -764,13 +764,13 @@ func TestBatchRouterExtendedWheelData(t *testing.T) {
 				extendedWheelData := &pb.ExtendedFourWheelData{
 					FrontLeft: &pb.ExtendedWheelData{},
 				}
-				err = p.QueryRow(t.Context(), "SELECT fl_wheel_speed FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&(extendedWheelData.FrontLeft).WheelSpeed)
+				err = p.QueryRow(t.Context(), "SELECT fl_wheel_speed FROM telemetry.extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&(extendedWheelData.FrontLeft).WheelSpeed)
 				require.NoError(t, err)
 				assert.EqualValues(t, float32(52.0), extendedWheelData.FrontLeft.WheelSpeed)
 
 				// Verify all four wheels
 				var blSpeed, brSpeed, frSpeed float32
-				err = p.QueryRow(t.Context(), "SELECT bl_wheel_speed, br_wheel_speed, fr_wheel_speed FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSpeed, &brSpeed, &frSpeed)
+				err = p.QueryRow(t.Context(), "SELECT bl_wheel_speed, br_wheel_speed, fr_wheel_speed FROM telemetry.extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSpeed, &brSpeed, &frSpeed)
 				require.NoError(t, err)
 				assert.EqualValues(t, float32(50.0), blSpeed)
 				assert.EqualValues(t, float32(48.0), brSpeed)
@@ -778,14 +778,14 @@ func TestBatchRouterExtendedWheelData(t *testing.T) {
 
 				// Verify suspension data
 				var blSuspensionPos, frSuspensionPos float32
-				err = p.QueryRow(t.Context(), "SELECT bl_suspension_position, fr_suspension_position FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSuspensionPos, &frSuspensionPos)
+				err = p.QueryRow(t.Context(), "SELECT bl_suspension_position, fr_suspension_position FROM telemetry.extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSuspensionPos, &frSuspensionPos)
 				require.NoError(t, err)
 				assert.EqualValues(t, float32(0.1), blSuspensionPos)
 				assert.EqualValues(t, float32(0.12), frSuspensionPos)
 
 				// Verify slip angles
 				var blSlipAngle, frSlipAngle float32
-				err = p.QueryRow(t.Context(), "SELECT bl_slip_angle, fr_slip_angle FROM extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSlipAngle, &frSlipAngle)
+				err = p.QueryRow(t.Context(), "SELECT bl_slip_angle, fr_slip_angle FROM telemetry.extended_wheel_data WHERE session_id = $1", "motion-ex-router-test").Scan(&blSlipAngle, &frSlipAngle)
 				require.NoError(t, err)
 				assert.EqualValues(t, float32(0.05), blSlipAngle)
 				assert.EqualValues(t, float32(0.02), frSlipAngle)

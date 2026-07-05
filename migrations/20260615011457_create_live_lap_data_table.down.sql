@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS live_lap_data;
+DROP TABLE IF EXISTS telemetry.live_lap_data;

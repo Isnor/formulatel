@@ -231,7 +231,7 @@ func (b *TableBatcher) WriteLapRow(ctx context.Context, row *pb.GameTelemetry) e
 	if lapTime := row.GetLapTimesData(); lapTime != nil {
 		_, err := b.conn.Exec(
 			ctx,
-			`INSERT INTO session_lap_data
+			`INSERT INTO telemetry.session_lap_data
 				(session_id, user_id, title, lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid)
 			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 			ON CONFLICT DO NOTHING`,
@@ -376,7 +376,7 @@ func (b *TableBatcher) writeBatch(ctx context.Context, rows []map[string]any) er
 	sourceRowsType := &copyFromSource{
 		rows: sourceRows,
 	}
-	_, err := b.conn.CopyFrom(ctx, pgx.Identifier{b.tableName}, keys, sourceRowsType)
+	_, err := b.conn.CopyFrom(ctx, pgx.Identifier{"telemetry", b.tableName}, keys, sourceRowsType)
 	if err != nil {
 		return err
 	}

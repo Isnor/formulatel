@@ -1,6 +1,6 @@
 begin;
 
-CREATE TABLE IF NOT EXISTS session_lap_data (
+CREATE TABLE IF NOT EXISTS telemetry.session_lap_data (
     session_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     title INTEGER NOT NULL,
@@ -15,6 +15,6 @@ CREATE TABLE IF NOT EXISTS session_lap_data (
     sector3_valid BOOL NOT NULL DEFAULT FALSE
 );
 
-ALTER TABLE session_lap_data ADD CONSTRAINT unique_lap UNIQUE (session_id, user_id, lap_num);
+ALTER TABLE telemetry.session_lap_data ADD CONSTRAINT unique_lap UNIQUE (session_id, user_id, lap_num);
 
 end;

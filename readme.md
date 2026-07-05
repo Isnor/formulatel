@@ -71,7 +71,7 @@ Run the migrations with
 
 ### Grafana Dashboards
 
-There is currently a bug with provisioning dashboards using the V2 Resource format. To work around this, the `formulatel` dashboards can be imported into a locally running Grafana using the Makefile:
+The `formulatel` dashboards can be imported into a locally running Grafana using the Makefile:
 
 `make live-dashboard`
 `make static-dashboard`
@@ -87,9 +87,12 @@ This requires `curl`.
 - [x] realtime charting with something like Grafana Live
 - [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal braking point? racing line? I don't know) or maybe predict when the tires will die or something.
 - [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
+- [ ] wouldn't it be neat to train a model, maybe even a live assistant (race engineer)? "try braking 50m earlier"; "you're turning in too early"; etc.
 
 
 ## Architecture
+
+More details on the design rationale can be found in the [formulatel Wiki](https://github.com/Isnor/formulatel/wiki).
 
 `formulatel` is a pretty straightforward ETL pipeline:
 - `ingest` - a service that consumes telemetry data, transforms it into the formulatel format, and sends it to persist.

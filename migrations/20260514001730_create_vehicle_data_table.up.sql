@@ -1,6 +1,6 @@
 begin;
 
-CREATE TABLE IF NOT EXISTS vehicle_data (
+CREATE TABLE IF NOT EXISTS telemetry.vehicle_data (
     time                 TIMESTAMPTZ NOT NULL,
     session_id           TEXT        NOT NULL,
     user_id              TEXT        NOT NULL,

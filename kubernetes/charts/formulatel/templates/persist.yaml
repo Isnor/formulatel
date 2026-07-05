@@ -23,22 +23,22 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: formulatel-db-secrets
+                  name: formulatel-db-user-persist
                   key: username
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: formulatel-db-secrets
+                  name: formulatel-db-user-persist
                   key: password
             - name: DB_HOST
               valueFrom:
                 secretKeyRef:
-                  name: formulatel-db-secrets
+                  name: formulatel-db-user-persist
                   key: host
             - name: DB_PORT
               valueFrom:
                 secretKeyRef:
-                  name: formulatel-db-secrets
+                  name: formulatel-db-user-persist
                   key: port
             - name: DB_NAME
               value: {{ .Values.db.name | quote }}
@@ -49,7 +49,7 @@ spec:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: 'http://otel-collector-opentelemetry-collector:4317'
             - name: OTEL_EXPORTER_OTLP_INSECURE
-              value: "true" # TODO: probably bad?
+              value: "true"
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
               value: "grpc"
             - name: OTEL_SERVICE_NAME

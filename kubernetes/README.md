@@ -14,17 +14,29 @@ You can update your `KUBECONFIG` envar to include the path to the new file. Run 
 
 ## set the `postgres` user password
 
-After postgres is installed on the postgres/k8s VM, run `sudo -u postgres psql` to launch login to the DB and `\password` to set the password for the `postgres` user. You will need to create a secret in Kubernetes for the db-migrate and persist pods to be able to login to the DB.
+After postgres is installed on the postgres/k8s VM, run `sudo -u postgres psql` to launch login to the DB and `\password` to set the password for the `postgres` user.
 
-Eventually, create roles for db-migrate and persist instead of using the `postgres` superuser.
+## Run the postgres initial setup
+
+The `../terraform/db-init.sql` script can be used to help creating the initial state of the database for our applications to use. It provisions:
+
+- a `grafana` database and `grafana_admin` system user
+- a `formulatel` database with a `telemetry` schema for our telemetry data and an `auth` schema for our user data
+- a `grafana_viewer` user to view telemetry in the dashboard
+- a `mosquitto_broker` user to used for mqtt auth
+- a `formulatel_persist` user that can write telemetry data to the `telemetry` schema
 
 ## create DB secrets
 
-After you have user credentials to create secrets from, use `kubectl` to add them to kubernetes:
+After you have user credentials, you will need to create secrets in Kubernetes for the pods to be able to login to the DB. Use `kubectl` to add them to kubernetes; e.g.:
 
 ```bash
-kubectl create secret generic formulatel-db-secrets --from-literal='username=formulatel_persist' --from-literal='password=12345' --from-literal='host=10.0.1.38' --from-literal='port=5432' --namespace=formulatel
+kubectl create secret generic formulatel-db-user-grafana-viewer --from-literal='username=grafana_viewer' --from-literal='password=12345' --from-literal='host=10.0.1.38' --from-literal='port=5432' --namespace=formulatel
 ```
+
+Create secrets for all of the users, i.e. `formulatel-db-user-{grafana-admin, grafana-viewer, mosquitto-broker, formulatel-persist}`
+
+**Note**: The db-migrate and persist passwords are used in a connection string, so it's best to URL encode this value.
 
 **Note**: The `10.0.1.38` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
 
