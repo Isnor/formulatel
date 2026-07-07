@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "bootstrap-sha": "a8d1dbd95b1ab75480b9cbfc0331b96a4880ecf2",
+  "packages": {
+    "formulatel": {
+      "release-type": "go",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "charts/backend/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
+      ]
+    },
+    "kubernetes/charts/formulatel": {
+      "release-type": "helm"
+    }
+  }
+}
