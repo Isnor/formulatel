@@ -5,8 +5,6 @@
   "packages": {
     "formulatel": {
       "release-type": "go",
-      "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": true,
       "include-component-in-tag": true,
       "separate-pull-requests": true,
       "extra-files": [
@@ -19,6 +17,9 @@
     },
     "kubernetes/charts/formulatel": {
       "release-type": "helm"
+    },
+    "migrations": {
+      "release-type": "default"
     }
   }
 }

@@ -14,10 +14,26 @@ name: release-formulatel
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      formulatel_released: ${{ steps.release.outputs['formulatel--release_created'] }}
+      formulatel_version:  ${{ steps.release.outputs['formulatel--version'] }}
+      # helm_released: ${{ steps.release.outputs['formulatel--release_created'] }}
+      # helm_version:  ${{ steps.release.outputs['formulatel--version'] }}
     permissions:
       contents: write
       pull-requests: write
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
           target-branch: release-testing
+
+  build-images:
+    uses: ./.github/workflows/build-images.yml
+    needs: release-please
+    if: needs['release-please'].outputs.formulatel_released == 'true'
+
+  build_ingest:
+    uses: ./.github/workflows/build-ingest.yml
+    needs: release-please
+    if: needs['release-please'].outputs.formulatel_released == 'true'

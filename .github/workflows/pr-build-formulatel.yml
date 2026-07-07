@@ -1,0 +1,15 @@
+name: Build Formulatel Binaries
+
+on:
+  pull_request:
+    paths:
+      - 'formulatel/**'
+      - .github/**
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_ingest:
+    uses: ./.github/workflows/build-ingest.yml

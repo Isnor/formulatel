@@ -1,0 +1,16 @@
+name: Build Images
+
+on:
+  pull_request:
+    paths:
+      - 'formulatel/**'
+      - 'migrations/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_images:
+    uses: ./.github/workflows/build-images.yml
