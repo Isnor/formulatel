@@ -1,0 +1,66 @@
+name: Build Ingest Binaries
+
+on:
+  pull_request:
+    paths:
+      - 'formulatel/**'
+      - .github/**
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            binary_name: formulatel-ingest-linux-amd64
+          - goos: linux
+            goarch: arm64
+            binary_name: formulatel-ingest-linux-arm64
+          - goos: darwin
+            goarch: amd64
+            binary_name: formulatel-ingest-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            binary_name: formulatel-ingest-darwin-arm64
+          - goos: windows
+            goarch: amd64
+            binary_name: formulatel-ingest-windows-amd64.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Prepare Artifact Directory
+        run: mkdir -p .github/artifacts
+        shell: bash
+
+      - name: Build Ingest
+        run: |
+          cd formulatel
+          if [ "${{ matrix.goos }}" = "linux" ]; then
+            export CGO_ENABLED=0
+          fi
+
+          go build -ldflags="-s -w" \
+            -o ../.github/artifacts/${{ matrix.binary_name }} \
+            ./cmd/ingest
+        shell: bash
+
+      - name: Upload Ingest Binaries
+        uses: actions/upload-artifact@v7
+        with:
+          path: ../.github/artifacts/formulatel-ingest-*
