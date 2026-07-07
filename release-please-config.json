@@ -8,7 +8,7 @@
       "extra-files": [
         {
           "type": "yaml",
-          "path": "charts/backend/Chart.yaml",
+          "path": "kubernetes/charts/formulatel/Chart.yaml",
           "jsonpath": "$.appVersion"
         }
       ]
