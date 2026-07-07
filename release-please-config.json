@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "separate-pull-requests": true,
-  "bootstrap-sha": "a8d1dbd95b1ab75480b9cbfc0331b96a4880ecf2",
+  "bootstrap-sha": "02d03b86b373680c2c9d3caf8c7909fb23d0979b",
   "packages": {
     "formulatel": {
       "release-type": "go",
