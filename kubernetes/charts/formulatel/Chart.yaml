@@ -1,8 +1,9 @@
 apiVersion: v2
 name: formulatel
-description: A Helm chart that provisions `formulatel-persist`, the database migrations, Grafana, and mosquitto
+description: A Helm chart that provisions `formulatel-persist`, the database
+  migrations, Grafana, and mosquitto
 type: application
-version: 0.4.0
+version: 0.5.0
 appVersion: "0.1.1"
 dependencies:
   - name: mosquitto
