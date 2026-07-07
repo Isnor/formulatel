@@ -1,5 +1,5 @@
 {
-  "formulatel": "0.0.1",
+  "formulatel": "0.1.0",
   "kubernetes/charts/formulatel": "0.4.0",
   "migrations": "0.1.0"
 }
