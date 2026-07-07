@@ -17,3 +17,5 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@v5
