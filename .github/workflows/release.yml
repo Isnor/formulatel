@@ -37,3 +37,5 @@ jobs:
     uses: ./.github/workflows/build-ingest.yml
     needs: release-please
     if: needs['release-please'].outputs.formulatel_released == 'true'
+
+  # TODO: we need to run `gh release edit <tag>` to add the artifacts that were built above
