@@ -58,9 +58,10 @@ jobs:
           go build -ldflags="-s -w" \
             -o ../.github/artifacts/${{ matrix.binary_name }} \
             ./cmd/ingest
+          cd ..
         shell: bash
 
       - name: Upload Ingest Binaries
         uses: actions/upload-artifact@v7
         with:
-          path: ../.github/artifacts/formulatel-ingest-*
+          path: .github/artifacts/formulatel-ingest-*
