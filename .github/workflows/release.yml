@@ -35,6 +35,8 @@ jobs:
         id: release
         with:
           target-branch: release-testing
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   build_persist:
     uses: ./.github/workflows/build-image-reuseable.yml
@@ -74,8 +76,7 @@ jobs:
       - name: Download Ingest Binaries
         uses: actions/download-artifact@v7
         with:
-          pattern: .github/artifacts/formulatel-ingest-*
-          path: ingest/
+          pattern: formulatel-ingest-*
           merge-multiple: true
 
       - name: Add Ingest Binaries to Release
@@ -84,7 +85,7 @@ jobs:
           TAG_NAME: ${{ needs['release-please'].outputs.formulatel_tagname }}
         run: |
           echo "Uploading ingest binaries to release $TAG_NAME:"
-          ls -l ingest/
+          ls -l formulatel-ingest-*
 
-          # Upload everything in the ingest folder to the live release
-          gh release upload "$TAG_NAME" ingest/* --clobber
+          # Upload artifacts to the live release
+          gh release upload "$TAG_NAME" formulatel-ingest-* --clobber
