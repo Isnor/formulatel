@@ -4,16 +4,7 @@
   "bootstrap-sha": "02d03b86b373680c2c9d3caf8c7909fb23d0979b",
   "packages": {
     "formulatel": {
-      "release-type": "go",
-      "include-component-in-tag": true,
-      "separate-pull-requests": true,
-      "extra-files": [
-        {
-          "type": "yaml",
-          "path": "kubernetes/charts/formulatel/Chart.yaml",
-          "jsonpath": "$.appVersion"
-        }
-      ]
+      "release-type": "go"
     },
     "migrations": {
       "release-type": "simple"
