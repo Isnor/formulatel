@@ -11,6 +11,7 @@
     },
     "migrations": {
       "release-type": "simple",
+      "package-name": "timescaledb-migrations",
       "changelog-path": "migrations/CHANGELOG.md",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true
