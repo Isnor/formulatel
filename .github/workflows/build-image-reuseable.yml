@@ -1,0 +1,89 @@
+name: Build Docker Image
+
+# this is meant to be a workflow that we can re-use for any builds and for release builds,
+# i.e. the build also adds `vX.Y.Z` to the image and edits release notes
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+      build_context:
+        required: true
+        type: string
+      dockerfile:
+        required: true
+        type: string
+      component_name:
+        required: true
+        type: string
+      is_release:
+        required: false
+        type: boolean
+        default: false
+      version:
+        required: false
+        type: string
+        default: ""
+      tag_name:
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ inputs.image_name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,enable=true
+            # Dynamically inject the version only during a release run
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.is_release }}
+            type=raw,value=latest,enable=${{ inputs.is_release }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.build_context }}
+          file: ${{ inputs.dockerfile }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ inputs.component_name }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.component_name }}
+
+      - name: Append Docker Links to Release Notes
+        if: inputs.is_release && inputs.tag_name != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.tag_name }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release view "$TAG_NAME" --json body --jq '.body' > existing_notes.md
+          echo -e "\n\n### 🐳 Container Images" >> existing_notes.md
+          echo -e "* \`ghcr.io/${{ github.repository }}/${{ inputs.image_name }}:${VERSION}\`" >> existing_notes.md
+          gh release edit "$TAG_NAME" --notes-file existing_notes.md

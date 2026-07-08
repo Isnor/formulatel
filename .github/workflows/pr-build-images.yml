@@ -12,5 +12,24 @@ permissions:
   packages: write
 
 jobs:
+  # build_images:
+  #   uses: ./.github/workflows/build-images.yml
   build_images:
-    uses: ./.github/workflows/build-images.yml
+    uses: ./.github/workflows/build-image-reuseable.yml
+    strategy:
+      matrix:
+        include:
+          - image: "persist"
+            component: "persist"
+            build_context: "./formulatel"
+            dockerfile: "formulatel/persist.Dockerfile"
+          - image: "timescaledb-migrations"
+            component: "migrations"
+            build_context: "."
+            dockerfile: "migrations.Dockerfile"
+    with:
+      image_name: ${{ matrix.image }}
+      component_name: ${{ matrix.component }}
+      dockerfile: ${{ matrix.dockerfile }}
+      build_context: ${{ matrix.build_context }}
+      is_release: false
