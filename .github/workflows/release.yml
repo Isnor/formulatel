@@ -82,6 +82,7 @@ jobs:
       - name: Add Ingest Binaries to Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ needs['release-please'].outputs.formulatel_tagname }}
         run: |
           echo "Uploading ingest binaries to release $TAG_NAME:"
