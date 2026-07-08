@@ -1,8 +1,7 @@
 on:
   push:
     branches:
-      - release-testing
-
+      - main
 permissions:
   contents: write
   issues: write
@@ -34,7 +33,6 @@ jobs:
       - uses: googleapis/release-please-action@v5
         id: release
         with:
-          target-branch: release-testing
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
