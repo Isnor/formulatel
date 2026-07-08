@@ -1,16 +1,7 @@
 name: Build and Push Images
 
 on:
-  pull_request:
-    paths:
-      - 'formulatel/**'
-      - 'migrations/**'
-      - '.github/workflows/**'
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+  workflow_call:
 
 permissions:
   contents: read
@@ -56,7 +47,7 @@ jobs:
             type=sha,enable=true
             type=semver,pattern={{version}}
 
-      - name: Build and push persist image
+      - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.build_context }}

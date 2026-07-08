@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "02d03b86b373680c2c9d3caf8c7909fb23d0979b",
+  "packages": {
+    "formulatel": {
+      "release-type": "go",
+      "package-name": "formulatel",
+      "changelog-path": "formulatel/CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true
+    },
+    "migrations": {
+      "release-type": "simple",
+      "package-name": "timescaledb-migrations",
+      "changelog-path": "migrations/CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true
+    }
+  }
+}

@@ -1,0 +1,90 @@
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
+
+name: release-formulatel
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      # create new persist image and ingest binaries
+      formulatel_released: ${{ steps.release.outputs['formulatel--release_created'] }}
+      formulatel_version:  ${{ steps.release.outputs['formulatel--version'] }}
+      formulatel_tagname:  ${{ steps.release.outputs['formulatel--tag_name'] }}
+      # create new migrations image
+      migrations_released: ${{ steps.release.outputs['migrations--release_created'] }}
+      migrations_version:  ${{ steps.release.outputs['migrations--version'] }}
+      migrations_tagname:  ${{ steps.release.outputs['migrations--tag_name'] }}
+      # create new helm chart version
+      # helm_released: ${{ steps.release.outputs['helm--release_created'] }}
+      # helm_version:  ${{ steps.release.outputs['helm--version'] }}
+      # maybe add terraform-module
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build_persist:
+    uses: ./.github/workflows/build-image-reuseable.yml
+    needs: release-please
+    if: needs['release-please'].outputs.formulatel_released
+    with:
+      image_name: "persist"
+      component_name: "persist"
+      dockerfile: "formulatel/persist.Dockerfile"
+      build_context: "./formulatel"
+      is_release: true
+      tag_name: ${{ needs['release-please'].outputs.formulatel_tagname }}
+      version: ${{ needs['release-please'].outputs.formulatel_version }}
+
+  build_migrations:
+    uses: ./.github/workflows/build-image-reuseable.yml
+    needs: release-please
+    if: needs['release-please'].outputs.migrations_released
+    with:
+      image_name: "timescaledb-migrations"
+      component_name: "migrations"
+      dockerfile: "migrations.Dockerfile"
+      build_context: "."
+      is_release: true
+      tag_name: ${{ needs['release-please'].outputs.migrations_tagname }}
+      version: ${{ needs['release-please'].outputs.migrations_version }}
+
+  build_ingest:
+    uses: ./.github/workflows/build-ingest.yml
+    needs: release-please
+    if: needs['release-please'].outputs.formulatel_released == 'true'
+
+  upload_ingest:
+    needs: [release-please, build_ingest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Ingest Binaries
+        uses: actions/download-artifact@v7
+        with:
+          pattern: formulatel-ingest-*
+          merge-multiple: true
+
+      - name: Add Ingest Binaries to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ needs['release-please'].outputs.formulatel_tagname }}
+        run: |
+          echo "Uploading ingest binaries to release $TAG_NAME:"
+          ls -l formulatel-ingest-*
+
+          # Upload artifacts to the live release
+          gh release upload "$TAG_NAME" formulatel-ingest-* --clobber
