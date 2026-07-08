@@ -15,9 +15,6 @@
         }
       ]
     },
-    "kubernetes/charts/formulatel": {
-      "release-type": "helm"
-    },
     "migrations": {
       "release-type": "simple"
     }
