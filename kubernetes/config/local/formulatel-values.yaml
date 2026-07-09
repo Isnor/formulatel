@@ -72,3 +72,46 @@ grafana:
     auth.anonymous:
       enabled: true
       org_role: Admin
+
+    adminUser: grafana
+    adminPassword: grafana
+
+    database:
+      type: postgres
+      ssl_mode: disable
+      instrument_queries: true
+      host: 'timescaledb:5432'
+      name: postgres
+      user: postgres
+
+  envValueFrom:
+    GF_DATABASE_USER:
+      secretKeyRef:
+        name: formulatel-db-user-persist
+        key: username
+
+    GF_DATABASE_PASSWORD:
+      secretKeyRef:
+        name: formulatel-db-user-persist
+        key: password
+
+# mosquitto.conf
+# [auth]
+# Postgres Backend Configuration
+# auth_plugin /path/to/mosquitto-go-auth.so
+# auth_opt_backends postgres
+
+# auth_opt_pg_host timescale-db #10.0.1.38 # resolves to the host machine where postgres
+# auth_opt_pg_port 5432
+# auth_opt_pg_dbname formulatel
+# auth_opt_pg_user mosquitto_broker
+# auth_opt_pg_password YourSecretPasswordFromK8sSecrets
+# auth_opt_pg_sslmode disable
+
+# Fetch the hash from the generic accounts table
+# auth_opt_pg_userquery SELECT password_hash FROM auth.accounts WHERE username = $1 AND is_active = true LIMIT 1
+# auth_opt_pg_superquery SELECT count(*) FROM auth.accounts WHERE username = $1 AND is_admin = true AND is_active = true
+
+# Validate ACLs against the new foreign key
+# auth_opt_pg_aclquery SELECT count(*) FROM auth.mqtt_acls acl JOIN auth.accounts user ON acl.account_id = user.id WHERE user.username = $1 AND $2 LIKE acl.topic AND (acl.access_level & $3) > 0
+

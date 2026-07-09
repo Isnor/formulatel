@@ -91,6 +91,8 @@ func main() {
 
 		// wire each telemetry channel with an mqtt topic
 		for topic, channel := range map[string]chan *pb.GameTelemetry{
+			// TODO: we need to change this to include the org and user ID
+			// formulatel/<org>/<user>/<stream>/<title>
 			"formulatel/vehicledata/f123":       ingestConfig.VehicleDataChannel,
 			"formulatel/motiondata/f123":        ingestConfig.MotionDataChannel,
 			"formulatel/currentlapdata/f123":    ingestConfig.CurrentLapDataChannel,

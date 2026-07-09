@@ -1,0 +1,259 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/url"
+
+	"github.com/go-openapi/strfmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/lib/pq"
+	"github.com/urfave/cli/v3"
+	"golang.org/x/crypto/bcrypt"
+
+	grafanasdk "github.com/grafana/grafana-openapi-client-go/client"
+	"github.com/grafana/grafana-openapi-client-go/models"
+	"github.com/sethvargo/go-password/password"
+)
+
+type tenantManCtx string
+
+const tenantManagerContext tenantManCtx = "tenantmanager"
+
+// TenantManager is responsible for creating new Orgs in Grafana and setting up a role and datasource for them.
+type TenantManager struct {
+	// DB connection
+	DB *pgx.Conn
+	// Grafana client - create org
+	Grafana *grafanasdk.GrafanaHTTPAPI
+}
+
+type CreateOrgRequest struct {
+	Name string
+	Slug string
+}
+
+// CreateOrg uses the Grafana SDK to create a new Org
+func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest) (err error) {
+	var createdOrgID int64
+
+	// create a new Grafana org
+	orgResponse, err := t.Grafana.Orgs.CreateOrg(&models.CreateOrgCommand{Name: request.Name})
+	if err != nil {
+		return fmt.Errorf("failed to create grafana org: %w", err)
+	}
+	if orgResponse != nil && orgResponse.GetPayload() != nil {
+		createdOrgID = *orgResponse.GetPayload().OrgID
+	} else {
+		slog.ErrorContext(ctx, "failed trying to create new org", "org_name", request.Name)
+		return
+	}
+
+	slog.InfoContext(ctx, "created new org", "org_name", request.Name, "org_id", orgResponse.Payload)
+
+	// delete grafana org if something goes wrong
+	// there is a bug in Grafana 13.1 that prevents org deletion
+	// https://github.com/grafana/grafana/pull/127404
+	defer func() {
+		if err != nil {
+			slog.ErrorContext(ctx, "⚠️ org creation failed; removing created org", "org_id", createdOrgID)
+			deleted, err := t.Grafana.Orgs.DeleteOrgByID(createdOrgID)
+			if err != nil {
+				slog.ErrorContext(ctx, "failed to delete grafana org", "error", err, "org_id", createdOrgID)
+				return
+			}
+			slog.InfoContext(ctx, "deleted org", "org_id", createdOrgID, "http_code", deleted.Code(), "message", deleted.String())
+		}
+	}()
+
+	// start a transaction to add:
+	// - a new tenant
+	// - a role for the datasource so we can add row-level security
+	// - an account for the user
+	// - ACL for the user's topic
+	tx, err := t.DB.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to open database transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// create row in `tenants` table
+	_, err = tx.Exec(ctx,
+		"INSERT INTO auth.tenants (grafana_org_id, organization_name) VALUES($1, $2);",
+		createdOrgID,
+		pq.QuoteLiteral(request.Name),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create database role: %w", err)
+	}
+
+	// we're creating a role per-org to facilitate row-level-security
+	tenantRole := fmt.Sprintf("tenant_%s_reader", request.Slug)
+	generatedPassword, err := password.Generate(32, 4, 4, false, true)
+	if err != nil {
+		return fmt.Errorf("failed generating password :( - %w", err)
+	}
+	slog.InfoContext(ctx, "created password")
+
+	_, err = tx.Exec(ctx, fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD %s;",
+		tenantRole, pq.QuoteLiteral(generatedPassword),
+	))
+	if err != nil {
+		return fmt.Errorf("failed to create database role: %w", err)
+	}
+	slog.InfoContext(ctx, "created PG role", "role_name", tenantRole)
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(generatedPassword), 10)
+	if err != nil {
+		return fmt.Errorf("failed hashing password: %w", err)
+	}
+
+	// SELECT account_id FROM (INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human) VALUES ($1, $2, %s, true) RETURNING account_id);
+	_, err = tx.Exec(ctx,
+		fmt.Sprintf(
+			`
+				INSERT INTO auth.mqtt_acls(account_id, topic) VALUES(
+				(SELECT account_id FROM (INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human) VALUES ($1, $2, %s, true) RETURNING account_id)),
+				"formulatel/$1/#"
+				);
+			`,
+			pq.QuoteLiteral(string(hash)),
+		),
+		createdOrgID,
+		tenantRole,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to register database metadata: %w", err)
+	}
+
+	// add a datasource using the new role
+	res, err := t.Grafana.WithOrgID(int64(createdOrgID)).Datasources.AddDataSource(&models.AddDataSourceCommand{
+		Name:      "formulatel-postgresql",
+		Type:      "postgres",
+		Access:    "proxy",
+		URL:       "timescaledb:5432",
+		User:      tenantRole,
+		Database:  "postgres",
+		IsDefault: true,
+
+		// Public configuration metadata goes here
+		JSONData: map[string]any{
+			"sslmode":         "disable",
+			"postgresVersion": 18,   // Helps Grafana optimize query generation
+			"timescaledb":     true, // Turns on TimescaleDB macro support ($__timeGroup, etc.)
+		},
+
+		// Write-only credentials.
+		// Grafana encrypts this instantly and won't ever return it in plain text via the API.
+		SecureJSONData: map[string]string{
+			"password": generatedPassword,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to configure isolated grafana data source: %w", err)
+	}
+
+	slog.InfoContext(ctx, "created postgres datasource for new org",
+		"org_id", createdOrgID,
+		"org_name", request.Name,
+		"message", res.String(),
+		"role", tenantRole,
+	)
+	// If this succeeds, tx.Rollback() becomes a safe no-op.
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit database transaction: %w", err)
+	}
+
+	slog.InfoContext(ctx, "✅ Created tenant", "org_id", createdOrgID, "org_name", request.Name)
+	return nil
+}
+
+func NewTenantManager(apiKey string, connString string) (*TenantManager, error) {
+	conn, err := pgx.Connect(context.Background(), connString)
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to database: %w", err)
+	}
+	// cfg := &goapi.TransportConfig{
+	// 		// Host is the doman name or IP address of the host that serves the API.
+	// 		Host:       "localhost:3000",
+	// 		// BasePath is the URL prefix for all API paths, relative to the host root.
+	// 		BasePath:   "/api",
+	// 		// Schemes are the transfer protocols used by the API (http or https).
+	// 		Schemes:    []string{"http"},
+	// 		// APIKey is an optional API key or service account token.
+	// 		APIKey:     os.Getenv("API_ACCESS_TOKEN"),
+	// 		// BasicAuth is optional basic auth credentials.
+	// 		BasicAuth:  url.UserPassword("admin", "admin"),
+	// 		// OrgID provides an optional organization ID.
+	// 		// OrgID is only supported with BasicAuth since API keys are already org-scoped.
+	// 		OrgID:      1,
+	// 		// TLSConfig provides an optional configuration for a TLS client
+	// 		TLSConfig:  &tls.Config{},
+	// 		// NumRetries contains the optional number of attempted retries
+	// 		NumRetries: 3,
+	// 		// RetryTimeout sets an optional time to wait before retrying a request
+	// 		RetryTimeout: 0,
+	// 		// RetryStatusCodes contains the optional list of status codes to retry
+	// 		// Use "x" as a wildcard for a single digit (default: [429, 5xx])
+	// 		RetryStatusCodes: []string{"420", "5xx"},
+	// 		// HTTPHeaders contains an optional map of HTTP headers to add to each request
+	// 		HTTPHeaders: map[string]string{},
+	// }
+
+	// client := goapi.NewHTTPClientWithConfig(strfmt.Default, cfg)
+	return &TenantManager{
+		DB: conn,
+		Grafana: grafanasdk.NewHTTPClientWithConfig(strfmt.Default, &grafanasdk.TransportConfig{
+			Host:     "localhost:3000",
+			BasePath: "/api",
+			Schemes:  []string{"http"},
+			// don't do this; service accounts are inherently org-scoped and can't create orgs
+			// HTTPHeaders: map[string]string{
+			// 	"Authentication": fmt.Sprintf("Bearer %s", apiKey),
+			// },
+			// don't try this; service account keys go in the Auth header, and that doesn't work either (:
+			// APIKey:    apiKey,
+			BasicAuth: url.UserPassword("admin", apiKey),
+			OrgID:     1,
+		}),
+	}, nil
+}
+
+// CLI commands
+
+func CreateTenant() *cli.Command {
+	return &cli.Command{
+		Name:  "create",
+		Usage: "Provision a new racing team tenant",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "name",
+				Aliases:  []string{"n"},
+				Usage:    "The display name of the racing team",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:     "slug",
+				Aliases:  []string{"s"},
+				Usage:    "URL-safe identifier for the team (e.g., apex)",
+				Required: true,
+			},
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			t, ok := ctx.Value(tenantManagerContext).(*TenantManager)
+			if !ok {
+				return fmt.Errorf("no manager setup")
+			}
+			name := cmd.String("name")
+			slug := cmd.String("slug")
+
+			slog.Info("creating tenant", "name", name, "slug", slug)
+
+			return t.CreateOrg(ctx, CreateOrgRequest{
+				Name: name,
+				Slug: slug,
+			})
+		},
+	}
+}
