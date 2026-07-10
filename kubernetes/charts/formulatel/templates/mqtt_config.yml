@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "formulatel.fullname" . }}-mosquitto-custom-config
+  namespace: {{ .Values.global.namespace }}
+data:
+  mosquitto.conf: |
+    listener 1883
+    allow_anonymous true
+
+    # Plugin Binding
+    auth_plugin /mosquitto/go-auth.so
+    auth_opt_log_level debug
+    auth_opt_backends postgres
+
+    # Postgres Integration
+    auth_opt_pg_host timescaledb
+    auth_opt_pg_port 5432
+    auth_opt_pg_dbname postgres
+    auth_opt_pg_user postgres
+    auth_opt_pg_password postgres
+    auth_opt_pg_sslmode disable
+
+    # Queries
+    auth_opt_pg_userquery SELECT password_hash FROM auth.accounts WHERE username = $1 LIMIT 1
+    auth_opt_pg_superquery SELECT COUNT(*) FROM auth.accounts WHERE username = $1 AND is_admin = true
+    auth_opt_pg_aclquery SELECT topic FROM auth.mqtt_acls WHERE username = $1 AND (rw = $2 OR rw = 3)
+    auth_opt_hasher bcrypt

@@ -43,3 +43,52 @@ mqtt_ingress:
   hostname: '' # host to route requests from
   port: 9001 # websocket port of mosquitto
   service_name: formulatel-mosquitto # name of the mqtt broker service deployed in the cluster
+
+# ====================================================================
+# 1. Controller Setup (The Deployment Engine)
+# ====================================================================
+app-template:
+  global:
+    nameOverride: mosquitto
+  controllers:
+    mosquitto:
+      type: deployment
+      replicas: 1
+      containers:
+        main:
+          image:
+            repository: iegomez/mosquitto-go-auth
+            tag: 3.0.0-mosquitto_2.0.18
+            pullPolicy: IfNotPresent
+
+          # Explicitly bypass the default image behavior and target the mount path
+          args:
+            - mosquitto
+            - -c
+            - /etc/mosquitto/mosquitto.conf
+
+  # ====================================================================
+  # 2. Service Layout (Exposing the Broker)
+  # ====================================================================
+  service:
+    main:
+      controller: mosquitto
+      type: ClusterIP # Change to LoadBalancer or NodePort if exposing outside the cluster
+      ports:
+        mqtt:
+          enabled: true
+          port: 1883
+          protocol: TCP
+
+  # ====================================================================
+  # 3. Storage & Configuration Mounting
+  # ====================================================================
+  persistence:
+    # Mounts the custom configuration file directly into the container
+    config:
+      enabled: true
+      type: configMap
+      name: formulatel-formulatel-mosquitto-custom-config
+      globalMounts:
+        - path: /etc/mosquitto/mosquitto.conf
+          subPath: mosquitto.conf

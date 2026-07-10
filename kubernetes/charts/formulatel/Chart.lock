@@ -1,9 +1,9 @@
 dependencies:
-- name: mosquitto
-  repository: https://bdclark.github.io/helm-charts
-  version: 0.6.1
 - name: grafana
   repository: oci://ghcr.io/grafana-community/helm-charts
   version: 12.7.2
-digest: sha256:a6fde654b1643ee6330bef17ec527b7e3a565f5364f1ef5a85b542b44420d492
-generated: "2026-07-02T15:16:13.355105634-03:00"
+- name: app-template
+  repository: oci://ghcr.io/bjw-s-labs/helm
+  version: 5.0.1
+digest: sha256:85f1e1375ceac7b5c57d58d0517200e10e52ef6ede214ec3e8e5bf99baaebf8b
+generated: "2026-07-10T18:46:31.005335795-03:00"

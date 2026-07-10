@@ -499,6 +499,8 @@ func (f *F123PacketTransformer) normalizeMotionExData(
 // F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer.
 // It also serves a container for the data channels that the Transformer writes to
 type F123IngestConfig struct {
+	Username string
+	Token string
 	MaxPacketsBuffered uint   `split_words:"true" default:"1000"` // size of the buffered channel of packets
 	CapturePackets     bool   `split_words:"true" default:"false"`
 	UDPPort            uint16 `envconfig:"UDP_PORT" default:"27543"`

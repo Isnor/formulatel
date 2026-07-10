@@ -1,7 +1,7 @@
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 
 # k8s-at-home has been deprecated, so I use https://bdclark.github.io/helm-charts for mosquitto now.
-helm_repo("bdclark", resource_name="bdclark_helm_repo", url="https://bdclark.github.io/helm-charts/", labels=["helm"])
+# helm_repo("bdclark", resource_name="bdclark_helm_repo", url="https://bdclark.github.io/helm-charts/", labels=["helm"])
 helm_repo("open-telemetry", resource_name="otel_helm_repo", url="https://open-telemetry.github.io/opentelemetry-helm-charts", labels=["helm"])
 helm_repo("jaegertracing", resource_name="jager_helm_repo", url="https://jaegertracing.github.io/helm-charts", labels=["helm"])
 k8s_yaml("kubernetes/namespace.yml")
@@ -30,8 +30,10 @@ local_resource(
   serve_env={
     # ingest does not listen to log_level
     # "LOG_LEVEL": "debug",
-    # "FORMULATEL_F123_CAPTURE_PACKETS": "true",
+    # "FORMULATEL_CAPTURE_PACKETS": "true",
     "MQTT_BROKER": "tcp://localhost:1883",
+    "FORMULATEL_USERNAME": "tenant_foobar5_reader",
+    "FORMULATEL_TOKEN": "",
   },
   labels=["formulatel"]
 )

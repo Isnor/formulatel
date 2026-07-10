@@ -109,14 +109,23 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		return fmt.Errorf("failed hashing password: %w", err)
 	}
 
-	// SELECT account_id FROM (INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human) VALUES ($1, $2, %s, true) RETURNING account_id);
 	_, err = tx.Exec(ctx,
 		fmt.Sprintf(
 			`
-				INSERT INTO auth.mqtt_acls(account_id, topic) VALUES(
-				(SELECT account_id FROM (INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human) VALUES ($1, $2, %s, true) RETURNING account_id)),
-				"formulatel/$1/#"
-				);
+			-- add an account
+			WITH new_account AS (
+					INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human)
+					VALUES ($1, $2, %s, true)
+					RETURNING id
+			)
+			-- Step 2: Use that ID to instantly provision the ACL row
+			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
+			SELECT
+					id,
+					'formulatel/' || $1 || '/#',
+					3
+			FROM new_account;
+
 			`,
 			pq.QuoteLiteral(string(hash)),
 		),
@@ -165,7 +174,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		return fmt.Errorf("failed to commit database transaction: %w", err)
 	}
 
-	slog.InfoContext(ctx, "✅ Created tenant", "org_id", createdOrgID, "org_name", request.Name)
+	slog.InfoContext(ctx, "✅ Created tenant", "org_id", createdOrgID, "org_name", request.Name, "password", generatedPassword)
 	return nil
 }
 

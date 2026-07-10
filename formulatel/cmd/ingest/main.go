@@ -24,8 +24,11 @@ func main() {
 	// TODO: if we want to have a flag to switch on which data we're reading, we'll need to parse
 	// flags before the environment variables. Shame.
 	var ingestConfig f123.F123IngestConfig
-	envconfig.MustProcess("formulatel_f123", &ingestConfig)
+	envconfig.MustProcess("formulatel", &ingestConfig)
+	token := ingestConfig.Token
+	ingestConfig.Token = "***"
 	slog.Info("starting ingest", "config", ingestConfig)
+	// TODO: we are going to need to write an actual CLI soon
 	// flag.Parse()
 	serverContext, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
@@ -80,7 +83,9 @@ func main() {
 	// TODO: make mqtt options configurable
 	connectionOptions := mqttutil.GenerateMQTTv3Options().AddBroker(ingestConfig.MQTTBroker)
 	// TODO: this should be deterministic in some way
-	connectionOptions.ClientID = "formulatel_ingest"
+	connectionOptions.ClientID = ingestConfig.Username
+	connectionOptions.Username = ingestConfig.Username
+	connectionOptions.Password = token
 
 	// put our telemetry type on a queue
 	mqttClient, err := mqttutil.NewMQTTv3Connection(connectionOptions)
@@ -91,7 +96,7 @@ func main() {
 
 		// wire each telemetry channel with an mqtt topic
 		for topic, channel := range map[string]chan *pb.GameTelemetry{
-			// TODO: we need to change this to include the org and user ID
+			// TODO: we need to change this to include the org and user ID for multi-tenant live viz
 			// formulatel/<org>/<user>/<stream>/<title>
 			"formulatel/vehicledata/f123":       ingestConfig.VehicleDataChannel,
 			"formulatel/motiondata/f123":        ingestConfig.MotionDataChannel,
