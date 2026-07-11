@@ -5,8 +5,18 @@ metadata:
   namespace: {{ .Values.global.namespace }}
 data:
   mosquitto.conf: |
-    listener 1883
+    persistence true
+    persistence_location /mosquitto/data/
+    autosave_interval 1800
+    per_listener_settings true
+
+    listener 1883 0.0.0.0
+    protocol mqtt
     allow_anonymous true
+
+    listener 9001 0.0.0.0
+    protocol websockets
+    allow_anonymous false
 
     # Plugin Binding
     auth_plugin /mosquitto/go-auth.so

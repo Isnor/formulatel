@@ -31,7 +31,7 @@ local_resource(
     # ingest does not listen to log_level
     # "LOG_LEVEL": "debug",
     # "FORMULATEL_CAPTURE_PACKETS": "true",
-    "MQTT_BROKER": "tcp://localhost:1883",
+    "MQTT_BROKER": "ws://localhost:9001",
     "FORMULATEL_USERNAME": "tenant_foobar5_reader",
     "FORMULATEL_TOKEN": "",
   },
@@ -53,6 +53,6 @@ k8s_yaml(helm("./kubernetes/charts/formulatel",
   values="./kubernetes/config/local/formulatel-values.yaml",
 ))
 k8s_resource("formulatel-grafana", port_forwards=3000, labels=["infra"])
-k8s_resource("formulatel-mosquitto", port_forwards=1883, labels=["infra"])
+k8s_resource("formulatel-mosquitto", port_forwards=9001, labels=["infra"])
 k8s_resource("formulatel-formulatel-persist", labels=["formulatel"])
 k8s_resource("formulatel-formulatel-dbmigrate-latest", labels=["formulatel"])
