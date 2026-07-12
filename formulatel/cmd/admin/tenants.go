@@ -114,20 +114,18 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	_, err = tx.Exec(ctx,
 		fmt.Sprintf(
 			`
-			-- add an account
+			-- add an account and an ACL to allow that account to read and write
 			WITH new_account AS (
 					INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human)
 					VALUES ($1, $2, %s, true)
 					RETURNING id
 			)
-			-- Step 2: Use that ID to instantly provision the ACL row
 			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
 			SELECT
 					id,
-					'formulatel/' || $1 || '/#',
+					'formulatel/' || $1 || '/' || $2 || '/#',
 					3
 			FROM new_account;
-
 			`,
 			pq.QuoteLiteral(string(hash)),
 		),
