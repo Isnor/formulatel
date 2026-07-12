@@ -33,6 +33,7 @@ local_resource(
     # "FORMULATEL_CAPTURE_PACKETS": "true",
     "MQTT_BROKER": "ws://localhost:9001",
     "FORMULATEL_USERNAME": "tenant_foobar5_reader",
+    "FORMULATEL_TENANT_ID": "7",
     "FORMULATEL_TOKEN": "",
   },
   labels=["formulatel"]

@@ -20,30 +20,6 @@ const DefaultMQTTConnectTimeout = 5 * time.Second
 // Note: ConnectRetry is disabled to allow fast failure if broker is unavailable.
 // Use token.WaitTimeout() to enforce a connection timeout.
 func NewMQTTv3Connection(opts *mqtt.ClientOptions) (mqtt.Client, error) {
-	opts.SetOrderMatters(false)       // Allow out of order messages
-	opts.ConnectTimeout = 5 * time.Second // Timeout between retry attempts
-	opts.WriteTimeout = 5 * time.Second   // Timeout for writes
-	opts.KeepAlive = 10                 // Keepalive every 10 seconds
-	opts.PingTimeout = time.Second      // local broker so response should be quick
-
-	// Connection retry behavior
-	// ConnectRetry is disabled to allow fast failure if broker is unavailable
-	// AutoReconnect is kept for runtime reconnection if broker becomes available
-	opts.ConnectRetry = false
-	opts.AutoReconnect = true
-	opts.MaxReconnectInterval = 10 * time.Second // Max backoff for reconnection
-
-	// Log events
-	opts.OnConnectionLost = func(cl mqtt.Client, err error) {
-		slog.Error("mqtt: connection lost", "error", err)
-	}
-	opts.OnConnect = func(mqtt.Client) {
-		slog.Info("mqtt: connected to broker", "broker", opts.Servers)
-	}
-	opts.OnReconnecting = func(mqtt.Client, *mqtt.ClientOptions) {
-		slog.Error("mqtt: attempting to reconnect")
-	}
-
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 
@@ -63,9 +39,11 @@ func NewMQTTv3Connection(opts *mqtt.ClientOptions) (mqtt.Client, error) {
 // GenerateMQTTv3Options creates default MQTT client options for the v3 protocol.
 // The returned options include sensible defaults for connection timeouts and
 // keepalive settings. Users should set AddBroker() and SetClientID() before
-// calling NewMQTTv3Connection().
+// passing these options to [NewMQTTv3Connection()]
 func GenerateMQTTv3Options() *mqtt.ClientOptions {
 	opts := mqtt.NewClientOptions()
+
+	opts.Order = false
 
 	// Set connection timeouts
 	opts.ConnectTimeout = DefaultMQTTConnectTimeout

@@ -5,9 +5,6 @@ type: application
 version: 0.5.0
 appVersion: "0.1.1"
 dependencies:
-  # - name: mosquitto
-  #   version: 0.6.1
-  #   repository: https://bdclark.github.io/helm-charts
   - name: grafana
     version: 12.7.2
     repository: oci://ghcr.io/grafana-community/helm-charts

@@ -85,12 +85,10 @@ func main() {
 	mqtt.ERROR = slog.NewLogLogger(slog.NewTextHandler(os.Stderr, nil), slog.LevelError)
 	mqtt.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
 	// Connect to MQTT
-	mqttOptions := mqtt.NewClientOptions().AddBroker(cfg.MQTTBroker)
+	mqttOptions := mqttutil.GenerateMQTTv3Options().AddBroker(cfg.MQTTBroker)
 	// TODO: should this be configurable?
 	mqttOptions.ClientID = "formulatel_persist"
-	mqttOptions.SetOrderMatters(false)
 	mqttOptions.ConnectRetry = true
-	mqttOptions.AutoReconnect = true
 
 	mqttClient, err := mqttutil.NewMQTTv3Connection(mqttOptions)
 	if err != nil {
@@ -99,8 +97,7 @@ func main() {
 	}
 
 	// subscribe to wildcard topic: formulatel/+/f123
-	// TODO: make the topic configurable
-	subTopic := cfg.MQTTPrefix + "/+/f123"
+	subTopic := cfg.MQTTPrefix + "$share/persist/formulatel/+/f123"
 	tracer := otel.Tracer("formulatel/persist/mqtt")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		msgCtx, span := tracer.Start(ctx, "mqtt.receive")
