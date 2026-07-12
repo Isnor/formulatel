@@ -25,22 +25,18 @@ func main() {
 				Required: true,
 			},
 		},
+		// our Before function uses the global api-key and connstring flags to setup the TenantManager
+		// that will be used for the admin CLI commands. The manager is added to the returned context
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
-			// At this layer, cmd represents the root command, so flags parsed
-			// directly after the binary invocation are evaluated right here.
-			apiKey := cmd.String("api-key")
+			adminPassword := cmd.String("admin-password")
 			connStr := cmd.String("connstring")
 
-			manager, err := NewTenantManager(apiKey, connStr)
+			manager, err := NewTenantManager(adminPassword, connStr)
 			if err != nil {
 				return ctx, err
 			}
 
-			// Wrap the initialized pointer into the context lifecycle
-			enrichedCtx := context.WithValue(ctx, tenantManagerContext, manager)
-
-			// Return the new context. Everything executing downstream will inherit this.
-			return enrichedCtx, nil
+			return context.WithValue(ctx, tenantManagerContext, manager), nil
 		},
 		Commands: []*cli.Command{
 			{

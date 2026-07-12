@@ -178,39 +178,12 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	return nil
 }
 
-func NewTenantManager(apiKey string, connString string) (*TenantManager, error) {
-	conn, err := pgx.Connect(context.Background(), connString)
+func NewTenantManager(grafanaAdminPassword string, dbConnString string) (*TenantManager, error) {
+	conn, err := pgx.Connect(context.Background(), dbConnString)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to database: %w", err)
 	}
-	// cfg := &goapi.TransportConfig{
-	// 		// Host is the doman name or IP address of the host that serves the API.
-	// 		Host:       "localhost:3000",
-	// 		// BasePath is the URL prefix for all API paths, relative to the host root.
-	// 		BasePath:   "/api",
-	// 		// Schemes are the transfer protocols used by the API (http or https).
-	// 		Schemes:    []string{"http"},
-	// 		// APIKey is an optional API key or service account token.
-	// 		APIKey:     os.Getenv("API_ACCESS_TOKEN"),
-	// 		// BasicAuth is optional basic auth credentials.
-	// 		BasicAuth:  url.UserPassword("admin", "admin"),
-	// 		// OrgID provides an optional organization ID.
-	// 		// OrgID is only supported with BasicAuth since API keys are already org-scoped.
-	// 		OrgID:      1,
-	// 		// TLSConfig provides an optional configuration for a TLS client
-	// 		TLSConfig:  &tls.Config{},
-	// 		// NumRetries contains the optional number of attempted retries
-	// 		NumRetries: 3,
-	// 		// RetryTimeout sets an optional time to wait before retrying a request
-	// 		RetryTimeout: 0,
-	// 		// RetryStatusCodes contains the optional list of status codes to retry
-	// 		// Use "x" as a wildcard for a single digit (default: [429, 5xx])
-	// 		RetryStatusCodes: []string{"420", "5xx"},
-	// 		// HTTPHeaders contains an optional map of HTTP headers to add to each request
-	// 		HTTPHeaders: map[string]string{},
-	// }
 
-	// client := goapi.NewHTTPClientWithConfig(strfmt.Default, cfg)
 	return &TenantManager{
 		DB: conn,
 		Grafana: grafanasdk.NewHTTPClientWithConfig(strfmt.Default, &grafanasdk.TransportConfig{
@@ -221,9 +194,9 @@ func NewTenantManager(apiKey string, connString string) (*TenantManager, error) 
 			// HTTPHeaders: map[string]string{
 			// 	"Authentication": fmt.Sprintf("Bearer %s", apiKey),
 			// },
-			// don't try this; service account keys go in the Auth header, and that doesn't work either (:
+			// don't try this; service account keys go in the Auth header, API keys are deprecated
 			// APIKey:    apiKey,
-			BasicAuth: url.UserPassword("admin", apiKey),
+			BasicAuth: url.UserPassword("admin", grafanaAdminPassword),
 			OrgID:     1,
 		}),
 	}, nil
