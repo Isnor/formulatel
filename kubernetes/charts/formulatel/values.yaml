@@ -14,7 +14,6 @@ persist:
   tag: main
   replicas: 1
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
-  mqttSecretName: ''
 
 # db-migrate
 migrate:
@@ -60,21 +59,17 @@ app-template:
             repository: ghcr.io/lhns/mosquitto-go-auth
             tag: 3.5.0
             pullPolicy: IfNotPresent
-
-          # Explicitly bypass the default image behavior and target the mount path
           args:
             - mosquitto
             - -c
             - /etc/mosquitto/mosquitto.conf
 
-  # ====================================================================
-  # 2. Service Layout (Exposing the Broker)
-  # ====================================================================
   service:
     main:
       controller: mosquitto
-      type: ClusterIP # Change to LoadBalancer or NodePort if exposing outside the cluster
+      type: ClusterIP
       ports:
+        # TODO: we don't need to expose this port outside the cluster anymore
         mqtt:
           enabled: true
           port: 1883
@@ -84,11 +79,8 @@ app-template:
           port: 9001
           protocol: TCP
 
-  # ====================================================================
-  # 3. Storage & Configuration Mounting
-  # ====================================================================
+  # config map for the mosquitto.conf and a PVC for data persistence
   persistence:
-    # Mounts the custom configuration file directly into the container
     config:
       enabled: true
       type: configMap

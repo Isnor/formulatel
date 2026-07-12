@@ -6,7 +6,7 @@ global:
 persist:
   image: ghcr.io/isnor/formulatel/persist
   tag: main
-  replicas: 1
+  replicas: 2
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
 # db-migrate
