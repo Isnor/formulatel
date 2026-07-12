@@ -84,10 +84,3 @@ grafana:
       secretKeyRef:
         name: formulatel-db-user-grafana-admin
         key: password
-
-# mosquitto config - these values are passed to the `mosquitto` chart
-mosquitto:
-  service:
-    ports:
-      websocket:
-        enabled: true
