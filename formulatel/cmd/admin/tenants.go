@@ -30,8 +30,11 @@ type TenantManager struct {
 }
 
 type CreateOrgRequest struct {
-	Name string
-	Slug string
+	Name     string
+	Slug     string
+	Username string
+	URL      string
+	Database string
 }
 
 // CreateOrg uses the Grafana SDK to create a new Org
@@ -89,24 +92,64 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	}
 
 	// we're creating a role per-org to facilitate row-level-security
-	// TODO: the password we create for the role and the grafana user don't need
-	// to be the same
 	tenantRole := fmt.Sprintf("tenant_%s_reader", request.Slug)
-	generatedPassword, err := password.Generate(32, 4, 4, false, true)
+	pgRolePassword, err := password.Generate(32, 4, 4, false, true)
 	if err != nil {
 		return fmt.Errorf("failed generating password :( - %w", err)
 	}
 	slog.InfoContext(ctx, "created password")
 
 	_, err = tx.Exec(ctx, fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD %s;",
-		tenantRole, pq.QuoteLiteral(generatedPassword),
+		tenantRole, pq.QuoteLiteral(pgRolePassword),
 	))
 	if err != nil {
 		return fmt.Errorf("failed to create database role: %w", err)
 	}
-	slog.InfoContext(ctx, "created PG role", "role_name", tenantRole)
+	slog.InfoContext(ctx, "created PG role", "role_name", tenantRole, "password", pgRolePassword)
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(generatedPassword), 10)
+	// add a datasource using the new role
+	res, err := t.Grafana.WithOrgID(int64(createdOrgID)).Datasources.AddDataSource(&models.AddDataSourceCommand{
+		Name:     "formulatel-postgresql",
+		Type:     "postgres",
+		Access:   "proxy",
+		URL:      request.URL,
+		User:     tenantRole,
+		Database: request.Database,
+
+		IsDefault: true,
+
+		// Public configuration metadata goes here
+		JSONData: map[string]any{
+			"sslmode":         "disable",
+			"postgresVersion": 18,   // Helps Grafana optimize query generation
+			"timescaledb":     true, // Turns on TimescaleDB macro support ($__timeGroup, etc.)
+		},
+
+		SecureJSONData: map[string]string{
+			"password": pgRolePassword,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to configure isolated grafana data source: %w", err)
+	}
+
+	slog.InfoContext(ctx, "created postgres datasource for new org",
+		"org_id", createdOrgID,
+		"org_name", request.Name,
+		"message", res.String(),
+		"role", tenantRole,
+	)
+
+	// TODO: maybe this should happen it the `tenant user create` command or something
+	// create an "account" for the telemetry stream
+	userName := fmt.Sprintf("tenant_%s", request.Slug)
+	userToken, err := password.Generate(64, 4, 4, false, true)
+	if err != nil {
+		return fmt.Errorf("failed generating password :( - %w", err)
+	}
+	userToken = "ftel-" + userToken
+	slog.InfoContext(ctx, "created password")
+	hash, err := bcrypt.GenerateFromPassword([]byte(userToken), 10)
 	if err != nil {
 		return fmt.Errorf("failed hashing password: %w", err)
 	}
@@ -130,51 +173,31 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 			pq.QuoteLiteral(string(hash)),
 		),
 		createdOrgID,
-		tenantRole,
+		userName,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to register database metadata: %w", err)
 	}
 
-	// add a datasource using the new role
-	res, err := t.Grafana.WithOrgID(int64(createdOrgID)).Datasources.AddDataSource(&models.AddDataSourceCommand{
-		Name:      "formulatel-postgresql",
-		Type:      "postgres",
-		Access:    "proxy",
-		URL:       "timescaledb:5432", // TODO: this needs to be configurable
-		User:      tenantRole,
-		Database:  "postgres",
-		IsDefault: true,
-
-		// Public configuration metadata goes here
-		JSONData: map[string]any{
-			"sslmode":         "disable",
-			"postgresVersion": 18,   // Helps Grafana optimize query generation
-			"timescaledb":     true, // Turns on TimescaleDB macro support ($__timeGroup, etc.)
-		},
-
-		// Write-only credentials.
-		// Grafana encrypts this instantly and won't ever return it in plain text via the API.
-		SecureJSONData: map[string]string{
-			"password": generatedPassword,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to configure isolated grafana data source: %w", err)
-	}
-
-	slog.InfoContext(ctx, "created postgres datasource for new org",
-		"org_id", createdOrgID,
-		"org_name", request.Name,
-		"message", res.String(),
-		"role", tenantRole,
-	)
 	// If this succeeds, tx.Rollback() becomes a safe no-op.
 	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit database transaction: %w", err)
 	}
 
-	slog.InfoContext(ctx, "✅ Created tenant", "org_id", createdOrgID, "org_name", request.Name, "password", generatedPassword)
+	slog.InfoContext(
+		ctx,
+		"✅ Created tenant",
+		"org_id",
+		createdOrgID,
+		"org_name",
+		request.Name,
+		"password",
+		pgRolePassword,
+		"user",
+		userName,
+		"token",
+		userToken,
+	)
 	return nil
 }
 
@@ -221,6 +244,21 @@ func CreateTenant() *cli.Command {
 				Usage:    "URL-safe identifier for the team (e.g., apex)",
 				Required: true,
 			},
+			// TODO: maybe we shouldn't make a user here?
+			&cli.StringFlag{
+				Name:    "username",
+				Aliases: []string{"user", "u"},
+				Usage:   "name of the root user for the tenant's stream",
+			},
+			&cli.StringFlag{
+				Name:  "url",
+				Usage: "host:port of the postgres instance",
+			},
+			&cli.StringFlag{
+				Name:    "database",
+				Aliases: []string{"d"},
+				Usage:   "Database name",
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			t, ok := ctx.Value(tenantManagerContext).(*TenantManager)
@@ -229,13 +267,20 @@ func CreateTenant() *cli.Command {
 			}
 			name := cmd.String("name")
 			slug := cmd.String("slug")
+			url := cmd.String("url")
+			database := cmd.String("database")
+			username := cmd.String("username")
 
 			slog.Info("creating tenant", "name", name, "slug", slug)
 
 			return t.CreateOrg(ctx, CreateOrgRequest{
-				Name: name,
-				Slug: slug,
+				Name:     name,
+				Slug:     slug,
+				Username: username,
+				URL:      url,
+				Database: database,
 			})
+
 		},
 	}
 }
