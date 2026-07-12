@@ -6,7 +6,7 @@ global:
 persist:
   image: formulatel/persist
   tag: latest
-  replicas: 1
+  replicas: 2
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
 # db-migrate

@@ -12,6 +12,7 @@ import (
 
 var ErrInvalidConfig = errors.New("invalid config")
 
+// TODO: why is this config here?
 // Config holds configuration for the TimescaleDB persistence service.
 // Fields are tagged to bind environment variables automatically.
 type Config struct {
@@ -22,7 +23,7 @@ type Config struct {
 	DBPort        uint16        `envconfig:"DB_PORT"`
 	DBName        string        `envconfig:"DB_NAME"`
 	MQTTBroker    string        `envconfig:"MQTT_BROKER" required:"true"`
-	MQTTPrefix    string        `envconfig:"MQTT_PREFIX" default:"formulatel"`
+	MQTTClientID  string        `envconfig:"MQTT_CLIENT_ID"`
 	BatchSize     int           `split_words:"true" default:"500"`
 	FlushInterval time.Duration `split_words:"true" default:"10s"`
 }

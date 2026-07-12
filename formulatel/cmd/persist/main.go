@@ -11,6 +11,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/google/uuid"
 	pb "github.com/isnor/formulatel/internal/genproto"
 	"github.com/isnor/formulatel/internal/mqttutil"
 	"github.com/isnor/formulatel/internal/timescale"
@@ -86,8 +87,10 @@ func main() {
 	mqtt.DEBUG = slog.NewLogLogger(slog.NewTextHandler(os.Stdout, nil), slog.LevelDebug)
 	// Connect to MQTT
 	mqttOptions := mqttutil.GenerateMQTTv3Options().AddBroker(cfg.MQTTBroker)
-	// TODO: should this be configurable?
-	mqttOptions.ClientID = "formulatel_persist"
+	if cfg.MQTTClientID == "" {
+		cfg.MQTTClientID = uuid.New().String()
+	}
+	mqttOptions.ClientID = fmt.Sprintf("ftel-p-%s", cfg.MQTTClientID)[:25]
 	mqttOptions.ConnectRetry = true
 
 	mqttClient, err := mqttutil.NewMQTTv3Connection(mqttOptions)
@@ -97,7 +100,7 @@ func main() {
 	}
 
 	// subscribe to wildcard topic: formulatel/+/f123
-	subTopic := cfg.MQTTPrefix + "$share/persist/formulatel/+/f123"
+	subTopic := "$share/persist/formulatel/+/f123"
 	tracer := otel.Tracer("formulatel/persist/mqtt")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		msgCtx, span := tracer.Start(ctx, "mqtt.receive")
