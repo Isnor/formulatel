@@ -89,6 +89,8 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	}
 
 	// we're creating a role per-org to facilitate row-level-security
+	// TODO: the password we create for the role and the grafana user don't need
+	// to be the same
 	tenantRole := fmt.Sprintf("tenant_%s_reader", request.Slug)
 	generatedPassword, err := password.Generate(32, 4, 4, false, true)
 	if err != nil {
@@ -141,7 +143,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		Name:      "formulatel-postgresql",
 		Type:      "postgres",
 		Access:    "proxy",
-		URL:       "timescaledb:5432",
+		URL:       "timescaledb:5432", // TODO: this needs to be configurable
 		User:      tenantRole,
 		Database:  "postgres",
 		IsDefault: true,
