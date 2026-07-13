@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS auth.accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   grafana_org_id INT NOT NULL REFERENCES auth.tenants(grafana_org_id) ON DELETE CASCADE,
   username VARCHAR(100) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL, -- password hash (Bcrypt/Argon2id)
+  password_hash VARCHAR(255) NOT NULL, -- password hash bcrypt
   -- human users login to the dashboard and read telemetry, machines send telemetry to persist
   is_human BOOLEAN DEFAULT FALSE,
   is_admin BOOLEAN DEFAULT FALSE,

@@ -35,6 +35,7 @@ type CreateOrgRequest struct {
 	Username string
 	URL      string
 	Database string
+	MQTTURI  string
 }
 
 // CreateOrg uses the Grafana SDK to create a new Org
@@ -53,7 +54,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		return
 	}
 
-	slog.InfoContext(ctx, "created new org", "org_name", request.Name, "org_id", orgResponse.Payload)
+	slog.InfoContext(ctx, "created new org", "org_name", request.Name, "org_id", createdOrgID)
 
 	// delete grafana org if something goes wrong
 	// there is a bug in Grafana 13.1 that prevents org deletion
@@ -107,7 +108,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	}
 	slog.InfoContext(ctx, "created PG role", "role_name", tenantRole, "password", pgRolePassword)
 
-	// add a datasource using the new role
+	// add a postgres datasource to the org, using the new org-scoped role
 	res, err := t.Grafana.WithOrgID(int64(createdOrgID)).Datasources.AddDataSource(&models.AddDataSourceCommand{
 		Name:     "formulatel-postgresql",
 		Type:     "postgres",
@@ -130,7 +131,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to configure isolated grafana data source: %w", err)
+		return fmt.Errorf("failed to create postgres data source: %w", err)
 	}
 
 	slog.InfoContext(ctx, "created postgres datasource for new org",
@@ -140,19 +141,72 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		"role", tenantRole,
 	)
 
-	// TODO: maybe this should happen it the `tenant user create` command or something
+	// create the MQTT datasource
+	addMQTTDatasourceResponse, err := t.Grafana.WithOrgID(int64(createdOrgID)).
+		Datasources.AddDataSource(&models.AddDataSourceCommand{
+		Name:   "formulatel-mqtt",
+		Type:   "grafana-mqtt-datasource",
+		Access: "proxy",
+		URL:    request.MQTTURI,
+
+		JSONData: map[string]any{
+			"uri":      request.MQTTURI,
+			"tlsAuth":  false,
+			"clientID": fmt.Sprintf("formulatel_grafana_%d", createdOrgID),
+			"username": tenantRole,
+		},
+
+		SecureJSONData: map[string]string{
+			"password": pgRolePassword,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create MQTT data source: %w", err)
+	}
+
+	slog.InfoContext(ctx,
+		"created MQTT datasource for new org",
+		"org_id", createdOrgID,
+		"org_name", request.Name,
+		"message", addMQTTDatasourceResponse.String(),
+		"user", tenantRole,
+	)
+
+	// create an account for a read-only ACL for all of this tenant's drivers
+	_, err = tx.Exec(ctx,
+		fmt.Sprintf(
+			`
+			-- add an account and an ACL to allow that account to read and write
+			WITH new_account AS (
+					INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human)
+					VALUES ($1, $2, %s, false)
+					RETURNING id
+			)
+			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
+			SELECT
+					id,
+					'formulatel/' || $1 || '/#',
+					1
+			FROM new_account;
+			`,
+			pq.QuoteLiteral(string(mustHash(pgRolePassword))),
+		),
+		createdOrgID,
+		tenantRole,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to register account and MQTT ACL: %w", err)
+	}
+
+	// TODO: maybe this should happen in the `tenant user create` command or something
 	// create an "account" for the telemetry stream
-	userName := fmt.Sprintf("tenant_%s", request.Slug)
+	userName := request.Username
 	userToken, err := password.Generate(64, 4, 4, false, true)
 	if err != nil {
 		return fmt.Errorf("failed generating password :( - %w", err)
 	}
 	userToken = "ftel-" + userToken
 	slog.InfoContext(ctx, "created password")
-	hash, err := bcrypt.GenerateFromPassword([]byte(userToken), 10)
-	if err != nil {
-		return fmt.Errorf("failed hashing password: %w", err)
-	}
 
 	_, err = tx.Exec(ctx,
 		fmt.Sprintf(
@@ -170,13 +224,13 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 					3
 			FROM new_account;
 			`,
-			pq.QuoteLiteral(string(hash)),
+			pq.QuoteLiteral(string(mustHash(userToken))),
 		),
 		createdOrgID,
 		userName,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to register database metadata: %w", err)
+		return fmt.Errorf("failed to register account and MQTT ACL: %w", err)
 	}
 
 	// If this succeeds, tx.Rollback() becomes a safe no-op.
@@ -198,6 +252,11 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		"token",
 		userToken,
 	)
+	return nil
+}
+
+func (t *TenantManager) CreateUser(ctx context.Context, tenant int, user string) error {
+	//
 	return nil
 }
 
@@ -225,6 +284,15 @@ func NewTenantManager(grafanaAdminPassword string, dbConnString string) (*Tenant
 	}, nil
 }
 
+func mustHash(s string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(s), 10)
+	if err != nil {
+		panic(fmt.Errorf("failed hashing password: %w", err))
+	}
+
+	return hash
+}
+
 // CLI commands
 
 func CreateTenant() *cli.Command {
@@ -246,18 +314,27 @@ func CreateTenant() *cli.Command {
 			},
 			// TODO: maybe we shouldn't make a user here?
 			&cli.StringFlag{
-				Name:    "username",
-				Aliases: []string{"user", "u"},
-				Usage:   "name of the root user for the tenant's stream",
+				Name:     "username",
+				Aliases:  []string{"user", "u"},
+				Usage:    "name of the root user for the tenant's stream",
+				Required: true,
 			},
 			&cli.StringFlag{
-				Name:  "url",
-				Usage: "host:port of the postgres instance",
+				Name:     "url",
+				Usage:    "host:port of the postgres instance",
+				Required: true,
 			},
 			&cli.StringFlag{
-				Name:    "database",
-				Aliases: []string{"d"},
-				Usage:   "Database name",
+				Name:     "database",
+				Aliases:  []string{"d"},
+				Usage:    "Database name",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:     "mqtt-uri",
+				Aliases:  []string{"m"},
+				Usage:    "Database name",
+				Required: true,
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -270,6 +347,7 @@ func CreateTenant() *cli.Command {
 			url := cmd.String("url")
 			database := cmd.String("database")
 			username := cmd.String("username")
+			mqttURI := cmd.String("mqtt-uri")
 
 			slog.Info("creating tenant", "name", name, "slug", slug)
 
@@ -279,7 +357,42 @@ func CreateTenant() *cli.Command {
 				Username: username,
 				URL:      url,
 				Database: database,
+				MQTTURI:  mqttURI,
 			})
+
+		},
+	}
+}
+
+func CreateUser() *cli.Command {
+	return &cli.Command{
+		Name:  "create",
+		Usage: "add a user to a tenant",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:     "tenant",
+				Aliases:  []string{"tid", "t"},
+				Usage:    "The tenant ID to add the user to",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:     "username",
+				Aliases:  []string{"user", "u"},
+				Required: true,
+				Usage:    "name of the root user for the tenant's stream",
+			},
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			t, ok := ctx.Value(tenantManagerContext).(*TenantManager)
+			if !ok {
+				return fmt.Errorf("no manager setup")
+			}
+			tenant := cmd.Int("tenant")
+			username := cmd.String("username")
+
+			slog.Info("creating tenant", "name", tenant, "username", username)
+
+			return t.CreateUser(ctx, tenant, username)
 
 		},
 	}

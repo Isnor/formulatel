@@ -45,8 +45,18 @@ func main() {
 				Category: "tenants",
 				Commands: []*cli.Command{
 					CreateTenant(),
+					// DeleteTenant(),
 				},
 			},
+			// {
+			// 	Name:     "user",
+			// 	Usage:    "User management operations",
+			// 	Category: "users",
+			// 	Commands: []*cli.Command{
+			// 		CreateUser(),
+			// 		// DeleteUser(),
+			// 	},
+			// },
 		},
 	}
 
