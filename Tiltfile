@@ -42,7 +42,7 @@ docker_build("formulatel/timescaledb-migrations", context=".", dockerfile="migra
 
 # our helm chart expects a few secrets to be available with DB login info
 k8s_yaml("kubernetes/secrets.yaml")
-k8s_resource(objects=["formulatel-db-user-persist"], new_name="db-user-persist", labels=["infra"])
+k8s_resource(objects=["formulatel-db-user-persist"], new_name="db-user-persist-secret", labels=["infra"])
 
 # finally, compile and deploy the formulatel chart
 # this deploys grafana, mqtt, persist, and the telemetry schema migrations

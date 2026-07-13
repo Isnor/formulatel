@@ -93,16 +93,18 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	}
 
 	// we're creating a role per-org to facilitate row-level-security
-	tenantRole := fmt.Sprintf("tenant_%s_reader", request.Slug)
+	tenantRole := fmt.Sprintf("tenant_%s", request.Slug)
 	pgRolePassword, err := password.Generate(32, 4, 4, false, true)
 	if err != nil {
 		return fmt.Errorf("failed generating password :( - %w", err)
 	}
 	slog.InfoContext(ctx, "created password")
 
-	_, err = tx.Exec(ctx, fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD %s;",
-		tenantRole, pq.QuoteLiteral(pgRolePassword),
-	))
+	_, err = tx.Exec(ctx, fmt.Sprintf(`
+		CREATE ROLE $1 WITH LOGIN PASSWORD %s;
+		GRANT telemetry_readers TO $1;
+	`,
+		pq.QuoteLiteral(pgRolePassword)), tenantRole)
 	if err != nil {
 		return fmt.Errorf("failed to create database role: %w", err)
 	}
