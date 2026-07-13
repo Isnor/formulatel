@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.0](https://github.com/Isnor/formulatel/compare/formulatel-v0.0.3...formulatel-v0.1.0) (2026-07-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* authenticated telemetry streams ([#52](https://github.com/Isnor/formulatel/issues/52))
+
+### Features
+
+* authenticated telemetry streams ([#52](https://github.com/Isnor/formulatel/issues/52)) ([ad5f218](https://github.com/Isnor/formulatel/commit/ad5f218b252f1c1709689a8c929b31c360c9738c))
+
 ## [0.0.3](https://github.com/Isnor/formulatel/compare/formulatel-v0.0.2...formulatel-v0.0.3) (2026-07-08)
 
 
