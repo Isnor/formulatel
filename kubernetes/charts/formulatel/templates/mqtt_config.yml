@@ -34,5 +34,5 @@ data:
     # Queries
     auth_opt_pg_userquery SELECT password_hash FROM auth.accounts WHERE username = $1 LIMIT 1
     auth_opt_pg_superquery SELECT COUNT(*) FROM auth.accounts WHERE username = $1 AND is_admin = true
-    auth_opt_pg_aclquery SELECT topic FROM auth.mqtt_acls WHERE username = $1 AND (rw = $2 OR rw = 3)
+    auth_opt_pg_aclquery SELECT topic FROM auth.mqtt_acls JOIN auth.accounts ON mqtt_acls.account_id=accounts.id WHERE username = $1 AND (access_level >= $2)
     auth_opt_hasher bcrypt

@@ -30,9 +30,9 @@ local_resource(
     # "LOG_LEVEL": "debug",
     # "FORMULATEL_CAPTURE_PACKETS": "true",
     "MQTT_BROKER": "ws://localhost:9001",
-    "FORMULATEL_USERNAME": "tenant_foobar5_reader",
-    "FORMULATEL_TENANT_ID": "7",
-    "FORMULATEL_TOKEN": "",
+    "FORMULATEL_USERNAME": "yimmy", # replace with the username returned from the admin CLI
+    "FORMULATEL_TENANT_ID": "2", # replace with the tenant ID returned from the admin CLI
+    "FORMULATEL_TOKEN": "", # replace with the token returned from the admin CLI
   },
   labels=["formulatel"]
 )
