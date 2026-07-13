@@ -6,7 +6,7 @@ global:
 persist:
   image: ghcr.io/isnor/formulatel/persist
   tag: main
-  replicas: 1
+  replicas: 2
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
 # db-migrate
@@ -84,10 +84,3 @@ grafana:
       secretKeyRef:
         name: formulatel-db-user-grafana-admin
         key: password
-
-# mosquitto config - these values are passed to the `mosquitto` chart
-mosquitto:
-  service:
-    ports:
-      websocket:
-        enabled: true

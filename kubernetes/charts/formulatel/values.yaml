@@ -18,14 +18,14 @@ persist:
 # db-migrate
 migrate:
   enabled: true
-  db_secret_name: formulatel-db-secrets
+  db_secret_name: ''
   image: ghcr.io/isnor/formulatel/timescaledb-migrations
   tag: main
 
 # configuration values used in multiple templates
 # db values
 db:
-  name: formulatel
+  name: ''
 
 ssl:
   enabled: false
@@ -43,3 +43,55 @@ mqtt_ingress:
   hostname: '' # host to route requests from
   port: 9001 # websocket port of mosquitto
   service_name: formulatel-mosquitto # name of the mqtt broker service deployed in the cluster
+
+# this app-template configuration uses https://github.com/bjw-s-labs/helm-charts to deploy a
+# mosquitto service that uses a custom mosquitto image ghcr.io/lhns/mosquitto-go-auth
+app-template:
+  global:
+    nameOverride: mosquitto
+  controllers:
+    mosquitto:
+      type: deployment
+      replicas: 1
+      containers:
+        main:
+          image:
+            repository: ghcr.io/lhns/mosquitto-go-auth
+            tag: 3.5.0
+            pullPolicy: IfNotPresent
+          args:
+            - mosquitto
+            - -c
+            - /etc/mosquitto/mosquitto.conf
+
+  service:
+    main:
+      controller: mosquitto
+      type: ClusterIP
+      ports:
+        # TODO: we don't need to expose this port outside the cluster anymore
+        mqtt:
+          enabled: true
+          port: 1883
+          protocol: TCP
+        websocket:
+          enabled: true
+          port: 9001
+          protocol: TCP
+
+  # config map for the mosquitto.conf and a PVC for data persistence
+  persistence:
+    config:
+      enabled: true
+      type: configMap
+      name: formulatel-formulatel-mosquitto-custom-config
+      globalMounts:
+        - path: /etc/mosquitto/mosquitto.conf
+          subPath: mosquitto.conf
+    data:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 2Gi
+      type: "persistentVolumeClaim"
+      globalMounts:
+        - path: /mosquitto/data

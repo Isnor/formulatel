@@ -40,6 +40,10 @@ spec:
                 secretKeyRef:
                   name: formulatel-db-user-persist
                   key: port
+            - name: MQTT_CLIENT_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
             - name: DB_NAME
               value: {{ .Values.db.name | quote }}
             - name: MQTT_BROKER

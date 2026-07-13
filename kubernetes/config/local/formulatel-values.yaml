@@ -6,7 +6,7 @@ global:
 persist:
   image: formulatel/persist
   tag: latest
-  replicas: 1
+  replicas: 2
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
 # db-migrate
@@ -69,6 +69,28 @@ grafana:
           url: http://jaeger:16686
 
   grafana.ini:
-    auth.anonymous:
-      enabled: true
-      org_role: Admin
+    # auth.anonymous:
+    #   enabled: true
+    #   org_role: Admin
+
+    adminUser: grafana
+    adminPassword: grafana
+
+    database:
+      type: postgres
+      ssl_mode: disable
+      instrument_queries: true
+      host: 'timescaledb:5432'
+      name: postgres
+      user: postgres
+
+  envValueFrom:
+    GF_DATABASE_USER:
+      secretKeyRef:
+        name: formulatel-db-user-persist
+        key: username
+
+    GF_DATABASE_PASSWORD:
+      secretKeyRef:
+        name: formulatel-db-user-persist
+        key: password

@@ -40,6 +40,14 @@ flowchart LR
   G <--Analysis--> DB
 ```
 
+There are a number of directories in this repository:
+
+- `formulatel/` - the Go module containing the source code for `ingest`, `persist`, and all of the title data formats.
+- `kubernetes/` - k8s manifests and a helm chart for deploying `formulatel` and its dependencies, including the `formulatel` Grafana dashboards.
+- `migrations/` - database schema migrations
+- `protobuf/` - protocol buffer definitions that define the `formulatel` data model
+- `terraform/` - a minimal terraform module that deploys a VM to OCI, which has a generous free tier.
+
 ## Development
 
 ### Using tilt
@@ -53,7 +61,7 @@ This project uses [Tilt](https://tilt.dev).
 
 ### Sans k8s
 
-Kubernetes isn't a requirement for developing or running `formulatel`, but it is a convenient way to launch an MQTT broker, a datastore, and Grafana instance. If you have your own Grafana, postgres instance, and MQTT broker to connect to or are interested in writing a non-MQTT `ingest`, you can build and run the `forumlatel` tools locally as long as you have Golang installed:
+Kubernetes isn't a requirement for developing or running `formulatel`, but it is a convenient way to launch an MQTT broker, a datastore, and Grafana instance. If you have your own Grafana, postgres instance, and MQTT broker to connect to or are interested in writing a non-MQTT `ingest`, you can build and run the `formulatel` tools locally as long as you have Golang installed:
 
 * `make build`   - builds the protobufs and the binaries for `ingest`, `persist`, and `replay`.
 * `./out/ingest` - run the `ingest` binary (assuming you are in the root of the repository) to read telemetry from your game
@@ -77,6 +85,17 @@ The `formulatel` dashboards can be imported into a locally running Grafana using
 `make static-dashboard`
 
 This requires `curl`.
+
+### Formulatel tenants
+
+If you are running the `formulatel` chart with MQTT auth, you will need to create a username and password for ingest to authenticate with the broker. To do this, you can use the `formulatel admin` tool to create a tenant and a user for that tenant:
+
+```bash
+make
+./out/admin --admin-password=`kubectl get secret --namespace=formulatel formulatel-grafana -o yaml | yq -r '.data["admin-password"]' | base64 -d` --connstring='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' tenant create --name=foobar --slug=foobar
+```
+
+Then you can use the output role and token to authenticate with ingest and send telemetry.
 
 ## Goals
 
