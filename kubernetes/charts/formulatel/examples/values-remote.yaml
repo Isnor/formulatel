@@ -1,42 +1,56 @@
+# this is an example of a values.yaml that can be used to deploy a more production-like
+# environment (SSL enabled, MQTT auth enabled, references some resources that need to be
+# deployed irrespective of this chart)
 
 global:
   namespace: formulatel
 
+db:
+  name: formulatel
+
 # persist config
 persist:
-  image: formulatel/persist
-  tag: latest
+  tag: 0.1.0
   replicas: 2
-  mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
+  mqtt_broker: 'tcp://formulatel-mosquitto:1883'
 
 # db-migrate
 migrate:
   enabled: true
-  # for local development, we'll reuse a single secret that contains the superuser credentials
-  db_secret_name: formulatel-db-user-persist
-  image: formulatel/timescaledb-migrations
-  tag: latest
-
-# configuration values used in multiple templates
-# db values
-db:
-  name: postgres
+  tag: 0.1.0
+  db_secret_name: formulatel-db-secrets
 
 ssl:
-  enabled: false
+  enabled: true
+  cluster_issuer: formulatel-formulatel-letsencrypt-issuer
 
 # grafana_ingress sets up an Ingress to allow web traffic into our `formulatel-grafana` service
 grafana_ingress:
-  enabled: false
+  enabled: true
+  hostname: dashboard.formula.tel # host to route requests from
+  port: 80 # port that Grafana exposes
+  service_name: formulatel-grafana # name of the grafana service deployed in the cluster
 
 mqtt_ingress:
-  enabled: false
+  enabled: true
+  hostname: mqtt.formula.tel # host to route requests from
+  port: 9001 # websocket port of mosquitto
+  service_name: formulatel-mosquitto # name of the mqtt broker service deployed in the cluster
 
 # sub-chart values
 
 grafana:
   plugins:
     - grafana-mqtt-datasource
+
+  persistence:
+    enabled: true
+
+  # creates the admin user using an existing secret; this chart _does not_ create secrets
+  admin:
+    existingSecret: "formulatel-grafana-admin"
+    userKey: username
+    passwordKey: password
 
   datasources:
     datasources.yaml:
@@ -49,50 +63,26 @@ grafana:
             tlsAuth: false
             clientID: formulatel_grafana
             isDefault: true
-        - name: formulatel_psql
-          type: postgres
-          url: timescaledb:5432
-          user: postgres
-          secureJsonData:
-            password: 'postgres'
-          jsonData:
-            database: postgres
-            sslmode: 'disable'
-            maxOpenConns: 100
-            maxIdleConns: 100
-            maxIdleConnsAuto: true
-            connMaxLifetime: 14400
-            postgresVersion: 1800
-            timescaledb: true
-        - name: formulatel_jaeger
-          type: jaeger
-          url: http://jaeger:16686
 
   grafana.ini:
-    # auth.anonymous:
-    #   enabled: true
-    #   org_role: Admin
-
-    adminUser: grafana
-    adminPassword: grafana
-
     database:
       type: postgres
       ssl_mode: disable
       instrument_queries: true
-      host: 'timescaledb:5432'
-      name: postgres
-      user: postgres
+      host: '10.0.1.38:5432'
+      name: grafana
+      # log_queries: true
 
+  # this secret needs to be created
   envValueFrom:
     GF_DATABASE_USER:
       secretKeyRef:
-        name: formulatel-db-user-persist
+        name: formulatel-db-user-grafana-admin
         key: username
 
     GF_DATABASE_PASSWORD:
       secretKeyRef:
-        name: formulatel-db-user-persist
+        name: formulatel-db-user-grafana-admin
         key: password
 
 
@@ -104,14 +94,16 @@ app-template:
           env:
             - name: MOSQUITTO_DB_USERNAME
               valueFrom:
+                # this secret needs to be created
                 secretKeyRef:
-                  name: formulatel-db-user-persist
+                  name: formulatel-db-user-mosquitto-broker
                   key: username
             - name: MOSQUITTO_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: formulatel-db-user-persist
+                  name: formulatel-db-user-mosquitto-broker
                   key: password
+
   configMaps:
     mosquitto-template:
       enabled: true
@@ -136,9 +128,9 @@ app-template:
           auth_opt_backends postgres
 
           # Postgres Integration
-          auth_opt_pg_host timescaledb
+          auth_opt_pg_host 10.0.1.38
           auth_opt_pg_port 5432
-          auth_opt_pg_dbname postgres
+          auth_opt_pg_dbname formulatel
           auth_opt_pg_user ${MOSQUITTO_DB_USERNAME}
           auth_opt_pg_password ${MOSQUITTO_DB_PASSWORD}
           auth_opt_pg_sslmode disable

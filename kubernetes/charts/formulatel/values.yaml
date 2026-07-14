@@ -53,8 +53,21 @@ app-template:
     mosquitto:
       type: deployment
       replicas: 1
+      # this init container is kind of a hack to substitute placeholders in the
+      # mosquitto.conf with secrets from k8s.
+      initContainers:
+        config-renderer:
+          image:
+            repository: alpine
+            tag: 3.24
+            pullPolicy: IfNotPresent
+          command: ['sh', '-c']
+          args:
+            - |
+              apk add --no-cache envsubst
+              envsubst < /template/mosquitto.conf.tmpl > /etc/mosquitto/mosquitto.conf
       containers:
-        main:
+        mosquitto:
           image:
             repository: ghcr.io/lhns/mosquitto-go-auth
             tag: 3.5.0
@@ -65,7 +78,7 @@ app-template:
             - /etc/mosquitto/mosquitto.conf
 
   service:
-    main:
+    mosquitto:
       controller: mosquitto
       type: ClusterIP
       ports:
@@ -79,15 +92,69 @@ app-template:
           port: 9001
           protocol: TCP
 
-  # config map for the mosquitto.conf and a PVC for data persistence
-  persistence:
-    config:
+  configMaps:
+    mosquitto-template:
       enabled: true
+      data: # minimal mosquitto conf; users of the chart need to override this with their config
+        mosquitto.conf.tmpl: |
+          persistence true
+          persistence_location /mosquitto/data/
+          autosave_interval 1800
+          per_listener_settings true
+
+          listener 1883 0.0.0.0
+          protocol mqtt
+          allow_anonymous true
+
+          # listener 9001 0.0.0.0
+          # protocol websockets
+          # allow_anonymous false
+
+          # # Plugin Binding
+          # auth_plugin /mosquitto/go-auth.so
+          # auth_opt_log_level debug
+          # auth_opt_backends postgres
+
+          # # Postgres Integration
+          # auth_opt_pg_host timescaledb
+          # auth_opt_pg_port 5432
+          # auth_opt_pg_dbname postgres
+          # auth_opt_pg_user ${MOSQUITTO_DB_USERNAME}
+          # auth_opt_pg_password ${MOSQUITTO_DB_PASSWORD}
+          # auth_opt_pg_sslmode disable
+
+          # # Queries
+          # auth_opt_pg_userquery SELECT password_hash FROM auth.accounts WHERE username = $1 LIMIT 1
+          # auth_opt_pg_superquery SELECT COUNT(*) FROM auth.accounts WHERE username = $1 AND is_admin = true
+          # auth_opt_pg_aclquery SELECT topic FROM auth.mqtt_acls JOIN auth.accounts ON mqtt_acls.account_id=accounts.id WHERE username = $1 AND (access_level >= $2)
+          # auth_opt_hasher bcrypt
+
+  # config map for the mosquitto.conf and a PVC for data persistence
+  # the config-template and config-directory are created as an implementation
+  # detail for setting up mosquitto.conf with sensitive information
+  persistence:
+    # this is part of the funny business we're doing to substitute sensitive data
+    # into the mosquitto.conf file. config-renderer starts up and replaces strings
+    # in the configMap data and writes the result to /etc/mosquitto/
+    mosquitto-config-template:
       type: configMap
-      name: formulatel-formulatel-mosquitto-custom-config
-      globalMounts:
-        - path: /etc/mosquitto/mosquitto.conf
-          subPath: mosquitto.conf
+      identifier: mosquitto-template
+      advancedMounts:
+        mosquitto:
+          config-renderer:
+            - path: /template
+
+    mosquitto-config-directory:
+      type: emptyDir
+      advancedMounts:
+        mosquitto:
+          config-renderer:
+            - path: /etc/mosquitto/
+          mosquitto:
+            - path: /etc/mosquitto/
+
+    # this PVC is for persistence - if you disable persistence in mosquitto.conf, you can
+    # remove this as well.
     data:
       enabled: true
       accessMode: ReadWriteOnce
