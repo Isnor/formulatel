@@ -1,1 +1,1 @@
-DROP ROLE telemetry_readers;
+DROP ROLE IF EXISTS telemetry_readers;
