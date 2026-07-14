@@ -5,7 +5,7 @@ global:
 # persist config
 persist:
   image: ghcr.io/isnor/formulatel/persist
-  tag: main
+  tag: 0.1.0
   replicas: 2
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
@@ -14,7 +14,7 @@ migrate:
   enabled: false
   db_secret_name: formulatel-db-secrets
   image: ghcr.io/isnor/formulatel/timescaledb-migrations
-  tag: main
+  tag: 0.1.0
 
 # configuration values used in multiple templates
 # db values
@@ -84,3 +84,60 @@ grafana:
       secretKeyRef:
         name: formulatel-db-user-grafana-admin
         key: password
+
+
+app-template:
+  controllers:
+    mosquitto:
+      initContainers:
+        config-renderer:
+          env:
+            - name: MOSQUITTO_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: formulatel-db-user-mosquitto-broker
+                  key: username
+            - name: MOSQUITTO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: formulatel-db-user-mosquitto-broker
+                  key: password
+
+  configMaps:
+    mosquitto-template:
+      enabled: true
+      data:
+        # TODO: pg host, db name, and port should only need to be configured once
+        # by the user and this is a second place where they need to define them
+        mosquitto.conf.tmpl: |
+          persistence true
+          persistence_location /mosquitto/data/
+          autosave_interval 1800
+          per_listener_settings true
+
+          listener 1883 0.0.0.0
+          protocol mqtt
+          allow_anonymous true
+
+          listener 9001 0.0.0.0
+          protocol websockets
+          allow_anonymous false
+
+          # Plugin Binding
+          auth_plugin /mosquitto/go-auth.so
+          auth_opt_log_level debug
+          auth_opt_backends postgres
+
+          # Postgres Integration
+          auth_opt_pg_host 10.0.1.38
+          auth_opt_pg_port 5432
+          auth_opt_pg_dbname formulatel
+          auth_opt_pg_user ${MOSQUITTO_DB_USERNAME}
+          auth_opt_pg_password ${MOSQUITTO_DB_PASSWORD}
+          auth_opt_pg_sslmode disable
+
+          # Queries
+          auth_opt_pg_userquery SELECT password_hash FROM auth.accounts WHERE username = $1 LIMIT 1
+          auth_opt_pg_superquery SELECT COUNT(*) FROM auth.accounts WHERE username = $1 AND is_admin = true
+          auth_opt_pg_aclquery SELECT topic FROM auth.mqtt_acls JOIN auth.accounts ON mqtt_acls.account_id=accounts.id WHERE username = $1 AND (access_level >= $2)
+          auth_opt_hasher bcrypt
