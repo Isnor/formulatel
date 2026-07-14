@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/Isnor/formulatel/compare/timescaledb-migrations-v0.1.0...timescaledb-migrations-v0.1.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* mosquitto configuration ([#55](https://github.com/Isnor/formulatel/issues/55)) ([df8fb96](https://github.com/Isnor/formulatel/commit/df8fb96c120e04902196c86dd0d1a18d33e661c7))
+
 ## [0.1.0](https://github.com/Isnor/formulatel/compare/timescaledb-migrations-v0.0.3...timescaledb-migrations-v0.1.0) (2026-07-13)
 
 
