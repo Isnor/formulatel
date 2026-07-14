@@ -1,57 +1,41 @@
-
 global:
   namespace: formulatel
 
 # persist config
 persist:
-  image: ghcr.io/isnor/formulatel/persist
-  tag: 0.1.0
-  replicas: 2
+  image: formulatel/persist
+  tag: latest
+  replicas: 1
   mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
 
 # db-migrate
 migrate:
-  enabled: false
-  db_secret_name: formulatel-db-secrets
-  image: ghcr.io/isnor/formulatel/timescaledb-migrations
-  tag: 0.1.0
+  enabled: true
+  # this secret must exist and must have "username" and "password" fields
+  db_secret_name: formulatel-db-user-persist
+  image: formulatel/timescaledb-migrations
+  tag: latest
 
 # configuration values used in multiple templates
 # db values
 db:
-  name: formulatel
+  name: postgres
 
 ssl:
-  enabled: true
-  cluster_issuer: formulatel-formulatel-letsencrypt-issuer
+  enabled: false
 
 # grafana_ingress sets up an Ingress to allow web traffic into our `formulatel-grafana` service
 grafana_ingress:
-  enabled: true
-  hostname: dashboard.formula.tel # host to route requests from
-  port: 80 # port that Grafana exposes
-  service_name: formulatel-grafana # name of the grafana service deployed in the cluster
+  enabled: false
 
 mqtt_ingress:
-  enabled: true
-  hostname: mqtt.formula.tel # host to route requests from
-  port: 9001 # websocket port of mosquitto
-  service_name: formulatel-mosquitto # name of the mqtt broker service deployed in the cluster
+  enabled: false
 
 # sub-chart values
 
 grafana:
   plugins:
     - grafana-mqtt-datasource
-
-  persistence:
-    enabled: true
-
-  # creates the admin user using an existing secret
-  admin:
-    existingSecret: "formulatel-grafana-admin"
-    userKey: username
-    passwordKey: password
 
   datasources:
     datasources.yaml:
@@ -64,44 +48,40 @@ grafana:
             tlsAuth: false
             clientID: formulatel_grafana
             isDefault: true
+        - name: formulatel_psql
+          type: postgres
+          url: timescaledb:5432
+          user: postgres
+          secureJsonData:
+            password: 'postgres'
+          jsonData:
+            database: postgres
+            sslmode: 'disable'
+            maxOpenConns: 100
+            maxIdleConns: 100
+            maxIdleConnsAuto: true
+            connMaxLifetime: 14400
+            postgresVersion: 1800
+            timescaledb: true
+        - name: formulatel_jaeger
+          type: jaeger
+          url: http://jaeger:16686
 
   grafana.ini:
+    auth.anonymous:
+      enabled: true
+      org_role: Admin
+
     database:
       type: postgres
       ssl_mode: disable
-      instrument_queries: true
-      host: '10.0.1.38:5432'
-      name: grafana
-
-  envValueFrom:
-    GF_DATABASE_USER:
-      secretKeyRef:
-        name: formulatel-db-user-grafana-admin
-        key: username
-
-    GF_DATABASE_PASSWORD:
-      secretKeyRef:
-        name: formulatel-db-user-grafana-admin
-        key: password
+      host: 'timescaledb:5432'
+      name: postgres
+      user: postgres
+      password: postgres
 
 
 app-template:
-  controllers:
-    mosquitto:
-      initContainers:
-        config-renderer:
-          env:
-            - name: MOSQUITTO_DB_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: formulatel-db-user-mosquitto-broker
-                  key: username
-            - name: MOSQUITTO_DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: formulatel-db-user-mosquitto-broker
-                  key: password
-
   configMaps:
     mosquitto-template:
       enabled: true
@@ -126,11 +106,11 @@ app-template:
           auth_opt_backends postgres
 
           # Postgres Integration
-          auth_opt_pg_host 10.0.1.38
+          auth_opt_pg_host timescaledb
           auth_opt_pg_port 5432
-          auth_opt_pg_dbname formulatel
-          auth_opt_pg_user ${MOSQUITTO_DB_USERNAME}
-          auth_opt_pg_password ${MOSQUITTO_DB_PASSWORD}
+          auth_opt_pg_dbname postgres
+          auth_opt_pg_user postgres
+          auth_opt_pg_password postgres
           auth_opt_pg_sslmode disable
 
           # Queries

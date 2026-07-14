@@ -106,6 +106,29 @@ app-template:
           protocol mqtt
           allow_anonymous true
 
+          # listener 9001 0.0.0.0
+          # protocol websockets
+          # allow_anonymous false
+
+          # # Plugin Binding
+          # auth_plugin /mosquitto/go-auth.so
+          # auth_opt_log_level debug
+          # auth_opt_backends postgres
+
+          # # Postgres Integration
+          # auth_opt_pg_host timescaledb
+          # auth_opt_pg_port 5432
+          # auth_opt_pg_dbname postgres
+          # auth_opt_pg_user ${MOSQUITTO_DB_USERNAME}
+          # auth_opt_pg_password ${MOSQUITTO_DB_PASSWORD}
+          # auth_opt_pg_sslmode disable
+
+          # # Queries
+          # auth_opt_pg_userquery SELECT password_hash FROM auth.accounts WHERE username = $1 LIMIT 1
+          # auth_opt_pg_superquery SELECT COUNT(*) FROM auth.accounts WHERE username = $1 AND is_admin = true
+          # auth_opt_pg_aclquery SELECT topic FROM auth.mqtt_acls JOIN auth.accounts ON mqtt_acls.account_id=accounts.id WHERE username = $1 AND (access_level >= $2)
+          # auth_opt_hasher bcrypt
+
   # config map for the mosquitto.conf and a PVC for data persistence
   # the config-template and config-directory are created as an implementation
   # detail for setting up mosquitto.conf with sensitive information

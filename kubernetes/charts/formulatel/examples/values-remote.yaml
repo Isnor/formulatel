@@ -1,25 +1,24 @@
+# this is an example of a values.yaml that can be used to deploy a more production-like
+# environment (SSL enabled, MQTT auth enabled, references some resources that need to be
+# deployed irrespective of this chart)
 
 global:
   namespace: formulatel
 
+db:
+  name: formulatel
+
 # persist config
 persist:
-  image: ghcr.io/isnor/formulatel/persist
   tag: 0.1.0
   replicas: 2
-  mqtt_broker: 'tcp://formulatel-mosquitto:1883' # address to the MQTT broker that persist talks to
+  mqtt_broker: 'tcp://formulatel-mosquitto:1883'
 
 # db-migrate
 migrate:
-  enabled: false
-  db_secret_name: formulatel-db-secrets
-  image: ghcr.io/isnor/formulatel/timescaledb-migrations
+  enabled: true
   tag: 0.1.0
-
-# configuration values used in multiple templates
-# db values
-db:
-  name: formulatel
+  db_secret_name: formulatel-db-secrets
 
 ssl:
   enabled: true
@@ -47,7 +46,7 @@ grafana:
   persistence:
     enabled: true
 
-  # creates the admin user using an existing secret
+  # creates the admin user using an existing secret; this chart _does not_ create secrets
   admin:
     existingSecret: "formulatel-grafana-admin"
     userKey: username
@@ -72,7 +71,9 @@ grafana:
       instrument_queries: true
       host: '10.0.1.38:5432'
       name: grafana
+      # log_queries: true
 
+  # this secret needs to be created
   envValueFrom:
     GF_DATABASE_USER:
       secretKeyRef:
@@ -93,6 +94,7 @@ app-template:
           env:
             - name: MOSQUITTO_DB_USERNAME
               valueFrom:
+                # this secret needs to be created
                 secretKeyRef:
                   name: formulatel-db-user-mosquitto-broker
                   key: username

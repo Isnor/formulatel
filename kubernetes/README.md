@@ -36,7 +36,7 @@ kubectl create secret generic formulatel-db-user-grafana-viewer --from-literal='
 
 Create secrets for all of the users, i.e. `formulatel-db-user-{grafana-admin, grafana-viewer, mosquitto-broker, formulatel-persist}`
 
-**Note**: The db-migrate and persist passwords are used in a connection string, so it's best to URL encode this value.
+**Note**: The db-migrate and persist passwords are used in a connection string, so it's best to URL encode this value. The mosquitto password, on the other hand, should ***NOT*** be URL encoded, as it is written verbatim into the mosquitto.conf file.
 
 **Note**: The `10.0.1.38` comes from k3s; it is the IP of the default CNI that gets setup. If your node isn't using k3s, that IP might not make sense.
 
