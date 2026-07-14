@@ -1,4 +1,5 @@
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
+allow_k8s_contexts('kind-formulatel') # replace this with your local context name
 
 helm_repo("open-telemetry", resource_name="otel_helm_repo", url="https://open-telemetry.github.io/opentelemetry-helm-charts", labels=["helm"])
 helm_repo("jaegertracing", resource_name="jager_helm_repo", url="https://jaegertracing.github.io/helm-charts", labels=["helm"])

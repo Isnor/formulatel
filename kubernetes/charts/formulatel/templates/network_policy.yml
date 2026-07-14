@@ -4,14 +4,13 @@ metadata:
   name: formulatel-mosquitto-network-guard
   namespace: formulatel
 spec:
-  # Target the Mosquitto pod deployed by the bjw-s app-template chart
   podSelector:
     matchLabels:
       app.kubernetes.io/name: formulatel-mosquitto
   policyTypes:
     - Ingress
   ingress:
-    # Rule A: Allow ONLY your persist service to connect to the anonymous raw MQTT port
+    # Allow persist and grafana service to connect to the anonymous raw MQTT port
     - from:
         - podSelector:
             matchLabels:
