@@ -83,7 +83,8 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 
 	// start a transaction to add:
 	// - a new tenant
-	// - a role for the datasource so we can add row-level security
+	// - a role for the datasource
+	// - a read-only account for the tenant's live-viz
 	// - an account for the user
 	// - ACL for the user's topic
 	tx, err := t.DB.Begin(ctx)
@@ -103,6 +104,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	}
 
 	// we're creating a role per-org to facilitate row-level-security
+	// TODO: what if slug has weird characters? It must be sanitized
 	tenantRole := fmt.Sprintf("tenant_%s", request.Slug)
 	pgRolePassword, err := password.Generate(32, 4, 4, false, true)
 	if err != nil {
@@ -111,7 +113,10 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	slog.InfoContext(ctx, "created password")
 
 	_, err = tx.Exec(ctx,
-		fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD %s;", tenantRole, pq.QuoteLiteral(pgRolePassword)),
+		fmt.Sprintf(`
+		CREATE ROLE %s WITH LOGIN PASSWORD %s;
+		GRANT telemetry_readers TO %s;
+		`, tenantRole, pq.QuoteLiteral(pgRolePassword), tenantRole),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create database role: %w", err)
