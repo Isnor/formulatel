@@ -73,8 +73,8 @@ grafana:
     #   enabled: true
     #   org_role: Admin
 
-    adminUser: grafana
-    adminPassword: grafana
+    # adminUser: grafana
+    # adminPassword: grafana
 
     database:
       type: postgres
