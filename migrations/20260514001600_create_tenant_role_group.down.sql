@@ -1,1 +1,3 @@
-DROP ROLE IF EXISTS telemetry_readers;
+-- the down script to remove the tenant role is causing us grief in testing because it persists
+-- through runs and across tests because it is "instance-level". We won't actually use it
+-- in practice, so we've removed it.

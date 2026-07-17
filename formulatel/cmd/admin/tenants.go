@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/url"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/jackc/pgx/v5"
@@ -36,6 +35,17 @@ type CreateOrgRequest struct {
 	URL      string
 	Database string
 	MQTTURI  string
+}
+
+type CreateUserRequest struct {
+	Username string
+	TenantID int
+	// the transaction to add this query to; pass nil to start a new transaction
+	Transaction pgx.Tx
+}
+
+type CreateUserResponse struct {
+	Token string
 }
 
 // CreateOrg uses the Grafana SDK to create a new Org
@@ -73,7 +83,8 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 
 	// start a transaction to add:
 	// - a new tenant
-	// - a role for the datasource so we can add row-level security
+	// - a role for the datasource
+	// - a read-only account for the tenant's live-viz
 	// - an account for the user
 	// - ACL for the user's topic
 	tx, err := t.DB.Begin(ctx)
@@ -93,6 +104,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	}
 
 	// we're creating a role per-org to facilitate row-level-security
+	// TODO: what if slug has weird characters? It must be sanitized
 	tenantRole := fmt.Sprintf("tenant_%s", request.Slug)
 	pgRolePassword, err := password.Generate(32, 4, 4, false, true)
 	if err != nil {
@@ -101,7 +113,10 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	slog.InfoContext(ctx, "created password")
 
 	_, err = tx.Exec(ctx,
-		fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD %s;", tenantRole, pq.QuoteLiteral(pgRolePassword)),
+		fmt.Sprintf(`
+		CREATE ROLE %s WITH LOGIN PASSWORD %s;
+		GRANT telemetry_readers TO %s;
+		`, tenantRole, pq.QuoteLiteral(pgRolePassword), tenantRole),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create database role: %w", err)
@@ -201,36 +216,14 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 	// TODO: maybe this should happen in the `tenant user create` command or something
 	// create an "account" for the telemetry stream
 	userName := request.Username
-	userToken, err := password.Generate(64, 4, 4, false, true)
+	user, err := t.CreateUser(ctx, CreateUserRequest{
+		Username:    userName,
+		TenantID:    int(createdOrgID),
+		Transaction: tx,
+	})
 	if err != nil {
-		return fmt.Errorf("failed generating password :( - %w", err)
-	}
-	userToken = "ftel-" + userToken
-	slog.InfoContext(ctx, "created password")
-
-	_, err = tx.Exec(ctx,
-		fmt.Sprintf(
-			`
-			-- add an account and an ACL to allow that account to read and write
-			WITH new_account AS (
-					INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human)
-					VALUES ($1, $2, %s, true)
-					RETURNING id
-			)
-			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
-			SELECT
-					id,
-					'formulatel/' || $1 || '/' || $2 || '/#',
-					3
-			FROM new_account;
-			`,
-			pq.QuoteLiteral(string(mustHash(userToken))),
-		),
-		createdOrgID,
-		userName,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to register account and MQTT ACL: %w", err)
+		slog.ErrorContext(ctx, "failed creating user", "error", err)
+		return err
 	}
 
 	// If this succeeds, tx.Rollback() becomes a safe no-op.
@@ -252,37 +245,77 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		"mqtt_user",
 		userName,
 		"token",
-		userToken,
+		user.Token,
 	)
 	return nil
 }
 
-func (t *TenantManager) CreateUser(ctx context.Context, tenant int, user string) error {
-	//
-	return nil
+// CreateUser adds a row to `auth.accounts` and a corresponding read/write ACL to `auth.mqtt_acls`
+func (t *TenantManager) CreateUser(ctx context.Context, request CreateUserRequest) (*CreateUserResponse, error) {
+	userToken, err := password.Generate(64, 4, 4, false, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed generating password :( - %w", err)
+	}
+	userToken = "ftel-" + userToken
+	slog.InfoContext(ctx, "created password")
+
+	var tx pgx.Tx = request.Transaction
+	if tx == nil {
+		tx, err = t.DB.Begin(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open database transaction: %w", err)
+		}
+	}
+
+	_, err = tx.Exec(ctx,
+		fmt.Sprintf(
+			`
+			-- add an account and an ACL to allow that account to read and write
+			WITH new_account AS (
+					INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human)
+					VALUES ($1, $2, %s, true)
+					RETURNING id
+			)
+			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
+			SELECT
+					id,
+					'formulatel/' || $1 || '/' || $2 || '/#',
+					3
+			FROM new_account;
+			`,
+			pq.QuoteLiteral(string(mustHash(userToken))),
+		),
+		request.TenantID,
+		request.Username,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register account and MQTT ACL: %w", err)
+	}
+	// if the user didn't pass in a transaction then commit immediately
+	if request.Transaction == nil {
+		err = tx.Commit(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed creating user account and ACL %w", err)
+		}
+		return &CreateUserResponse{
+			Token: userToken,
+		}, nil
+	}
+
+	return &CreateUserResponse{
+		Token: userToken,
+	}, nil
 }
 
-func NewTenantManager(grafanaAdminPassword string, dbConnString string) (*TenantManager, error) {
+func NewTenantManager(grafanaOpts *grafanasdk.TransportConfig, dbConnString string) (*TenantManager, error) {
 	conn, err := pgx.Connect(context.Background(), dbConnString)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to database: %w", err)
 	}
 
 	return &TenantManager{
-		DB: conn,
-		Grafana: grafanasdk.NewHTTPClientWithConfig(strfmt.Default, &grafanasdk.TransportConfig{
-			Host:     "localhost:3000",
-			BasePath: "/api",
-			Schemes:  []string{"http"},
-			// don't do this; service accounts are inherently org-scoped and can't create orgs
-			// HTTPHeaders: map[string]string{
-			// 	"Authentication": fmt.Sprintf("Bearer %s", apiKey),
-			// },
-			// don't try this; service account keys go in the Auth header, API keys are deprecated
-			// APIKey:    apiKey,
-			BasicAuth: url.UserPassword("admin", grafanaAdminPassword),
-			OrgID:     1,
-		}),
+		DB:      conn,
+		Grafana: grafanasdk.NewHTTPClientWithConfig(strfmt.Default, grafanaOpts),
 	}, nil
 }
 
@@ -392,10 +425,19 @@ func CreateUser() *cli.Command {
 			tenant := cmd.Int("tenant")
 			username := cmd.String("username")
 
-			slog.Info("creating tenant", "name", tenant, "username", username)
+			slog.Info("creating user", "name", tenant, "username", username)
 
-			return t.CreateUser(ctx, tenant, username)
+			user, err := t.CreateUser(ctx, CreateUserRequest{
+				Username: username,
+				TenantID: tenant,
+			})
 
+			if err != nil {
+				slog.ErrorContext(ctx, "⚠️ failed creating user", "error", err)
+				return err
+			}
+			slog.InfoContext(ctx, "✅ created user", "username", username, "token", user.Token)
+			return nil
 		},
 	}
 }

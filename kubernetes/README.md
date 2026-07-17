@@ -4,7 +4,7 @@ This document is very rough and contains some of the manual setup required for t
 
 ## download the kubeconfig
 
-After the node has been provisioned and you can access it via SSH, use `scp` to download the `kubeconfig` for the server and update the context name, server-name, and user:
+After the node has been provisioned and you can access it via SSH, use `ssh` to download the `kubeconfig` for the server and update the context name, server-name, and user:
 
 ```bash
 ssh formulatel.oci "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/formulatel-staging-config
