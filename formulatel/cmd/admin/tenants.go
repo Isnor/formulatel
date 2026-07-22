@@ -103,10 +103,9 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		return fmt.Errorf("failed to create tenant row: %w", err)
 	}
 
-	// we're creating a role per-org to facilitate row-level-security
-	// TODO: what if slug has weird characters? It must be sanitized
-	tenantRole := fmt.Sprintf("tenant_%s", request.Slug)
-	pgRolePassword, err := password.Generate(32, 4, 4, false, true)
+	// we're creating a role per-org
+	tenantRole := fmt.Sprintf("tenant_%d", createdOrgID)
+	pgRolePassword, err := password.Generate(32, 4, 0, false, true)
 	if err != nil {
 		return fmt.Errorf("failed generating password :( - %w", err)
 	}
@@ -200,7 +199,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
 			SELECT
 					id,
-					'formulatel/' || $1 || '/#',
+					'formulatel/+/' || $1 || '/#',
 					1
 			FROM new_account;
 			`,
@@ -252,7 +251,7 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 
 // CreateUser adds a row to `auth.accounts` and a corresponding read/write ACL to `auth.mqtt_acls`
 func (t *TenantManager) CreateUser(ctx context.Context, request CreateUserRequest) (*CreateUserResponse, error) {
-	userToken, err := password.Generate(64, 4, 4, false, true)
+	userToken, err := password.Generate(64, 4, 0, false, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed generating password :( - %w", err)
 	}
@@ -275,11 +274,15 @@ func (t *TenantManager) CreateUser(ctx context.Context, request CreateUserReques
 					INSERT INTO auth.accounts (grafana_org_id, username, password_hash, is_human)
 					VALUES ($1, $2, %s, true)
 					RETURNING id
+			),
+			new_user AS (
+				INSERT INTO telemetry.users (id, tenant_id, username)
+					SELECT id, $1, $2 FROM new_account
 			)
 			INSERT INTO auth.mqtt_acls (account_id, topic, access_level)
 			SELECT
 					id,
-					'formulatel/' || $1 || '/' || $2 || '/#',
+					'formulatel/+/' || $1 || '/' || $2 || '/#',
 					3
 			FROM new_account;
 			`,

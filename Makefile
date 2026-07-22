@@ -21,7 +21,7 @@ migrate:
 	migrate -path ./migrations -database postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable up
 
 live-dashboard:
-	curl -v -H 'Content-Type: application/json' --data @kubernetes/config/dashboards/dashboard-live.json localhost:3000/api/dashboards/db
+	curl -v -u admin:$(shell kubectl get secret --namespace=formulatel formulatel-grafana -o yaml | yq -r '.data["admin-password"]' | base64 -d) -H 'Content-Type: application/json' --data @kubernetes/config/dashboards/dashboard-live.json localhost:3000/api/dashboards/db
 
 static-dashboard:
-	curl -v -H 'Content-Type: application/json' --data @kubernetes/config/dashboards/dashboard-static.json localhost:3000/api/dashboards/db
+	curl -v -u admin:$(shell kubectl get secret --namespace=formulatel formulatel-grafana -o yaml | yq -r '.data["admin-password"]' | base64 -d) -H 'Content-Type: application/json' --data @kubernetes/config/dashboards/dashboard-static.json localhost:3000/api/dashboards/db

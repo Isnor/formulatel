@@ -46,14 +46,14 @@
               "group": "grafana-postgresql-datasource",
               "version": "v0",
               "datasource": {
-                "name": "bfqxwocqg2ewwd"
+                "name": "ffr53wnc5ks1sf"
               },
               "spec": {
-                "dataset": "postgres",
+                "dataset": "formulatel",
                 "editorMode": "code",
                 "format": "table",
                 "rawQuery": true,
-                "rawSql": "SELECT\n  distinct current_lap_time, max(time) as time,\n  'Lap ' || lap_num - 1 || ' (' || current_lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM live_lap_data\nWHERE $__timeFilter(time) AND current_lap_time > 0\ngroup by current_lap_time, lap_num\nORDER BY time ASC;",
+                "rawSql": "SELECT\n  distinct current_lap_time, max(time) as time,\n  'Lap ' || lap_num - 1 || ' (' || current_lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM telemetry.live_lap_data\nWHERE $__timeFilter(time) AND current_lap_time > 0\ngroup by current_lap_time, lap_num\nORDER BY time ASC;",
                 "refId": "Anno",
                 "sql": {
                   "columns": [
@@ -117,13 +117,13 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "builder",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", speed FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", speed FROM telemetry.vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -300,10 +300,10 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "table",
                           "rawQuery": true,
@@ -415,13 +415,13 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "builder",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", rpm FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", rpm FROM telemetry.vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -602,13 +602,13 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "builder",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", gforce_lateral, gforce_longitudinal, gforce_vertical FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", gforce_lateral, gforce_longitudinal, gforce_vertical FROM telemetry.motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -807,13 +807,13 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "builder",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", velocity_x, velocity_y, velocity_z FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", velocity_x, velocity_y, velocity_z FROM telemetry.motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -1008,14 +1008,14 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "time_series",
                           "rawQuery": true,
-                          "rawSql": "SELECT \"time\", throttle, -brake as brake FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", throttle, -brake as brake FROM telemetry.vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -1205,13 +1205,13 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "builder",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", fl_brake_temp AS \"front left\", fr_brake_temp AS \"front right\", bl_brake_temp AS \"back left\", br_brake_temp AS \"back right\" FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", fl_brake_temp AS \"front left\", fr_brake_temp AS \"front right\", bl_brake_temp AS \"back left\", br_brake_temp AS \"back right\" FROM telemetry.vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -1420,13 +1420,13 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "builder",
                           "format": "table",
-                          "rawSql": "SELECT \"time\", yaw FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", yaw FROM telemetry.motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
                           "sql": {
                             "columns": [
                               {
@@ -1607,14 +1607,14 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "table",
                           "rawQuery": true,
-                          "rawSql": "select lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid from session_lap_data \nwhere cast($session_id as VARCHAR) = session_id\nand cast($driver_ID as varchar) = user_id\norder by lap_num",
+                          "rawSql": "select lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid from telemetry.session_lap_data \nwhere cast($session_id as VARCHAR) = session_id\nand cast($driver_ID as varchar) = user_id\norder by lap_num",
                           "sql": {
                             "columns": [
                               {
@@ -1704,10 +1704,10 @@
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
                         "datasource": {
-                          "name": "bfqxwocqg2ewwd"
+                          "name": "ffr53wnc5ks1sf"
                         },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "table",
                           "rawQuery": true,
@@ -2038,14 +2038,14 @@
               "group": "grafana-postgresql-datasource",
               "version": "v0",
               "spec": {
-                "dataset": "postgres",
+                "dataset": "formulatel",
                 "editorMode": "builder",
                 "format": "table",
                 "meta": {
                   "valueField": "session_id"
                 },
-                "query": "SELECT session_id FROM vehicle_data LIMIT 50 ",
-                "rawSql": "SELECT session_id FROM vehicle_data GROUP BY session_id LIMIT 50 ",
+                "query": "SELECT session_id FROM telemetry.vehicle_data LIMIT 50 ",
+                "rawSql": "SELECT session_id FROM telemetry.vehicle_data GROUP BY session_id LIMIT 50 ",
                 "refId": "SQLVariableQueryEditor-VariableQuery",
                 "sql": {
                   "columns": [
@@ -2076,7 +2076,7 @@
             "regex": "",
             "regexApplyTo": "value",
             "sort": "disabled",
-            "definition": "SELECT session_id FROM vehicle_data LIMIT 50 ",
+            "definition": "SELECT session_id FROM telemetry.vehicle_data LIMIT 50 ",
             "options": [],
             "multi": false,
             "includeAll": false,
@@ -2101,12 +2101,12 @@
               "group": "grafana-postgresql-datasource",
               "version": "v0",
               "spec": {
-                "dataset": "postgres",
+                "dataset": "formulatel",
                 "editorMode": "code",
                 "format": "table",
                 "meta": {},
-                "query": "SELECT user_id FROM vehicle_data LIMIT 50 ",
-                "rawSql": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+                "query": "SELECT user_id FROM telemetry.vehicle_data LIMIT 50 ",
+                "rawSql": "SELECT user_id FROM telemetry.vehicle_data LIMIT 50 ",
                 "refId": "SQLVariableQueryEditor-VariableQuery",
                 "sql": {
                   "columns": [
@@ -2134,7 +2134,7 @@
             "regex": "",
             "regexApplyTo": "value",
             "sort": "disabled",
-            "definition": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+            "definition": "SELECT user_id FROM telemetry.vehicle_data LIMIT 50 ",
             "options": [],
             "multi": false,
             "includeAll": false,
