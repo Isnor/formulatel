@@ -38,7 +38,7 @@ func main() {
 	}
 	defer conn.Close()
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug,
 	})))
 
 	ingestConfig.VehicleDataChannel = make(chan *pb.GameTelemetry, 100)
@@ -94,11 +94,11 @@ func main() {
 	}
 	// connect each telemetry channel to an mqtt topic
 	for topic, channel := range map[string]chan *pb.GameTelemetry{
-		prefixTopic("vehicledata/f123", ingestConfig.Username, ingestConfig.TenantID):       ingestConfig.VehicleDataChannel,
-		prefixTopic("motiondata/f123", ingestConfig.Username, ingestConfig.TenantID):        ingestConfig.MotionDataChannel,
-		prefixTopic("currentlapdata/f123", ingestConfig.Username, ingestConfig.TenantID):    ingestConfig.CurrentLapDataChannel,
-		prefixTopic("laptimesdata/f123", ingestConfig.Username, ingestConfig.TenantID):      ingestConfig.LapTimesDataChannel,
-		prefixTopic("extendedwheeldata/f123", ingestConfig.Username, ingestConfig.TenantID): ingestConfig.ExtendedWheelDataChannel,
+		prefixTopic("vehicledata", ingestConfig.Username, ingestConfig.TenantID):       ingestConfig.VehicleDataChannel,
+		prefixTopic("motiondata", ingestConfig.Username, ingestConfig.TenantID):        ingestConfig.MotionDataChannel,
+		prefixTopic("currentlapdata", ingestConfig.Username, ingestConfig.TenantID):    ingestConfig.CurrentLapDataChannel,
+		prefixTopic("laptimesdata", ingestConfig.Username, ingestConfig.TenantID):      ingestConfig.LapTimesDataChannel,
+		prefixTopic("extendedwheeldata", ingestConfig.Username, ingestConfig.TenantID): ingestConfig.ExtendedWheelDataChannel,
 	} {
 		wg.Go(func() {
 			ctx, cancel := context.WithCancel(serverContext)
@@ -120,5 +120,5 @@ func main() {
 
 // prefixTopic prepends org/user to a given topic
 func prefixTopic(topic, user string, tenant int) string {
-	return fmt.Sprintf("formulatel/%d/%s/%s", tenant, user, topic)
+	return fmt.Sprintf("formulatel/f123/%d/%s/%s", tenant, user, topic)
 }

@@ -94,6 +94,14 @@ func main() {
 					// DeleteUser(),
 				},
 			},
+			{
+				Name: "dashboard",
+				Usage: "dashboard management operations",
+				Category: "dashboards",
+				Commands: []*cli.Command{
+					CreateDashboard(),
+				},
+			},
 		},
 	}
 

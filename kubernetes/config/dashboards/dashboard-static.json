@@ -4,21 +4,10 @@
     "kind": "Dashboard",
     "metadata": {
       "name": "gx2vh4",
-      "namespace": "default",
-      "uid": "2f5db16b-c8f2-4536-ab49-4727823089aa",
-      "resourceVersion": "1781816129630997",
       "generation": 2,
-      "creationTimestamp": "2026-06-18T19:54:10Z",
-      "labels": {
-        "grafana.app/deprecatedInternalID": "545170023317504"
-      },
-      "annotations": {
-        "grafana.app/createdBy": "anonymous:0",
-        "grafana.app/folder": "",
-        "grafana.app/saved-from-ui": "Grafana v13.0.2 (3fcdbc5a)",
-        "grafana.app/updatedBy": "anonymous:0",
-        "grafana.app/updatedTimestamp": "2026-06-18T20:55:29Z"
-      }
+      "creationTimestamp": "2026-07-22T16:35:05Z",
+      "labels": {},
+      "annotations": {}
     },
     "spec": {
       "annotations": [
@@ -45,15 +34,12 @@
               "kind": "DataQuery",
               "group": "grafana-postgresql-datasource",
               "version": "v0",
-              "datasource": {
-                "name": "bfqxwocqg2ewwd"
-              },
               "spec": {
-                "dataset": "postgres",
+                "dataset": "formulatel",
                 "editorMode": "code",
                 "format": "table",
                 "rawQuery": true,
-                "rawSql": "SELECT\n  distinct current_lap_time, max(time) as time,\n  'Lap ' || lap_num - 1 || ' (' || current_lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM live_lap_data\nWHERE $__timeFilter(time) AND current_lap_time > 0\ngroup by current_lap_time, lap_num\nORDER BY time ASC;",
+                "rawSql": "SELECT\n  distinct current_lap_time, max(time) as time,\n  'Lap ' || lap_num - 1 || ' (' || current_lap_time || 'ms)' AS text,\n  'lap-marker' AS tags\nFROM telemetry.live_lap_data\nWHERE $__timeFilter(time) AND current_lap_time > 0 AND '$session_id' = live_lap_data.session_id AND live_lap_data.user_id = '$driver_ID'\ngroup by current_lap_time, lap_num\nORDER BY time ASC;",
                 "refId": "Anno",
                 "sql": {
                   "columns": [
@@ -72,6 +58,10 @@
                   ],
                   "limit": 50
                 }
+              },
+              "labels": {
+                "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                "grafana.app/export-datasource-name": "formulatel-postgresql"
               }
             },
             "enable": true,
@@ -116,32 +106,16 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
                           "dataset": "postgres",
-                          "editorMode": "builder",
+                          "editorMode": "code",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", speed FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawQuery": true,
+                          "rawSql": "SELECT time, speed FROM telemetry.vehicle_data WHERE $__timeFilter(time) AND session_id = '$session_id' ORDER BY time DESC",
                           "sql": {
                             "columns": [
                               {
-                                "parameters": [
-                                  {
-                                    "name": "\"time\"",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "speed",
-                                    "type": "functionParameter"
-                                  }
-                                ],
+                                "parameters": [],
                                 "type": "function"
                               }
                             ],
@@ -153,45 +127,16 @@
                                 "type": "groupBy"
                               }
                             ],
-                            "limit": 3000,
-                            "orderBy": {
-                              "property": {
-                                "name": "\"time\"",
-                                "type": "string"
-                              },
-                              "type": "property"
-                            },
-                            "orderByDirection": "DESC",
+                            "limit": 50,
                             "whereJsonTree": {
-                              "children1": [
-                                {
-                                  "id": "9b9889a9-cdef-4012-b456-719e4cf065d0",
-                                  "properties": {
-                                    "field": "session_id",
-                                    "fieldSrc": "field",
-                                    "operator": "equal",
-                                    "value": [
-                                      "$session_id"
-                                    ],
-                                    "valueError": [
-                                      null
-                                    ],
-                                    "valueSrc": [
-                                      "value"
-                                    ],
-                                    "valueType": [
-                                      "text"
-                                    ]
-                                  },
-                                  "type": "rule"
-                                }
-                              ],
-                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "id": "89ab9a8a-0123-4456-b89a-b19f8a57ff33",
                               "type": "group"
-                            },
-                            "whereString": "session_id = '$session_id'"
-                          },
-                          "table": "vehicle_data"
+                            }
+                          }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -206,7 +151,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -216,6 +161,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -299,15 +246,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "table",
                           "rawQuery": true,
-                          "rawSql": "SELECT abs(bl_slip_ratio) as \"back_left\", abs(br_slip_ratio) as \"back_right\", abs(fl_slip_ratio) as \"front_left\", abs(fr_slip_ratio) as \"front_right\" FROM extended_wheel_data where $__timeFilter(\"time\")",
+                          "rawSql": "SELECT abs(bl_slip_ratio) as \"back_left\", abs(br_slip_ratio) as \"back_right\", abs(fl_slip_ratio) as \"front_left\", abs(fr_slip_ratio) as \"front_right\" FROM telemetry.extended_wheel_data where $__timeFilter(time) ORDER BY time DESC",
                           "sql": {
                             "columns": [
                               {
@@ -325,6 +269,10 @@
                             ],
                             "limit": 50
                           }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -339,7 +287,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "stat",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "colorMode": "value",
@@ -388,7 +336,8 @@
                     },
                     "color": {
                       "mode": "thresholds"
-                    }
+                    },
+                    "noValue": "0"
                   },
                   "overrides": []
                 }
@@ -414,32 +363,16 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
                           "dataset": "postgres",
-                          "editorMode": "builder",
+                          "editorMode": "code",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", rpm FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawQuery": true,
+                          "rawSql": "SELECT \"time\", rpm FROM telemetry.vehicle_data WHERE $__timeFilter(time) AND session_id = '$session_id' ORDER BY time",
                           "sql": {
                             "columns": [
                               {
-                                "parameters": [
-                                  {
-                                    "name": "\"time\"",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "rpm",
-                                    "type": "functionParameter"
-                                  }
-                                ],
+                                "parameters": [],
                                 "type": "function"
                               }
                             ],
@@ -451,45 +384,16 @@
                                 "type": "groupBy"
                               }
                             ],
-                            "limit": 3000,
-                            "orderBy": {
-                              "property": {
-                                "name": "\"time\"",
-                                "type": "string"
-                              },
-                              "type": "property"
-                            },
-                            "orderByDirection": "DESC",
+                            "limit": 50,
                             "whereJsonTree": {
-                              "children1": [
-                                {
-                                  "id": "89ba9bab-4567-489a-bcde-f19e4cf17037",
-                                  "properties": {
-                                    "field": "session_id",
-                                    "fieldSrc": "field",
-                                    "operator": "equal",
-                                    "value": [
-                                      "$session_id"
-                                    ],
-                                    "valueError": [
-                                      null
-                                    ],
-                                    "valueSrc": [
-                                      "value"
-                                    ],
-                                    "valueType": [
-                                      "text"
-                                    ]
-                                  },
-                                  "type": "rule"
-                                }
-                              ],
-                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "id": "89ab9a8a-0123-4456-b89a-b19f8a57ff33",
                               "type": "group"
-                            },
-                            "whereString": "session_id = '$session_id'"
-                          },
-                          "table": "vehicle_data"
+                            }
+                          }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -504,7 +408,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -514,6 +418,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -601,50 +507,16 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
                           "dataset": "postgres",
-                          "editorMode": "builder",
+                          "editorMode": "code",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", gforce_lateral, gforce_longitudinal, gforce_vertical FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawQuery": true,
+                          "rawSql": "SELECT \"time\", gforce_lateral, gforce_longitudinal, gforce_vertical FROM telemetry.motion_data WHERE $__timeFilter(time) AND session_id = '$session_id' AND user_id = '$driver_ID' ORDER BY \"time\" DESC",
                           "sql": {
                             "columns": [
                               {
-                                "parameters": [
-                                  {
-                                    "name": "\"time\"",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "gforce_lateral",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "gforce_longitudinal",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "gforce_vertical",
-                                    "type": "functionParameter"
-                                  }
-                                ],
+                                "parameters": [],
                                 "type": "function"
                               }
                             ],
@@ -656,45 +528,16 @@
                                 "type": "groupBy"
                               }
                             ],
-                            "limit": 3000,
-                            "orderBy": {
-                              "property": {
-                                "name": "\"time\"",
-                                "type": "string"
-                              },
-                              "type": "property"
-                            },
-                            "orderByDirection": "DESC",
+                            "limit": 50,
                             "whereJsonTree": {
-                              "children1": [
-                                {
-                                  "id": "ba89898a-cdef-4012-b456-719e4cf38ec2",
-                                  "properties": {
-                                    "field": "session_id",
-                                    "fieldSrc": "field",
-                                    "operator": "equal",
-                                    "value": [
-                                      "$session_id"
-                                    ],
-                                    "valueError": [
-                                      null
-                                    ],
-                                    "valueSrc": [
-                                      "value"
-                                    ],
-                                    "valueType": [
-                                      "text"
-                                    ]
-                                  },
-                                  "type": "rule"
-                                }
-                              ],
-                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "id": "89ab9a8a-0123-4456-b89a-b19f8a57ff33",
                               "type": "group"
-                            },
-                            "whereString": "session_id = '$session_id'"
-                          },
-                          "table": "motion_data"
+                            }
+                          }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -709,7 +552,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -719,6 +562,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -806,50 +651,16 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
                           "dataset": "postgres",
-                          "editorMode": "builder",
+                          "editorMode": "code",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", velocity_x, velocity_y, velocity_z FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawQuery": true,
+                          "rawSql": "SELECT \"time\", velocity_x, velocity_y, velocity_z FROM telemetry.motion_data WHERE $__timeFilter(time) AND session_id = '$session_id' AND user_id = '$driver_ID' ORDER BY \"time\"",
                           "sql": {
                             "columns": [
                               {
-                                "parameters": [
-                                  {
-                                    "name": "\"time\"",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "velocity_x",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "velocity_y",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "velocity_z",
-                                    "type": "functionParameter"
-                                  }
-                                ],
+                                "parameters": [],
                                 "type": "function"
                               }
                             ],
@@ -861,45 +672,16 @@
                                 "type": "groupBy"
                               }
                             ],
-                            "limit": 3000,
-                            "orderBy": {
-                              "property": {
-                                "name": "\"time\"",
-                                "type": "string"
-                              },
-                              "type": "property"
-                            },
-                            "orderByDirection": "DESC",
+                            "limit": 50,
                             "whereJsonTree": {
-                              "children1": [
-                                {
-                                  "id": "ba89898a-cdef-4012-b456-719e4cf38ec2",
-                                  "properties": {
-                                    "field": "session_id",
-                                    "fieldSrc": "field",
-                                    "operator": "equal",
-                                    "value": [
-                                      "$session_id"
-                                    ],
-                                    "valueError": [
-                                      null
-                                    ],
-                                    "valueSrc": [
-                                      "value"
-                                    ],
-                                    "valueType": [
-                                      "text"
-                                    ]
-                                  },
-                                  "type": "rule"
-                                }
-                              ],
-                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "id": "89ab9a8a-0123-4456-b89a-b19f8a57ff33",
                               "type": "group"
-                            },
-                            "whereString": "session_id = '$session_id'"
-                          },
-                          "table": "motion_data"
+                            }
+                          }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -914,7 +696,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -924,6 +706,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -1007,15 +791,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "time_series",
                           "rawQuery": true,
-                          "rawSql": "SELECT \"time\", throttle, -brake as brake FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawSql": "SELECT \"time\", throttle, -brake as brake FROM telemetry.vehicle_data WHERE $__timeFilter(time) AND session_id = '$session_id' AND user_id = '$driver_ID' ORDER BY \"time\" DESC",
                           "sql": {
                             "columns": [
                               {
@@ -1093,6 +874,10 @@
                             "whereString": "session_id = '$session_id'"
                           },
                           "table": "vehicle_data"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1107,7 +892,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1117,6 +902,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -1191,7 +978,7 @@
           "spec": {
             "id": 6,
             "title": "brake temps",
-            "description": "vehicle RPM over time",
+            "description": "brake temperatures",
             "links": [],
             "data": {
               "kind": "QueryGroup",
@@ -1204,63 +991,16 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
                           "dataset": "postgres",
-                          "editorMode": "builder",
+                          "editorMode": "code",
                           "format": "time_series",
-                          "rawSql": "SELECT \"time\", fl_brake_temp AS \"front left\", fr_brake_temp AS \"front right\", bl_brake_temp AS \"back left\", br_brake_temp AS \"back right\" FROM vehicle_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawQuery": true,
+                          "rawSql": "SELECT \"time\", fl_brake_temp AS \"front left\", fr_brake_temp AS \"front right\", bl_brake_temp AS \"back left\", br_brake_temp AS \"back right\" FROM telemetry.vehicle_data WHERE $__timeFilter(time) AND session_id = '$session_id' ORDER BY \"time\" DESC ",
                           "sql": {
                             "columns": [
                               {
-                                "parameters": [
-                                  {
-                                    "name": "\"time\"",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "alias": "\"front left\"",
-                                "parameters": [
-                                  {
-                                    "name": "fl_brake_temp",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "alias": "\"front right\"",
-                                "parameters": [
-                                  {
-                                    "name": "fr_brake_temp",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "alias": "\"back left\"",
-                                "parameters": [
-                                  {
-                                    "name": "bl_brake_temp",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "alias": "\"back right\"",
-                                "parameters": [
-                                  {
-                                    "name": "br_brake_temp",
-                                    "type": "functionParameter"
-                                  }
-                                ],
+                                "parameters": [],
                                 "type": "function"
                               }
                             ],
@@ -1272,45 +1012,16 @@
                                 "type": "groupBy"
                               }
                             ],
-                            "limit": 3000,
-                            "orderBy": {
-                              "property": {
-                                "name": "\"time\"",
-                                "type": "string"
-                              },
-                              "type": "property"
-                            },
-                            "orderByDirection": "DESC",
+                            "limit": 50,
                             "whereJsonTree": {
-                              "children1": [
-                                {
-                                  "id": "89ba9bab-4567-489a-bcde-f19e4cf17037",
-                                  "properties": {
-                                    "field": "session_id",
-                                    "fieldSrc": "field",
-                                    "operator": "equal",
-                                    "value": [
-                                      "$session_id"
-                                    ],
-                                    "valueError": [
-                                      null
-                                    ],
-                                    "valueSrc": [
-                                      "value"
-                                    ],
-                                    "valueType": [
-                                      "text"
-                                    ]
-                                  },
-                                  "type": "rule"
-                                }
-                              ],
-                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "id": "89ab9a8a-0123-4456-b89a-b19f8a57ff33",
                               "type": "group"
-                            },
-                            "whereString": "session_id = '$session_id'"
-                          },
-                          "table": "vehicle_data"
+                            }
+                          }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1325,7 +1036,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1335,6 +1046,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -1419,32 +1132,16 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
                           "dataset": "postgres",
-                          "editorMode": "builder",
+                          "editorMode": "code",
                           "format": "table",
-                          "rawSql": "SELECT \"time\", yaw FROM motion_data WHERE session_id = '$session_id' ORDER BY \"time\" DESC LIMIT 3000 ",
+                          "rawQuery": true,
+                          "rawSql": "SELECT \"time\", yaw FROM telemetry.motion_data WHERE $__timeFilter(time) AND session_id = '$session_id' AND user_id = '$driver_ID' ORDER BY \"time\" DESC",
                           "sql": {
                             "columns": [
                               {
-                                "parameters": [
-                                  {
-                                    "name": "\"time\"",
-                                    "type": "functionParameter"
-                                  }
-                                ],
-                                "type": "function"
-                              },
-                              {
-                                "parameters": [
-                                  {
-                                    "name": "yaw",
-                                    "type": "functionParameter"
-                                  }
-                                ],
+                                "parameters": [],
                                 "type": "function"
                               }
                             ],
@@ -1456,45 +1153,16 @@
                                 "type": "groupBy"
                               }
                             ],
-                            "limit": 3000,
-                            "orderBy": {
-                              "property": {
-                                "name": "\"time\"",
-                                "type": "string"
-                              },
-                              "type": "property"
-                            },
-                            "orderByDirection": "DESC",
+                            "limit": 50,
                             "whereJsonTree": {
-                              "children1": [
-                                {
-                                  "id": "aaabab89-4567-489a-bcde-f19e4d130a4c",
-                                  "properties": {
-                                    "field": "session_id",
-                                    "fieldSrc": "field",
-                                    "operator": "equal",
-                                    "value": [
-                                      "$session_id"
-                                    ],
-                                    "valueError": [
-                                      null
-                                    ],
-                                    "valueSrc": [
-                                      "value"
-                                    ],
-                                    "valueType": [
-                                      "text"
-                                    ]
-                                  },
-                                  "type": "rule"
-                                }
-                              ],
-                              "id": "99a998b9-0123-4456-b89a-b19e4cd49e1f",
+                              "id": "89ab9a8a-0123-4456-b89a-b19f8a57ff33",
                               "type": "group"
-                            },
-                            "whereString": "session_id = '$session_id'"
-                          },
-                          "table": "motion_data"
+                            }
+                          }
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1509,7 +1177,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1519,6 +1187,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -1606,15 +1276,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "table",
                           "rawQuery": true,
-                          "rawSql": "select lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid from session_lap_data \nwhere cast($session_id as VARCHAR) = session_id\nand cast($driver_ID as varchar) = user_id\norder by lap_num",
+                          "rawSql": "select lap_num, lap_time, sector1_time, sector2_time, sector3_time, lap_valid, sector1_valid, sector2_valid, sector3_valid \nfrom telemetry.session_lap_data\nwhere session_id = '$session_id' and user_id = '$driver_ID'\nORDER BY lap_num",
                           "sql": {
                             "columns": [
                               {
@@ -1633,6 +1300,10 @@
                             "limit": 50
                           },
                           "table": "session_lap_data"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1647,7 +1318,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "table",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "cellHeight": "sm",
@@ -1703,15 +1374,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-postgresql-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "bfqxwocqg2ewwd"
-                        },
                         "spec": {
-                          "dataset": "postgres",
+                          "dataset": "formulatel",
                           "editorMode": "code",
                           "format": "table",
                           "rawQuery": true,
-                          "rawSql": "SELECT bl_slip_angle as \"back_left\", br_slip_angle as \"back_right\", fl_slip_angle as \"front_left\", fr_slip_angle as \"front_right\" FROM extended_wheel_data where $__timeFilter(\"time\") ",
+                          "rawSql": "SELECT bl_slip_angle as \"back_left\", br_slip_angle as \"back_right\", fl_slip_angle as \"front_left\", fr_slip_angle as \"front_right\" FROM telemetry.extended_wheel_data where $__timeFilter(\"time\") AND session_id = '$session_id'  ORDER BY time DESC",
                           "sql": {
                             "columns": [
                               {
@@ -1735,6 +1403,10 @@
                             "limit": 50
                           },
                           "table": "extended_wheel_data"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1749,7 +1421,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "stat",
-              "version": "13.0.2",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "colorMode": "value",
@@ -1786,7 +1458,8 @@
                     },
                     "color": {
                       "mode": "thresholds"
-                    }
+                    },
+                    "noValue": "0"
                   },
                   "overrides": []
                 }
@@ -2023,16 +1696,14 @@
         {
           "kind": "QueryVariable",
           "spec": {
-            "name": "session_id",
+            "name": "Driver",
             "current": {
               "text": "",
               "value": ""
             },
-            "label": "Session ID",
             "hide": "dontHide",
             "refresh": "onDashboardLoad",
             "skipUrlSync": false,
-            "description": "ID of the session, e.g. free practise, race, time-trial",
             "query": {
               "kind": "DataQuery",
               "group": "grafana-postgresql-datasource",
@@ -2041,11 +1712,73 @@
                 "dataset": "postgres",
                 "editorMode": "builder",
                 "format": "table",
-                "meta": {
-                  "valueField": "session_id"
+                "query": "",
+                "rawSql": "SELECT username FROM telemetry.users LIMIT 50 ",
+                "refId": "SQLVariableQueryEditor-VariableQuery",
+                "sql": {
+                  "columns": [
+                    {
+                      "parameters": [
+                        {
+                          "name": "username",
+                          "type": "functionParameter"
+                        }
+                      ],
+                      "type": "function"
+                    }
+                  ],
+                  "groupBy": [
+                    {
+                      "property": {
+                        "type": "string"
+                      },
+                      "type": "groupBy"
+                    }
+                  ],
+                  "limit": 50
                 },
-                "query": "SELECT session_id FROM vehicle_data LIMIT 50 ",
-                "rawSql": "SELECT session_id FROM vehicle_data GROUP BY session_id LIMIT 50 ",
+                "table": "telemetry.users"
+              },
+              "labels": {
+                "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                "grafana.app/export-datasource-name": "formulatel-postgresql"
+              }
+            },
+            "regex": "",
+            "regexApplyTo": "value",
+            "sort": "disabled",
+            "definition": "",
+            "options": [],
+            "multi": false,
+            "includeAll": false,
+            "allowCustomValue": true
+          }
+        },
+        {
+          "kind": "QueryVariable",
+          "spec": {
+            "name": "session_id",
+            "current": {
+              "text": "",
+              "value": ""
+            },
+            "label": "Session ID",
+            "hide": "dontHide",
+            "refresh": "onTimeRangeChanged",
+            "skipUrlSync": false,
+            "description": "ID of the session, e.g. free practise, race, time-trial",
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana-postgresql-datasource",
+              "version": "v0",
+              "spec": {
+                "dataset": "postgres",
+                "editorMode": "code",
+                "format": "table",
+                "meta": {},
+                "query": "SELECT distinct session_id FROM telemetry.motion_data WHERE time >= current_timestamp - interval '7' day",
+                "rawQuery": true,
+                "rawSql": "SELECT distinct session_id FROM telemetry.motion_data WHERE time >= current_timestamp - interval '7' day",
                 "refId": "SQLVariableQueryEditor-VariableQuery",
                 "sql": {
                   "columns": [
@@ -2062,7 +1795,6 @@
                   "groupBy": [
                     {
                       "property": {
-                        "name": "session_id",
                         "type": "string"
                       },
                       "type": "groupBy"
@@ -2070,17 +1802,17 @@
                   ],
                   "limit": 50
                 },
-                "table": "vehicle_data"
+                "table": "telemetry.motion_data"
               }
             },
             "regex": "",
             "regexApplyTo": "value",
-            "sort": "disabled",
-            "definition": "SELECT session_id FROM vehicle_data LIMIT 50 ",
+            "sort": "alphabeticalAsc",
+            "definition": "SELECT distinct session_id FROM telemetry.motion_data WHERE time >= current_timestamp - interval '7' day",
             "options": [],
             "multi": false,
             "includeAll": false,
-            "allowCustomValue": true
+            "allowCustomValue": false
           }
         },
         {
@@ -2101,12 +1833,15 @@
               "group": "grafana-postgresql-datasource",
               "version": "v0",
               "spec": {
-                "dataset": "postgres",
+                "dataset": "formulatel",
                 "editorMode": "code",
                 "format": "table",
-                "meta": {},
-                "query": "SELECT user_id FROM vehicle_data LIMIT 50 ",
-                "rawSql": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+                "meta": {
+                  "textField": "user_id"
+                },
+                "query": "SELECT user_id FROM telemetry.motion_data WHERE $__timeFilter(time) ",
+                "rawQuery": true,
+                "rawSql": "SELECT user_id FROM telemetry.motion_data WHERE $__timeFilter(time) ",
                 "refId": "SQLVariableQueryEditor-VariableQuery",
                 "sql": {
                   "columns": [
@@ -2134,7 +1869,7 @@
             "regex": "",
             "regexApplyTo": "value",
             "sort": "disabled",
-            "definition": "SELECT user_id FROM vehicle_data LIMIT 50 ",
+            "definition": "SELECT user_id FROM telemetry.motion_data WHERE $__timeFilter(time) ",
             "options": [],
             "multi": false,
             "includeAll": false,

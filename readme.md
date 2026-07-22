@@ -86,6 +86,12 @@ The `formulatel` dashboards can be imported into a locally running Grafana using
 
 This requires `curl`.
 
+Alternatively, use the admin CLI to provision dashboards per-tenant:
+
+```bash
+./out/admin --grafana-admin-user=admin --grafana-admin-password=`kubectl get secret --namespace=formulatel formulatel-grafana -o yaml | yq -r '.data["admin-password"]' | base64 -d` --connstring='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' dashboard create --dashboard-file ./kubernetes/config/dashboards/dashboard-live.json --tenant 0
+```
+
 ### Formulatel tenants
 
 If you are running the `formulatel` chart with MQTT auth, you will need to create a username and password for ingest to authenticate with the broker. To do this, you can use the `formulatel admin` tool to create a tenant and a user for that tenant:
@@ -104,9 +110,12 @@ Then you can use the output role and token to authenticate with ingest and send 
 - [x] chart telemetry data
 - [x] build a dashboard for interesting telemetry data
 - [x] realtime charting with something like Grafana Live
+- [x] deploy as a public cloud service
+- [~] multi-tenancy in the cloud
 - [ ] insights? A lofty goal to be certain, but it'd be cool to alert on realtime data (ideal braking point? racing line? I don't know) or maybe predict when the tires will die or something.
 - [ ] eBPF packet inspection and routing - it'd be neat to route packets directly from the syscall using eBPF.
 - [ ] wouldn't it be neat to train a model, maybe even a live assistant (race engineer)? "try braking 50m earlier"; "you're turning in too early"; etc.
+- [ ] create a visibility dashboard to view the live health of the MQTT topics and `persist` service
 
 
 ## Architecture

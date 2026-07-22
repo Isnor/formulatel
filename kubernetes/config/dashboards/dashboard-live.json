@@ -4,21 +4,10 @@
     "kind": "Dashboard",
     "metadata": {
       "name": "g88p27",
-      "namespace": "default",
-      "uid": "547febe7-d326-4559-883b-dccf672e41ff",
-      "resourceVersion": "1779410140642985",
       "generation": 2,
-      "creationTimestamp": "2026-05-22T00:31:58Z",
-      "labels": {
-        "grafana.app/deprecatedInternalID": "3979018795216896"
-      },
-      "annotations": {
-        "grafana.app/createdBy": "anonymous:0",
-        "grafana.app/folder": "",
-        "grafana.app/saved-from-ui": "Grafana v13.0.1+security-01 (9bbe672d)",
-        "grafana.app/updatedBy": "anonymous:0",
-        "grafana.app/updatedTimestamp": "2026-05-22T00:35:40Z"
-      }
+      "creationTimestamp": "2026-07-22T15:01:25Z",
+      "labels": {},
+      "annotations": {}
     },
     "spec": {
       "annotations": [
@@ -29,9 +18,6 @@
               "kind": "DataQuery",
               "group": "grafana",
               "version": "v0",
-              "datasource": {
-                "name": "-- Grafana --"
-              },
               "spec": {}
             },
             "enable": true,
@@ -63,11 +49,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -101,13 +88,14 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "bargauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "displayMode": "gradient",
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": false
                   },
@@ -165,7 +153,8 @@
                     },
                     "color": {
                       "mode": "thresholds"
-                    }
+                    },
+                    "noValue": "0"
                   },
                   "overrides": []
                 }
@@ -191,11 +180,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -231,7 +221,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "gauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "barShape": "flat",
@@ -280,7 +270,8 @@
                           "color": "red"
                         }
                       ]
-                    }
+                    },
+                    "noValue": "0"
                   },
                   "overrides": []
                 }
@@ -306,11 +297,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -346,7 +338,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "gauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "barShape": "flat",
@@ -392,6 +384,7 @@
                     "color": {
                       "mode": "continuous-BlYlRd"
                     },
+                    "noValue": "0",
                     "fieldMinMax": false
                   },
                   "overrides": []
@@ -418,11 +411,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -456,7 +450,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "stat",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "colorMode": "background",
@@ -490,7 +484,8 @@
                           "color": "red"
                         }
                       ]
-                    }
+                    },
+                    "noValue": "N"
                   },
                   "overrides": []
                 }
@@ -516,11 +511,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -554,13 +550,14 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "bargauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "displayMode": "gradient",
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": false
                   },
@@ -624,11 +621,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -668,12 +666,13 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "xychart",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -772,11 +771,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -855,12 +855,13 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "xychart",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": true
                   },
@@ -959,11 +960,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -1000,13 +1002,14 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "bargauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "displayMode": "gradient",
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": false
                   },
@@ -1042,7 +1045,8 @@
                     },
                     "color": {
                       "mode": "thresholds"
-                    }
+                    },
+                    "noValue": "1"
                   },
                   "overrides": []
                 }
@@ -1068,11 +1072,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -1107,13 +1112,14 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "bargauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "displayMode": "gradient",
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": false
                   },
@@ -1151,7 +1157,8 @@
                     },
                     "color": {
                       "mode": "thresholds"
-                    }
+                    },
+                    "noValue": "1"
                   },
                   "overrides": []
                 }
@@ -1177,11 +1184,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -1215,13 +1223,14 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "bargauge",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "displayMode": "gradient",
                   "legend": {
                     "calcs": [],
                     "displayMode": "list",
+                    "overflow": "ellipsis",
                     "placement": "bottom",
                     "showLegend": false
                   },
@@ -1285,11 +1294,12 @@
                         "kind": "DataQuery",
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
-                        "datasource": {
-                          "name": "PAD508E29D1B5373F"
-                        },
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
+                        },
+                        "labels": {
+                          "grafana.app/export-label": "grafana-mqtt-datasource-1",
+                          "grafana.app/export-datasource-name": "formulatel-mqtt"
                         }
                       },
                       "refId": "A",
@@ -1323,7 +1333,7 @@
             "vizConfig": {
               "kind": "VizConfig",
               "group": "timeseries",
-              "version": "13.0.1+security-01",
+              "version": "13.1.0",
               "spec": {
                 "options": {
                   "annotations": {
@@ -1333,6 +1343,8 @@
                   "legend": {
                     "calcs": [],
                     "displayMode": "hidden",
+                    "enableFacetedFilter": false,
+                    "overflow": "ellipsis",
                     "placement": "right",
                     "showLegend": false
                   },
@@ -1357,6 +1369,7 @@
                     "color": {
                       "mode": "continuous-BlYlRd"
                     },
+                    "noValue": "1",
                     "custom": {
                       "axisBorderShow": false,
                       "axisCenteredZero": false,
@@ -1608,6 +1621,134 @@
             "refresh": "onTimeRangeChanged",
             "hide": "dontHide",
             "skipUrlSync": false
+          }
+        },
+        {
+          "kind": "QueryVariable",
+          "spec": {
+            "name": "driver",
+            "current": {
+              "text": "",
+              "value": ""
+            },
+            "hide": "dontHide",
+            "refresh": "onDashboardLoad",
+            "skipUrlSync": false,
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana-postgresql-datasource",
+              "version": "v0",
+              "spec": {
+                "dataset": "postgres",
+                "editorMode": "code",
+                "format": "table",
+                "query": "SELECT distinct username FROM telemetry.users",
+                "rawQuery": true,
+                "rawSql": "SELECT distinct username FROM telemetry.users",
+                "refId": "SQLVariableQueryEditor-VariableQuery",
+                "sql": {
+                  "columns": [
+                    {
+                      "parameters": [
+                        {
+                          "name": "username",
+                          "type": "functionParameter"
+                        }
+                      ],
+                      "type": "function"
+                    }
+                  ],
+                  "groupBy": [
+                    {
+                      "property": {
+                        "type": "string"
+                      },
+                      "type": "groupBy"
+                    }
+                  ],
+                  "limit": 50,
+                  "whereJsonTree": {
+                    "children1": [
+                      {
+                        "id": "bb9ab8ab-cdef-4012-b456-719f6e24e6a1",
+                        "properties": {
+                          "field": "grafana_org_id",
+                          "fieldSrc": "field",
+                          "operator": "equal",
+                          "value": [
+                            null
+                          ],
+                          "valueError": [
+                            null
+                          ],
+                          "valueSrc": [
+                            "value"
+                          ],
+                          "valueType": [
+                            "number"
+                          ]
+                        },
+                        "type": "rule"
+                      }
+                    ],
+                    "id": "ab8a9b98-0123-4456-b89a-b19f6e2384cf",
+                    "type": "group"
+                  },
+                  "whereString": "grafana_org_id = NaN"
+                },
+                "table": "auth.accounts"
+              },
+              "labels": {
+                "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                "grafana.app/export-datasource-name": "formulatel-postgresql"
+              }
+            },
+            "regex": "",
+            "regexApplyTo": "value",
+            "sort": "disabled",
+            "definition": "SELECT distinct username FROM telemetry.users",
+            "options": [],
+            "multi": false,
+            "includeAll": false,
+            "allowCustomValue": true
+          }
+        },
+        {
+          "kind": "QueryVariable",
+          "spec": {
+            "name": "tenant_id",
+            "current": {
+              "text": "",
+              "value": ""
+            },
+            "hide": "hideVariable",
+            "refresh": "onDashboardLoad",
+            "skipUrlSync": false,
+            "query": {
+              "kind": "DataQuery",
+              "group": "grafana-postgresql-datasource",
+              "version": "v0",
+              "spec": {
+                "dataset": "postgres",
+                "editorMode": "builder",
+                "format": "table",
+                "query": "",
+                "rawSql": "",
+                "refId": "SQLVariableQueryEditor-VariableQuery"
+              },
+              "labels": {
+                "grafana.app/export-label": "grafana-postgresql-datasource-1",
+                "grafana.app/export-datasource-name": "formulatel-postgresql"
+              }
+            },
+            "regex": "",
+            "regexApplyTo": "value",
+            "sort": "disabled",
+            "definition": "",
+            "options": [],
+            "multi": false,
+            "includeAll": false,
+            "allowCustomValue": true
           }
         }
       ]

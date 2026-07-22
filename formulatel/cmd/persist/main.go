@@ -99,8 +99,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// subscribe to wildcard topic: formulatel/+/f123
-	subTopic := "$share/persist/formulatel/+/f123"
+	// subscribe to wildcard topic: formulatel/f123/#
+	subTopic := "$share/persist/formulatel/f123/#"
 	tracer := otel.Tracer("formulatel/persist/mqtt")
 	mqttClient.Subscribe(subTopic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		msgCtx, span := tracer.Start(ctx, "mqtt.receive")
