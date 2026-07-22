@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/go-openapi/strfmt"
 	"github.com/jackc/pgx/v5"
@@ -12,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	grafanasdk "github.com/grafana/grafana-openapi-client-go/client"
+	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/models"
 	"github.com/sethvargo/go-password/password"
 )
@@ -44,8 +47,17 @@ type CreateUserRequest struct {
 	Transaction pgx.Tx
 }
 
+type CreateDashboardRequest struct {
+	TenantID      int64
+	DashboardFile string
+}
+
 type CreateUserResponse struct {
 	Token string
+}
+
+type CreateDashboardResponse struct {
+	ID int64
 }
 
 // CreateOrg uses the Grafana SDK to create a new Org
@@ -166,7 +178,6 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		JSONData: map[string]any{
 			"uri":      request.MQTTURI,
 			"tlsAuth":  false,
-			"clientID": fmt.Sprintf("formulatel_grafana_%d", createdOrgID),
 			"username": tenantRole,
 		},
 
@@ -212,7 +223,6 @@ func (t *TenantManager) CreateOrg(ctx context.Context, request CreateOrgRequest)
 		return fmt.Errorf("failed to register account and MQTT ACL: %w", err)
 	}
 
-	// TODO: maybe this should happen in the `tenant user create` command or something
 	// create an "account" for the telemetry stream
 	userName := request.Username
 	user, err := t.CreateUser(ctx, CreateUserRequest{
@@ -308,6 +318,42 @@ func (t *TenantManager) CreateUser(ctx context.Context, request CreateUserReques
 	return &CreateUserResponse{
 		Token: userToken,
 	}, nil
+}
+
+func (t *TenantManager) CreateDashboard(ctx context.Context, request CreateDashboardRequest) (*CreateDashboardResponse, error) {
+	rawJSON, err := os.ReadFile(request.DashboardFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed reading dashboard JSON %w:", err)
+	}
+
+	var dashboardMap map[string]any
+	if err := json.Unmarshal(rawJSON, &dashboardMap); err != nil {
+		return nil, fmt.Errorf("invalid dashboard JSON %w:", err)
+	}
+
+	params := dashboards.NewPostDashboardParamsWithContext(context.Background()).
+		WithBody(&models.SaveDashboardCommand{
+			Dashboard: dashboardMap["dashboard"],
+			Overwrite: true,
+		})
+
+	resp, err := t.Grafana.WithOrgID(request.TenantID).Dashboards.PostDashboardWithParams(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dashboard: %w", err)
+	}
+	if resp.IsSuccess() {
+		slog.InfoContext(ctx, "created dashboard",
+			"url", *(resp.Payload.URL),
+			"title", resp.Payload.Title,
+			"org_id", request.TenantID,
+		)
+		return &CreateDashboardResponse{
+			ID: *resp.Payload.ID,
+		}, err
+	}
+	slog.ErrorContext(ctx, "failed to create dashboard", "code", resp.Code(), "response", resp.String())
+	return nil, fmt.Errorf("failed to create dashboard")
+
 }
 
 func NewTenantManager(grafanaOpts *grafanasdk.TransportConfig, dbConnString string) (*TenantManager, error) {
@@ -440,6 +486,46 @@ func CreateUser() *cli.Command {
 				return err
 			}
 			slog.InfoContext(ctx, "✅ created user", "username", username, "token", user.Token)
+			return nil
+		},
+	}
+}
+
+func CreateDashboard() *cli.Command {
+	return &cli.Command{
+		Name: "create",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "dashboard-file",
+				Required: true,
+			},
+			&cli.IntFlag{
+				Name:     "tenant",
+				Aliases:  []string{"tid", "t", "tenant-id"},
+				Usage:    "The tenant ID to create the dashboard for",
+				Required: true,
+			},
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			t, ok := ctx.Value(tenantManagerContext).(*TenantManager)
+			if !ok {
+				return fmt.Errorf("no manager setup")
+			}
+			tenantID := cmd.Int("tenant")
+			dashboardFile := cmd.String("dashboard-file")
+
+			r, err := t.CreateDashboard(ctx, CreateDashboardRequest{
+				TenantID:      int64(tenantID),
+				DashboardFile: dashboardFile,
+			})
+
+			if err != nil {
+				slog.ErrorContext(ctx, "⚠️ failed creating dashboard", "error", err)
+				return err
+			}
+
+			slog.InfoContext(ctx, "✅ created dashboard", "id", r.ID)
+
 			return nil
 		},
 	}
