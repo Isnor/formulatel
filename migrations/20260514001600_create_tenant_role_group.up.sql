@@ -8,3 +8,5 @@ BEGIN
 END
 $$;
 GRANT USAGE ON SCHEMA telemetry TO telemetry_readers;
+GRANT SELECT ON ALL TABLES IN SCHEMA telemetry TO telemetry_readers;
+ALTER DEFAULT PRIVILEGES IN SCHEMA telemetry GRANT SELECT ON TABLES TO telemetry_readers;

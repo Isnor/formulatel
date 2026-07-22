@@ -5,7 +5,7 @@
     "metadata": {
       "name": "g88p27",
       "generation": 2,
-      "creationTimestamp": "2026-07-21T20:46:16Z",
+      "creationTimestamp": "2026-07-22T15:01:25Z",
       "labels": {},
       "annotations": {}
     },
@@ -50,7 +50,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/${__org.id}/${driver}/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -181,7 +181,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/${__org.id}/${driver}/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -298,7 +298,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -412,7 +412,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -512,7 +512,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/${__org.id}/${driver}/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -622,7 +622,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/$__org.id/$driver/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -772,7 +772,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -961,7 +961,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/${__org.id}/${driver}/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -1073,7 +1073,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/${__org.id}/${driver}/motiondata/f123"
+                          "topic": "formulatel/+/$__org/$driver/motiondata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -1185,7 +1185,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/f123/$__org.id/$driver/vehicledata"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",
@@ -1295,7 +1295,7 @@
                         "group": "grafana-mqtt-datasource",
                         "version": "v0",
                         "spec": {
-                          "topic": "formulatel/vehicledata/f123"
+                          "topic": "formulatel/+/$__org/$driver/vehicledata"
                         },
                         "labels": {
                           "grafana.app/export-label": "grafana-mqtt-datasource-1",

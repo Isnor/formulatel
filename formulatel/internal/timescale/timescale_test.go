@@ -209,6 +209,8 @@ func (mt *WithMigrationsTest) Run(t *testing.T) {
 		defer migrations.Close()
 
 		if mt.MigrationNum == 0 {
+			// TODO: maybe this wasn't such a good idea, at least not in parallel execution when one of the
+			// migrations provisions a role
 			require.NoError(t, migrations.Up())
 		} else {
 			require.NoError(t, migrations.Migrate(mt.MigrationNum))
