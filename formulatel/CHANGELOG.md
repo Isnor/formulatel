@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/Isnor/formulatel/compare/formulatel-v0.1.0...formulatel-v0.1.1) (2026-07-23)
+
+
+### Features
+
+* create user admin CLI ([#57](https://github.com/Isnor/formulatel/issues/57)) ([d36fc40](https://github.com/Isnor/formulatel/commit/d36fc40d4ec7364f3e58d924cdef664ee43ac717))
+* tenant dashboards ([#61](https://github.com/Isnor/formulatel/issues/61)) ([20c9327](https://github.com/Isnor/formulatel/commit/20c93276e4e4f953568a23791d081484adf83909))
+
 ## [0.1.0](https://github.com/Isnor/formulatel/compare/formulatel-v0.0.3...formulatel-v0.1.0) (2026-07-13)
 
 
