@@ -75,15 +75,17 @@ kubectl --namespace formulatel port-forward $POD_NAME 1883|3000
 
 ## start ingest
 
-Make sure to set the MQTT_BROKER envar before running ingest to point to the remote MQTT broker
+Start `ingest` by providing your username, tenant ID, and `formulatel` token as flags:
 
-**With DNS+SSL**:
 ```bash
-export MQTT_BROKER='wss://mqtt.formula.tel'
+./out/ingest --username shames --tenant-id 4 --mqtt-uri wss://mqtt.formula.tel --token ftel-foobar
 ```
 
-**With Port-Forwarding**:
+The CLI flags override the corresponding environmental variables:
 
 ```bash
+export FORMULATEL_USERNAME='foobar'
+export FORMULATEL_TENANT_ID=2
+export FORMULATEL_TOKEN='ftel-foobar'
 export MQTT_BROKER='tcp://127.0.0.1:1883'
 ```

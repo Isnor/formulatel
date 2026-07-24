@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -499,20 +500,40 @@ func (f *F123PacketTransformer) normalizeMotionExData(
 // F123IngestConfig exposes config options for the underlying PacketReader and PacketTransformer.
 // It also serves a container for the data channels that the Transformer writes to
 type F123IngestConfig struct {
-	// TODO: probably should accept these as CLI parameters, especially for windows people
 	Username           string
 	Token              string
 	TenantID           int    `envconfig:"TENANT_ID"`
 	MaxPacketsBuffered uint   `split_words:"true" default:"1000"` // size of the buffered channel of packets
 	CapturePackets     bool   `split_words:"true" default:"false"`
+	LogLevel           string `default:"info"`
 	UDPPort            uint16 `envconfig:"UDP_PORT" default:"27543"`
-	MQTTBroker         string `envconfig:"MQTT_BROKER" default:"tcp://localhost:1883"`
+	MQTTBroker         string `envconfig:"MQTT_BROKER" default:"tcp://localhost:1883"` // TODO: update default when formula.tel is stable
 
 	VehicleDataChannel       chan *pb.GameTelemetry `envconfig:"-"`
 	MotionDataChannel        chan *pb.GameTelemetry `envconfig:"-"`
 	CurrentLapDataChannel    chan *pb.GameTelemetry `envconfig:"-"`
 	LapTimesDataChannel      chan *pb.GameTelemetry `envconfig:"-"`
 	ExtendedWheelDataChannel chan *pb.GameTelemetry `envconfig:"-"`
+}
+
+func (c F123IngestConfig) Validate() error {
+	if c.Username == "" {
+		return fmt.Errorf("empty username")
+	}
+	if c.Token == "" {
+		return fmt.Errorf("empty token")
+	}
+	if c.MQTTBroker == "" {
+		return fmt.Errorf("empty MQTT broker")
+	}
+	if c.TenantID < 0 {
+		return fmt.Errorf("empty tenant ID")
+	}
+	if !(strings.HasPrefix(c.MQTTBroker, "tcp") || strings.HasPrefix(c.MQTTBroker, "mqtt") ||
+		strings.HasPrefix(c.MQTTBroker, "ws") || strings.HasPrefix(c.MQTTBroker, "wss")) {
+		return fmt.Errorf("invalid broker URI; should begin with tcp, mqtt, ws, or wss")
+	}
+	return nil
 }
 
 // F123Ingest is simply a convenient container
