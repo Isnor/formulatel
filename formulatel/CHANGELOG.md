@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/Isnor/formulatel/compare/formulatel-v0.1.1...formulatel-v0.1.2) (2026-07-24)
+
+
+### Features
+
+* add ingest CLI ([#66](https://github.com/Isnor/formulatel/issues/66)) ([9bbfca4](https://github.com/Isnor/formulatel/commit/9bbfca41a029fddcfca2e19913d49e36a84cf607))
+
 ## [0.1.1](https://github.com/Isnor/formulatel/compare/formulatel-v0.1.0...formulatel-v0.1.1) (2026-07-23)
 
 
