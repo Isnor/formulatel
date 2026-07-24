@@ -5,7 +5,7 @@
     "metadata": {
       "name": "gx2vh4",
       "generation": 2,
-      "creationTimestamp": "2026-07-22T16:35:05Z",
+      "creationTimestamp": "2026-07-23T15:25:16Z",
       "labels": {},
       "annotations": {}
     },
@@ -58,10 +58,6 @@
                   ],
                   "limit": 50
                 }
-              },
-              "labels": {
-                "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                "grafana.app/export-datasource-name": "formulatel-postgresql"
               }
             },
             "enable": true,
@@ -133,10 +129,6 @@
                               "type": "group"
                             }
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -269,10 +261,6 @@
                             ],
                             "limit": 50
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -390,10 +378,6 @@
                               "type": "group"
                             }
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -534,10 +518,6 @@
                               "type": "group"
                             }
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -678,10 +658,6 @@
                               "type": "group"
                             }
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -874,10 +850,6 @@
                             "whereString": "session_id = '$session_id'"
                           },
                           "table": "vehicle_data"
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1018,10 +990,6 @@
                               "type": "group"
                             }
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1159,10 +1127,6 @@
                               "type": "group"
                             }
                           }
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1300,10 +1264,6 @@
                             "limit": 50
                           },
                           "table": "session_lap_data"
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1403,10 +1363,6 @@
                             "limit": 50
                           },
                           "table": "extended_wheel_data"
-                        },
-                        "labels": {
-                          "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                          "grafana.app/export-datasource-name": "formulatel-postgresql"
                         }
                       },
                       "refId": "A",
@@ -1709,11 +1665,12 @@
               "group": "grafana-postgresql-datasource",
               "version": "v0",
               "spec": {
-                "dataset": "postgres",
-                "editorMode": "builder",
+                "dataset": "formulatel",
+                "editorMode": "code",
                 "format": "table",
-                "query": "",
-                "rawSql": "SELECT username FROM telemetry.users LIMIT 50 ",
+                "query": "SELECT username FROM telemetry.users",
+                "rawQuery": true,
+                "rawSql": "SELECT username FROM telemetry.users",
                 "refId": "SQLVariableQueryEditor-VariableQuery",
                 "sql": {
                   "columns": [
@@ -1738,16 +1695,12 @@
                   "limit": 50
                 },
                 "table": "telemetry.users"
-              },
-              "labels": {
-                "grafana.app/export-label": "grafana-postgresql-datasource-1",
-                "grafana.app/export-datasource-name": "formulatel-postgresql"
               }
             },
             "regex": "",
             "regexApplyTo": "value",
             "sort": "disabled",
-            "definition": "",
+            "definition": "SELECT username FROM telemetry.users",
             "options": [],
             "multi": false,
             "includeAll": false,

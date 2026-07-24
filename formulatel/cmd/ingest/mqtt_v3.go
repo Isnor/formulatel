@@ -35,7 +35,7 @@ func RunMQTTv3Publisher(ctx context.Context, req StartPublisherConfig) error {
 	for {
 		select {
 		case <-ctx.Done():
-			slog.InfoContext(ctx, "finished publishing to mqtt")
+			slog.DebugContext(ctx, "finished publishing to mqtt", "topic", req.topic)
 			return nil
 		case data := <-req.data:
 
