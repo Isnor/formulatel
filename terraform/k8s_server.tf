@@ -114,6 +114,32 @@ resource "oci_core_network_security_group_security_rule" "mqtt_rule" {
   }
 }
 
+# primary VNIC of the instance
+data "oci_core_vnic_attachments" "instance_vnics" {
+  compartment_id      = var.compartment_ocid
+  instance_id         = oci_core_instance.single_node_k8s.id
+}
+
+# primary VNIC of the instance
+data "oci_core_vnic" "primary_vnic" {
+  vnic_id = data.oci_core_vnic_attachments.instance_vnics.vnic_attachments[0].vnic_id
+}
+
+# private IP of the VNIC
+data "oci_core_private_ips" "primary_private_ip" {
+  vnic_id = data.oci_core_vnic.primary_vnic.id
+}
+
+# static IP for the instance
+resource "oci_core_public_ip" "static_ip" {
+  compartment_id = var.compartment_ocid
+  lifetime       = "RESERVED"
+  display_name   = "formula-tel-k8s-address"
+
+  # Attach directly to the primary private IP of the VNIC
+  private_ip_id  = data.oci_core_vnic.primary_vnic.time_created != "" ? data.oci_core_private_ips.primary_private_ip.private_ips[0].id : null
+}
+
 # Always-Free Ampere Compute Instance - this is where our k8s and postgres install will live
 resource "oci_core_instance" "single_node_k8s" {
   availability_domain = var.availability_domain
@@ -131,7 +157,7 @@ resource "oci_core_instance" "single_node_k8s" {
   create_vnic_details {
     subnet_id        = oci_core_subnet.public_subnet.id
     nsg_ids          = [oci_core_network_security_group.vm_nsg.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   source_details {

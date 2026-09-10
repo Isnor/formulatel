@@ -1,3 +1,3 @@
 output "server-public-ip" {
-  value = oci_core_instance.single_node_k8s.public_ip
+  value = oci_core_public_ip.static_ip.ip_address
 }
